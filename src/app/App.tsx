@@ -1,37 +1,47 @@
-import { Layout, Menu, Space, Tag, Typography } from 'antd';
-import { Link, Route, Routes, useLocation } from 'react-router-dom';
-import { HealthPage } from '../modules/system/pages/HealthPage';
-import { HomePage } from '../modules/system/pages/HomePage';
-
-const menuItems = [
-  { key: '/', label: <Link to="/">Tổng quan</Link> },
-  { key: '/health', label: <Link to="/health">API health</Link> },
-];
+import { ProLayout, type ProLayoutProps } from '@ant-design/pro-components';
+import { useTranslation } from 'react-i18next';
+import { Link, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { HealthPage } from '../modules/system/pages/health-page';
+import { HomePage } from '../modules/system/pages/home-page';
 
 export function App() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { t } = useTranslation();
+
+  const route: ProLayoutProps['route'] = {
+    path: '/',
+    routes: [
+      {
+        path: '/',
+        name: t('menu.dashboard'),
+      },
+      {
+        path: '/health',
+        name: t('menu.health'),
+      },
+    ],
+  };
 
   return (
-    <Layout className="app-shell">
-      <Layout.Header className="app-header">
-        <Space size="middle">
-          <Typography.Title level={4} style={{ color: '#fff', margin: 0 }}>
-            AG Go
-          </Typography.Title>
-          <Tag color="blue">Phase 0</Tag>
-        </Space>
-      </Layout.Header>
-      <Layout>
-        <Layout.Sider width={220} theme="light">
-          <Menu mode="inline" selectedKeys={[location.pathname]} items={menuItems} />
-        </Layout.Sider>
-        <Layout.Content className="app-content">
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/health" element={<HealthPage />} />
-          </Routes>
-        </Layout.Content>
-      </Layout>
-    </Layout>
+    <ProLayout
+      className="app-shell"
+      title={t('app.title')}
+      logo={false}
+      layout="mix"
+      fixSiderbar
+      fixedHeader
+      location={{ pathname: location.pathname }}
+      route={route}
+      menu={{ locale: false }}
+      menuItemRender={(item, dom) => (item.path ? <Link to={item.path}>{dom}</Link> : dom)}
+      onMenuHeaderClick={() => navigate('/')}
+      contentStyle={{ padding: 24 }}
+    >
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/health" element={<HealthPage />} />
+      </Routes>
+    </ProLayout>
   );
 }

@@ -7,6 +7,9 @@ Xem tài liệu triển khai tại `../docs/06-frontend-plan.md` và contract ch
 
 Package manager: Yarn `1.22.22`.
 
+UI shell: Ant Design Pro `ProLayout` với `layout="mix"`. i18n dùng i18next,
+locale mặc định là tiếng Việt (`vi`).
+
 ```bash
 yarn install
 yarn dev
