@@ -1,4 +1,5 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api';
+const DEV_USER_ID = import.meta.env.VITE_DEV_USER_ID ?? 'dev-user';
 
 export class ApiError extends Error {
   constructor(
@@ -16,6 +17,7 @@ export async function apiClient<T>(path: string, init?: RequestInit): Promise<T>
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json',
+      'X-User-Id': DEV_USER_ID,
       ...init?.headers,
     },
   });

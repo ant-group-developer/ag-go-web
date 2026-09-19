@@ -11,6 +11,9 @@ const resources = {
       menu: {
         dashboard: 'Tổng quan',
         health: 'Trạng thái API',
+        folders: 'Thư mục',
+        projects: 'Dự án',
+        catalogs: 'Danh mục',
       },
       home: {
         title: 'Không gian làm việc AG Go',
@@ -32,6 +35,27 @@ const resources = {
         timestamp: 'Thời điểm',
         uptime: 'Thời gian hoạt động',
         seconds: 'giây',
+      },
+      folders: {
+        title: 'Cây thư mục',
+        empty: 'Chưa có thư mục nào hoặc bạn chưa được cấp quyền.',
+        name: 'Tên thư mục',
+        depth: 'Độ sâu',
+        path: 'Đường dẫn',
+      },
+      projects: {
+        title: 'Dự án',
+        empty: 'Chưa có dự án hoặc bạn chưa được cấp quyền.',
+        name: 'Tên dự án',
+        folder: 'Folder ID',
+        evaluationStatus: 'Trạng thái đánh giá',
+      },
+      catalogs: {
+        title: 'Danh mục',
+        categories: 'Categories',
+        countries: 'Countries',
+        provinces: 'Provinces',
+        tags: 'Tags',
       },
     },
   },
