@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Alert, Card, Empty, Table, Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { getProjects, type Project } from '../api/projects';
 
 export function ProjectsPage() {
@@ -25,7 +26,13 @@ export function ProjectsPage() {
           dataSource={projects.data?.items}
           pagination={false}
           columns={[
-            { title: t('projects.name'), dataIndex: 'name' },
+            {
+              title: t('projects.name'),
+              dataIndex: 'name',
+              render: (name: string, project) => (
+                <Link to={`/projects/${project.id}/media`}>{name}</Link>
+              ),
+            },
             { title: t('projects.folder'), dataIndex: 'folderId' },
             { title: t('projects.evaluationStatus'), dataIndex: 'evaluationStatus' },
           ]}
