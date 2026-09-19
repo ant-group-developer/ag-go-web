@@ -8,38 +8,81 @@ import {
   Input,
   InputNumber,
   Popconfirm,
-  Select,
+  Progress,
   Space,
   Table,
   Typography,
 } from 'antd';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import {
+  abortUpload,
   attachProjectMedia,
+  completeUpload,
+  createUploadSession,
   getProjectMedia,
   removeProjectMedia,
   reorderProjectMedia,
-  type AttachProjectMediaInput,
+  uploadAssetContent,
   type ProjectMedia,
 } from '../api/media';
+
+type UploadFormValues = {
+  caption?: string;
+  sortOrder?: number;
+};
 
 export function ProjectMediaPage() {
   const { projectId = '' } = useParams();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const [form] = Form.useForm<AttachProjectMediaInput>();
+  const [form] = Form.useForm<UploadFormValues>();
+  const [selectedFile, setSelectedFile] = useState<File>();
+  const [uploadProgress, setUploadProgress] = useState(0);
   const media = useQuery({
     queryKey: ['projects', projectId, 'media'],
     queryFn: () => getProjectMedia(projectId),
     enabled: Boolean(projectId),
   });
-  const attach = useMutation({
-    mutationFn: (input: AttachProjectMediaInput) => attachProjectMedia(projectId, input),
+  const upload = useMutation({
+    mutationFn: async (values: UploadFormValues) => {
+      if (!selectedFile) {
+        throw new Error(t('media.fileRequired'));
+      }
+      const assetType = selectedFile.type.startsWith('video/') ? 'video' : 'image';
+      const session = await createUploadSession(
+        {
+          assetType,
+          originalFilename: selectedFile.name,
+          mimeType: selectedFile.type || 'application/octet-stream',
+          fileSizeBytes: selectedFile.size,
+        },
+        globalThis.crypto.randomUUID(),
+      );
+      try {
+        setUploadProgress(5);
+        await uploadAssetContent(session, selectedFile, setUploadProgress);
+        const completed = await completeUpload(session.assetId, session.uploadSessionId);
+        return attachProjectMedia(projectId, {
+          assetId: completed.id,
+          caption: values.caption,
+          sortOrder: values.sortOrder,
+        });
+      } catch (error) {
+        await abortUpload(session.assetId, session.uploadSessionId).catch(() => undefined);
+        throw error;
+      }
+    },
     onSuccess: () => {
       form.resetFields();
+      setSelectedFile(undefined);
+      setUploadProgress(100);
       void queryClient.invalidateQueries({ queryKey: ['projects', projectId, 'media'] });
       void queryClient.invalidateQueries({ queryKey: ['projects'] });
+    },
+    onSettled: () => {
+      window.setTimeout(() => setUploadProgress(0), 800);
     },
   });
   const remove = useMutation({
@@ -82,48 +125,35 @@ export function ProjectMediaPage() {
           {t('media.title')}
         </Typography.Title>
       </Space>
-      <Card title={t('media.attachTitle')}>
-        <Form<AttachProjectMediaInput>
+      <Card title={t('media.uploadTitle')}>
+        <Space direction="vertical" style={{ display: 'flex' }}>
+          <input
+            type="file"
+            accept="image/*,video/*"
+            onChange={(event) => setSelectedFile(event.target.files?.[0])}
+          />
+          {selectedFile ? <Typography.Text>{selectedFile.name}</Typography.Text> : null}
+          {upload.isError ? <Alert type="error" message={upload.error.message} /> : null}
+          {upload.isPending ? <Progress percent={uploadProgress} /> : null}
+        </Space>
+        <Form<UploadFormValues>
           form={form}
           layout="inline"
-          onFinish={(values) => attach.mutate(values)}
-          initialValues={{ assetType: 'image', mimeType: 'image/jpeg', fileSizeBytes: 0 }}
+          onFinish={(values) => upload.mutate(values)}
         >
-          <Form.Item
-            name="assetType"
-            rules={[{ required: true, message: t('media.assetTypeRequired') }]}
-          >
-            <Select
-              style={{ width: 120 }}
-              options={[
-                { value: 'image', label: t('media.image') },
-                { value: 'video', label: t('media.video') },
-              ]}
-            />
-          </Form.Item>
-          <Form.Item
-            name="originalFilename"
-            rules={[{ required: true, message: t('media.filenameRequired') }]}
-          >
-            <Input placeholder={t('media.filename')} />
-          </Form.Item>
-          <Form.Item
-            name="mimeType"
-            rules={[{ required: true, message: t('media.mimeTypeRequired') }]}
-          >
-            <Input placeholder={t('media.mimeType')} />
-          </Form.Item>
-          <Form.Item
-            name="fileSizeBytes"
-            rules={[{ required: true, message: t('media.fileSizeRequired') }]}
-          >
-            <InputNumber min={0} placeholder={t('media.fileSize')} />
-          </Form.Item>
           <Form.Item name="caption">
             <Input placeholder={t('media.caption')} />
           </Form.Item>
-          <Button type="primary" htmlType="submit" loading={attach.isPending}>
-            {t('media.attach')}
+          <Form.Item name="sortOrder">
+            <InputNumber min={0} placeholder={t('media.order')} />
+          </Form.Item>
+          <Button
+            type="primary"
+            htmlType="submit"
+            loading={upload.isPending}
+            disabled={!selectedFile}
+          >
+            {t('media.upload')}
           </Button>
         </Form>
       </Card>
@@ -140,6 +170,7 @@ export function ProjectMediaPage() {
               { title: t('media.filename'), render: (_, item) => item.asset.originalFilename },
               { title: t('media.type'), render: (_, item) => item.asset.assetType },
               { title: t('media.size'), render: (_, item) => item.asset.fileSizeBytes },
+              { title: t('media.status'), render: (_, item) => item.asset.processingStatus },
               { title: t('media.caption'), dataIndex: 'caption' },
               {
                 title: t('media.actions'),

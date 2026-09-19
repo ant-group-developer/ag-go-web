@@ -12,18 +12,27 @@ export class ApiError extends Error {
   }
 }
 
-export async function apiClient<T>(path: string, init?: RequestInit): Promise<T> {
-  const headers = new Headers(init?.headers);
+export function apiUrl(path: string): string {
+  return `${API_BASE_URL}${path}`;
+}
+
+export function apiHeaders(init?: HeadersInit): Headers {
+  const headers = new Headers(init);
   headers.set('Accept', headers.get('Accept') ?? 'application/json');
-  headers.set('Content-Type', headers.get('Content-Type') ?? 'application/json');
   if (!headers.has('Authorization') && AUTH0_ACCESS_TOKEN) {
     headers.set('Authorization', `Bearer ${AUTH0_ACCESS_TOKEN}`);
   }
   if (!headers.has('Authorization') && !headers.has('X-User-Id')) {
     headers.set('X-User-Id', DEV_USER_ID);
   }
+  return headers;
+}
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+export async function apiClient<T>(path: string, init?: RequestInit): Promise<T> {
+  const headers = apiHeaders(init?.headers);
+  headers.set('Content-Type', headers.get('Content-Type') ?? 'application/json');
+
+  const response = await fetch(apiUrl(path), {
     ...init,
     headers,
   });

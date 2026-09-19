@@ -59,6 +59,9 @@ const resources = {
       },
       media: {
         title: 'Media của dự án',
+        uploadTitle: 'Tải media lên',
+        upload: 'Tải lên',
+        fileRequired: 'Hãy chọn một file',
         attachTitle: 'Gắn media',
         attach: 'Gắn',
         backToProjects: 'Quay lại dự án',
@@ -74,6 +77,7 @@ const resources = {
         caption: 'Caption',
         type: 'Loại',
         size: 'Dung lượng',
+        status: 'Trạng thái xử lý',
         order: 'Thứ tự',
         actions: 'Thao tác',
         image: 'Ảnh',
