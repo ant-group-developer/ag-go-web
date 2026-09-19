@@ -5,8 +5,8 @@ export function HomePage() {
     <>
       <Typography.Title level={2}>AG Go workspace</Typography.Title>
       <Typography.Paragraph>
-        Frontend shell đã sẵn sàng. Các module nghiệp vụ sẽ được triển khai theo
-        implementation plan.
+        Frontend shell đã sẵn sàng. Các module nghiệp vụ sẽ được triển khai theo implementation
+        plan.
       </Typography.Paragraph>
       <Row gutter={[16, 16]}>
         <Col xs={24} md={8}>

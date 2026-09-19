@@ -1,5 +1,5 @@
-import { Alert, Card, Descriptions, Spin, Typography } from 'antd';
 import { useQuery } from '@tanstack/react-query';
+import { Alert, Card, Descriptions, Spin, Typography } from 'antd';
 import { getHealth } from '../api/health';
 
 export function HealthPage() {
@@ -28,9 +28,7 @@ export function HealthPage() {
       <Descriptions bordered column={1}>
         <Descriptions.Item label="Status">{health.data.status}</Descriptions.Item>
         <Descriptions.Item label="Service">{health.data.service}</Descriptions.Item>
-        <Descriptions.Item label="Timestamp">
-          {health.data.timestamp}
-        </Descriptions.Item>
+        <Descriptions.Item label="Timestamp">{health.data.timestamp}</Descriptions.Item>
         <Descriptions.Item label="Uptime">
           {Math.round(health.data.uptime)} seconds
         </Descriptions.Item>
