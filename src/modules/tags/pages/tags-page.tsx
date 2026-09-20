@@ -1,0 +1,43 @@
+import { PageContainer, ProTable, type ProColumns } from '@ant-design/pro-components';
+import { Alert, Empty } from 'antd';
+import { useTranslation } from 'react-i18next';
+import { useTags } from '../hooks/use-tags';
+import type { Tag } from '../types/tag.type';
+
+export function TagsPage() {
+  const { t } = useTranslation();
+  const tags = useTags();
+  const columns: ProColumns<Tag>[] = [
+    { title: t('catalogs.name', 'Tên tag'), dataIndex: 'name', width: 360, ellipsis: true },
+  ];
+
+  return (
+    <PageContainer title={t('catalogs.tags')}>
+      {tags.isError ? <Alert type="error" message={tags.error.message} /> : null}
+      {!tags.isError ? (
+        <ProTable<Tag>
+          rowKey="id"
+          loading={tags.isFetching}
+          dataSource={tags.data}
+          request={async () => {
+            const result = await tags.refetch();
+            if (result.error) {
+              throw result.error;
+            }
+            const data = result.data ?? [];
+            return { data, success: true, total: data.length };
+          }}
+          manualRequest
+          search={false}
+          options={{ reload: true, density: false, setting: false, fullScreen: false }}
+          columns={columns}
+          tableProps={{
+            sticky: true,
+            scroll: { x: 'max-content', y: 'calc(100vh - 280px)' },
+            locale: { emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> },
+          }}
+        />
+      ) : null}
+    </PageContainer>
+  );
+}

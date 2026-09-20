@@ -1,4 +1,5 @@
-import { Card, Result } from 'antd';
+import { PageContainer } from '@ant-design/pro-components';
+import { Result } from 'antd';
 
 type FeaturePlaceholderPageProps = {
   title: string;
@@ -7,8 +8,8 @@ type FeaturePlaceholderPageProps = {
 
 export function FeaturePlaceholderPage({ title, description }: FeaturePlaceholderPageProps) {
   return (
-    <Card>
+    <PageContainer title={title}>
       <Result status="info" title={title} subTitle={description} />
-    </Card>
+    </PageContainer>
   );
 }

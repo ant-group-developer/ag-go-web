@@ -1,3 +1,4 @@
+import { PageContainer, ProTable } from '@ant-design/pro-components';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Alert,
@@ -10,7 +11,6 @@ import {
   Popconfirm,
   Progress,
   Space,
-  Table,
   Typography,
 } from 'antd';
 import { useState } from 'react';
@@ -98,10 +98,18 @@ export function ProjectMediaPage() {
   });
 
   if (!projectId) {
-    return <Alert type="error" message={t('media.invalidProject')} />;
+    return (
+      <PageContainer title={t('media.title')}>
+        <Alert type="error" message={t('media.invalidProject')} />
+      </PageContainer>
+    );
   }
   if (media.isError) {
-    return <Alert type="error" message={media.error.message} />;
+    return (
+      <PageContainer title={t('media.title')}>
+        <Alert type="error" message={media.error.message} />
+      </PageContainer>
+    );
   }
 
   const items = media.data?.items ?? [];
@@ -114,91 +122,119 @@ export function ProjectMediaPage() {
     [mediaIds[index], mediaIds[target]] = [mediaIds[target], mediaIds[index]];
     reorder.mutate(mediaIds);
   };
-
   return (
-    <Space direction="vertical" size="large" style={{ display: 'flex' }}>
-      <Space>
-        <Link to="/projects">{t('media.backToProjects')}</Link>
-        <Typography.Title level={3} style={{ margin: 0 }}>
-          {t('media.title')}
-        </Typography.Title>
-      </Space>
-      <Card title={t('media.uploadTitle')}>
-        <Space direction="vertical" style={{ display: 'flex' }}>
-          <input
-            type="file"
-            accept="image/*,video/*"
-            onChange={(event) => setSelectedFile(event.target.files?.[0])}
-          />
-          {selectedFile ? <Typography.Text>{selectedFile.name}</Typography.Text> : null}
-          {upload.isError ? <Alert type="error" message={upload.error.message} /> : null}
-          {upload.isPending ? <Progress percent={uploadProgress} /> : null}
+    <PageContainer title={t('media.title')}>
+      <Space direction="vertical" size="large" style={{ display: 'flex' }}>
+        <Space>
+          <Link to="/projects">{t('media.backToProjects')}</Link>
         </Space>
-        <Form<UploadFormValues>
-          form={form}
-          layout="inline"
-          onFinish={(values) => upload.mutate(values)}
-        >
-          <Form.Item name="caption">
-            <Input placeholder={t('media.caption')} />
-          </Form.Item>
-          <Form.Item name="sortOrder">
-            <InputNumber min={0} placeholder={t('media.order')} />
-          </Form.Item>
-          <Button
-            type="primary"
-            htmlType="submit"
-            loading={upload.isPending}
-            disabled={!selectedFile}
+        <Card title={t('media.uploadTitle')}>
+          <Space direction="vertical" style={{ display: 'flex' }}>
+            <input
+              type="file"
+              accept="image/*,video/*"
+              onChange={(event) => setSelectedFile(event.target.files?.[0])}
+            />
+            {selectedFile ? <Typography.Text>{selectedFile.name}</Typography.Text> : null}
+            {upload.isError ? <Alert type="error" message={upload.error.message} /> : null}
+            {upload.isPending ? <Progress percent={uploadProgress} /> : null}
+          </Space>
+          <Form<UploadFormValues>
+            form={form}
+            layout="inline"
+            onFinish={(values) => upload.mutate(values)}
           >
-            {t('media.upload')}
-          </Button>
-        </Form>
-      </Card>
-      <Card loading={media.isPending}>
-        {items.length === 0 ? (
-          <Empty description={t('media.empty')} />
-        ) : (
-          <Table<ProjectMedia>
-            rowKey="id"
-            dataSource={items}
-            pagination={false}
-            columns={[
-              { title: t('media.order'), dataIndex: 'sortOrder', width: 90 },
-              { title: t('media.filename'), render: (_, item) => item.asset.originalFilename },
-              { title: t('media.type'), render: (_, item) => item.asset.assetType },
-              { title: t('media.size'), render: (_, item) => item.asset.fileSizeBytes },
-              { title: t('media.status'), render: (_, item) => item.asset.processingStatus },
-              { title: t('media.caption'), dataIndex: 'caption' },
-              {
-                title: t('media.actions'),
-                render: (_, _item, index) => (
-                  <Space>
-                    <Button size="small" disabled={index === 0} onClick={() => move(index, -1)}>
-                      ↑
-                    </Button>
-                    <Button
-                      size="small"
-                      disabled={index === items.length - 1}
-                      onClick={() => move(index, 1)}
-                    >
-                      ↓
-                    </Button>
-                    <Popconfirm
-                      title={t('media.removeConfirm')}
-                      onConfirm={() => remove.mutate(_item.id)}
-                    >
-                      <Button danger size="small" loading={remove.isPending}>
-                        {t('media.remove')}
+            <Form.Item name="caption">
+              <Input placeholder={t('media.caption')} />
+            </Form.Item>
+            <Form.Item name="sortOrder">
+              <InputNumber min={0} placeholder={t('media.order')} />
+            </Form.Item>
+            <Button
+              type="primary"
+              htmlType="submit"
+              loading={upload.isPending}
+              disabled={!selectedFile}
+            >
+              {t('media.upload')}
+            </Button>
+          </Form>
+        </Card>
+        <Card loading={media.isPending}>
+          {items.length === 0 ? (
+            <Empty description={t('media.empty')} />
+          ) : (
+            <ProTable<ProjectMedia>
+              rowKey="id"
+              dataSource={items}
+              loading={media.isFetching}
+              request={async () => {
+                const result = await media.refetch();
+                if (result.error) {
+                  throw result.error;
+                }
+                const data = result.data?.items ?? [];
+                return { data, success: true, total: data.length };
+              }}
+              manualRequest
+              search={false}
+              options={{ reload: true, density: false, setting: false, fullScreen: false }}
+              pagination={false}
+              columns={[
+                { title: t('media.order'), dataIndex: 'sortOrder', width: 90 },
+                {
+                  title: t('media.filename'),
+                  width: 280,
+                  ellipsis: true,
+                  render: (_, item) => item.asset.originalFilename,
+                },
+                { title: t('media.type'), width: 120, render: (_, item) => item.asset.assetType },
+                {
+                  title: t('media.size'),
+                  width: 140,
+                  render: (_, item) => item.asset.fileSizeBytes,
+                },
+                {
+                  title: t('media.status'),
+                  width: 180,
+                  render: (_, item) => item.asset.processingStatus,
+                },
+                { title: t('media.caption'), dataIndex: 'caption', width: 280, ellipsis: true },
+                {
+                  title: t('media.actions'),
+                  width: 240,
+                  render: (_, _item, index) => (
+                    <Space>
+                      <Button size="small" disabled={index === 0} onClick={() => move(index, -1)}>
+                        ↑
                       </Button>
-                    </Popconfirm>
-                  </Space>
-                ),
-              },
-            ]}
-          />
-        )}
-      </Card>
-    </Space>
+                      <Button
+                        size="small"
+                        disabled={index === items.length - 1}
+                        onClick={() => move(index, 1)}
+                      >
+                        ↓
+                      </Button>
+                      <Popconfirm
+                        title={t('media.removeConfirm')}
+                        onConfirm={() => remove.mutate(_item.id)}
+                      >
+                        <Button danger size="small" loading={remove.isPending}>
+                          {t('media.remove')}
+                        </Button>
+                      </Popconfirm>
+                    </Space>
+                  ),
+                },
+              ]}
+              tableProps={{
+                sticky: true,
+                scroll: { x: 'max-content', y: 'calc(100vh - 380px)' },
+              }}
+            />
+          )}
+        </Card>
+      </Space>
+    </PageContainer>
   );
 }

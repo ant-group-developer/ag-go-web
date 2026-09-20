@@ -1,4 +1,5 @@
-import { Alert, Button, Card, Empty, Table, Typography } from 'antd';
+import { PageContainer, ProTable, type ProColumns } from '@ant-design/pro-components';
+import { Alert, Button, Empty } from 'antd';
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -11,43 +12,68 @@ export function ProjectsPage() {
   const { t } = useTranslation();
   const [createOpen, setCreateOpen] = useState(false);
   const projects = useProjects();
+  const columns: ProColumns<Project>[] = [
+    {
+      title: t('projects.name'),
+      dataIndex: 'name',
+      width: 320,
+      ellipsis: true,
+      render: (_, project) => <Link to={`/projects/${project.id}/media`}>{project.name}</Link>,
+    },
+    { title: t('projects.folder'), dataIndex: 'folderId', width: 360, ellipsis: true },
+    { title: t('projects.evaluationStatus'), dataIndex: 'evaluationStatus', width: 180 },
+  ];
 
   if (projects.isError) {
-    return <Alert type="error" message={projects.error.message} />;
+    return (
+      <PageContainer title={t('projects.title')}>
+        <Alert type="error" message={projects.error.message} />
+      </PageContainer>
+    );
   }
 
   return (
     <>
-      <Card
-        loading={projects.isPending}
-        title={<Typography.Title level={3}>{t('projects.title')}</Typography.Title>}
-        extra={
-          <Button type="primary" icon={<Plus size={16} />} onClick={() => setCreateOpen(true)}>
+      <PageContainer
+        title={t('projects.title')}
+        extra={[
+          <Button
+            key="create"
+            type="primary"
+            icon={<Plus size={16} />}
+            onClick={() => setCreateOpen(true)}
+          >
             {t('projects.create', 'Tạo dự án')}
-          </Button>
-        }
+          </Button>,
+        ]}
       >
         {!projects.isPending && projects.data?.items.length === 0 ? (
           <Empty description={t('projects.empty')} />
         ) : (
-          <Table<Project>
+          <ProTable<Project>
             rowKey="id"
             dataSource={projects.data?.items}
+            loading={projects.isFetching}
+            request={async () => {
+              const result = await projects.refetch();
+              if (result.error) {
+                throw result.error;
+              }
+              const data = result.data?.items ?? [];
+              return { data, success: true, total: data.length };
+            }}
+            manualRequest
+            search={false}
+            options={{ reload: true, density: false, setting: false, fullScreen: false }}
             pagination={false}
-            columns={[
-              {
-                title: t('projects.name'),
-                dataIndex: 'name',
-                render: (name: string, project) => (
-                  <Link to={`/projects/${project.id}/media`}>{name}</Link>
-                ),
-              },
-              { title: t('projects.folder'), dataIndex: 'folderId' },
-              { title: t('projects.evaluationStatus'), dataIndex: 'evaluationStatus' },
-            ]}
+            columns={columns}
+            tableProps={{
+              sticky: true,
+              scroll: { x: 'max-content', y: 'calc(100vh - 280px)' },
+            }}
           />
         )}
-      </Card>
+      </PageContainer>
       <CreateProjectModal open={createOpen} onClose={() => setCreateOpen(false)} />
     </>
   );

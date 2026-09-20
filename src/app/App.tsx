@@ -5,8 +5,8 @@ import {
   BarChart3,
   ClipboardCheck,
   Folder,
-  FolderTree,
-  Globe2,
+  FolderOpen,
+  Globe,
   LayoutDashboard,
   List,
   MapPinned,
@@ -20,14 +20,24 @@ import { lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 
-const CatalogItemPage = lazy(() =>
-  import('../modules/catalogs/pages/catalog-item-page').then(({ CatalogItemPage }) => ({
-    default: CatalogItemPage,
+const CategoriesPage = lazy(() =>
+  import('../modules/categories/pages/categories-page').then(({ CategoriesPage }) => ({
+    default: CategoriesPage,
   })),
 );
-const CatalogsPage = lazy(() =>
-  import('../modules/catalogs/pages/catalogs-page').then(({ CatalogsPage }) => ({
-    default: CatalogsPage,
+const CountriesPage = lazy(() =>
+  import('../modules/countries/pages/countries-page').then(({ CountriesPage }) => ({
+    default: CountriesPage,
+  })),
+);
+const ProvincesPage = lazy(() =>
+  import('../modules/provinces/pages/provinces-page').then(({ ProvincesPage }) => ({
+    default: ProvincesPage,
+  })),
+);
+const TagsPage = lazy(() =>
+  import('../modules/tags/pages/tags-page').then(({ TagsPage }) => ({
+    default: TagsPage,
   })),
 );
 const FoldersPage = lazy(() =>
@@ -86,7 +96,7 @@ export function App() {
           {
             path: '/projects',
             name: t('menu.projects'),
-            icon: <Folder size={16} />,
+            icon: <FolderOpen size={16} />,
           },
           {
             path: '/project-evaluations',
@@ -107,7 +117,7 @@ export function App() {
           {
             path: '/folders',
             name: t('menu.folders'),
-            icon: <FolderTree size={16} />,
+            icon: <Folder size={16} />,
           },
           {
             path: '/catalogs/categories',
@@ -117,7 +127,7 @@ export function App() {
           {
             path: '/catalogs/countries',
             name: t('menu.countries'),
-            icon: <Globe2 size={16} />,
+            icon: <Globe size={16} />,
           },
           {
             path: '/catalogs/provinces',
@@ -163,19 +173,20 @@ export function App() {
   return (
     <ProLayout
       token={{
-        header: {
-          colorBgHeader: token.colorBgContainer,
-        },
+        // header: {
+        //   colorBgHeader: token.colorBgContainer,
+        // },
         sider: {
           colorTextMenuSelected: token.colorPrimary,
           colorBgMenuItemSelected: token.colorPrimaryBg,
         },
-        bgLayout: token.colorBgLayout,
+        // bgLayout: token.colorBgLayout,
         // pageContainer: {
         //   paddingBlockPageContainerContent: screens.md ? 40 : 16,
         //   paddingInlinePageContainerContent: screens.md ? 40 : 16,
         // },
       }}
+      siderWidth={220}
       className="app-shell"
       title={t('app.title')}
       logo={false}
@@ -225,11 +236,14 @@ export function App() {
           />
           <Route path="/projects/:projectId/media" element={<ProjectMediaPage />} />
           <Route path="/catalogs" element={<Navigate to="/catalogs/categories" replace />} />
-          <Route path="/catalogs/overview" element={<CatalogsPage />} />
-          <Route path="/catalogs/categories" element={<CatalogItemPage resource="categories" />} />
-          <Route path="/catalogs/countries" element={<CatalogItemPage resource="countries" />} />
-          <Route path="/catalogs/provinces" element={<CatalogItemPage resource="provinces" />} />
-          <Route path="/catalogs/tags" element={<CatalogItemPage resource="tags" />} />
+          <Route
+            path="/catalogs/overview"
+            element={<Navigate to="/catalogs/categories" replace />}
+          />
+          <Route path="/catalogs/categories" element={<CategoriesPage />} />
+          <Route path="/catalogs/countries" element={<CountriesPage />} />
+          <Route path="/catalogs/provinces" element={<ProvincesPage />} />
+          <Route path="/catalogs/tags" element={<TagsPage />} />
           <Route
             path="/system/permissions"
             element={

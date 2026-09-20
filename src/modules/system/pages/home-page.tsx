@@ -1,3 +1,4 @@
+import { PageContainer } from '@ant-design/pro-components';
 import { Card, Col, Row, Typography } from 'antd';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -38,8 +39,7 @@ export function HomePage() {
   }, []);
 
   return (
-    <>
-      <Typography.Title level={2}>{t('home.title')}</Typography.Title>
+    <PageContainer title={t('home.title')}>
       <Typography.Paragraph>{t('home.description')}</Typography.Paragraph>
       <Row gutter={[16, 16]}>
         <Col xs={24} md={8}>
@@ -52,6 +52,6 @@ export function HomePage() {
           <Card title={t('home.serverState')}>{t('home.serverStateValue')}</Card>
         </Col>
       </Row>
-    </>
+    </PageContainer>
   );
 }
