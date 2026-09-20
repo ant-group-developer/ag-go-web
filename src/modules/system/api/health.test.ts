@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
+import { setAccessTokenGetter } from '../../../auth/auth-client';
 import { getHealth } from './health';
 
 describe('getHealth', () => {
   it('requests the health endpoint', async () => {
+    setAccessTokenGetter(async () => 'test-access-token');
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
@@ -22,5 +24,6 @@ describe('getHealth', () => {
       status: 'ok',
       service: 'ag-go-api',
     });
+    vi.unstubAllGlobals();
   });
 });

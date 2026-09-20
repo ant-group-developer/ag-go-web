@@ -1,4 +1,4 @@
-import { apiClient, ApiError, apiHeaders, apiUrl } from '../../../shared/lib/api-client';
+import { apiClient, ApiError, apiUrl } from '../../../shared/lib/api-client';
 
 export type Asset = {
   id: string;
@@ -94,7 +94,9 @@ export function uploadAssetContent(
   return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest();
     request.open('PUT', apiUrl(session.uploadUrl));
-    const headers = apiHeaders({ 'Content-Type': file.type || 'application/octet-stream' });
+    const headers = new Headers({
+      'Content-Type': file.type || 'application/octet-stream',
+    });
     headers.forEach((value, key) => request.setRequestHeader(key, value));
     request.upload.onprogress = (event) => {
       if (event.lengthComputable) {

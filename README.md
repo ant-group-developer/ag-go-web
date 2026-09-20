@@ -14,3 +14,10 @@ locale mặc định là tiếng Việt (`vi`).
 yarn install
 yarn dev
 ```
+
+Frontend bắt buộc đăng nhập Auth0. Thiết lập `VITE_AUTH0_DOMAIN`,
+`VITE_AUTH0_CLIENT_ID` và `VITE_AUTH0_AUDIENCE` trong `.env` trước khi chạy.
+Upload file dùng presigned URL do API cấp để gửi trực tiếp lên Cloudflare R2.
+
+Khi chạy local, thêm `http://localhost:5173` vào Allowed Callback URLs, Allowed
+Logout URLs và Allowed Web Origins của Auth0 Application.
