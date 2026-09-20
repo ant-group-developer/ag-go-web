@@ -16,12 +16,23 @@ export type ProjectMedia = {
   assetId: string;
   sortOrder: number;
   caption: string | null;
+  evaluationStatus: 'pending' | 'approved' | 'rejected';
+  createdAt: string;
+  updatedAt: string;
+  durationSeconds: number | null;
+  width: number | null;
+  height: number | null;
   asset: Asset;
 };
 
 export type ProjectMediaPage = {
   items: ProjectMedia[];
   nextCursor: string | null;
+};
+
+export type ProjectMediaQueryParams = {
+  cursor?: string;
+  limit?: number;
 };
 
 export type AttachProjectMediaInput = {
@@ -34,8 +45,37 @@ export type AttachProjectMediaInput = {
   sortOrder?: number;
 };
 
-export function getProjectMedia(projectId: string): Promise<ProjectMediaPage> {
-  return apiClient<ProjectMediaPage>(`/projects/${projectId}/media`);
+export type UpdateProjectMediaInput = {
+  sortOrder?: number;
+  caption?: string;
+  evaluationStatus?: ProjectMedia['evaluationStatus'];
+  comment?: string | null;
+};
+
+export type ProjectMediaEvaluation = {
+  id: string;
+  projectMediaId: string;
+  evaluationStatus: ProjectMedia['evaluationStatus'];
+  comment: string | null;
+  evaluatedBy: string;
+  createdAt: string;
+};
+
+export function getProjectMedia(
+  projectId: string,
+  params: ProjectMediaQueryParams = {},
+): Promise<ProjectMediaPage> {
+  const query = new URLSearchParams();
+  if (params.cursor) {
+    query.set('cursor', params.cursor);
+  }
+  if (params.limit !== undefined) {
+    query.set('limit', String(params.limit));
+  }
+  const queryString = query.toString();
+  return apiClient<ProjectMediaPage>(
+    `/projects/${projectId}/media${queryString ? `?${queryString}` : ''}`,
+  );
 }
 
 export function attachProjectMedia(
@@ -46,6 +86,22 @@ export function attachProjectMedia(
     method: 'POST',
     body: JSON.stringify(input),
   });
+}
+
+export function updateProjectMedia(
+  mediaId: string,
+  input: UpdateProjectMediaInput,
+): Promise<ProjectMedia> {
+  return apiClient<ProjectMedia>(`/project-media/${mediaId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
+}
+
+export function getProjectMediaEvaluationHistory(
+  mediaId: string,
+): Promise<ProjectMediaEvaluation[]> {
+  return apiClient<ProjectMediaEvaluation[]>(`/project-media/${mediaId}/evaluations`);
 }
 
 export function removeProjectMedia(mediaId: string): Promise<{ success: boolean }> {

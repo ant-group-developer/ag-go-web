@@ -32,6 +32,7 @@ import { useProvinces } from '../../provinces/hooks/use-provinces';
 import { useTags } from '../../tags/hooks/use-tags';
 import { getProjects } from '../api/projects';
 import { CreateProjectModal } from '../components/create-project-modal';
+import { ProjectReviewDrawer } from '../components/project-review-drawer';
 import { useDeleteProject } from '../hooks/use-projects';
 import { projectQueryKeys } from '../queries/project-query-keys';
 import type { ProjectListParams } from '../types/project-list-params.type';
@@ -158,6 +159,7 @@ export function ProjectsPage() {
     history: 'replace',
   });
   const [createOpen, setCreateOpen] = useState(false);
+  const [reviewProjectId, setReviewProjectId] = useState<string>();
   const [listError, setListError] = useState<string>();
   const countryId = Form.useWatch('countryId', filterForm);
   const projectsDelete = useDeleteProject();
@@ -318,9 +320,7 @@ export function ProjectsPage() {
               aria-label={t('projects.review')}
               icon={<ClipboardCheck size={16} />}
               type="text"
-              onClick={() =>
-                navigate(`/project-evaluations?projectId=${encodeURIComponent(project.id)}`)
-              }
+              onClick={() => setReviewProjectId(project.id)}
             />
           </Tooltip>
           <Tooltip title={t('projects.edit')}>
@@ -547,6 +547,11 @@ export function ProjectsPage() {
           setCreateOpen(false);
           navigate(`/projects/${project.id}`);
         }}
+      />
+      <ProjectReviewDrawer
+        open={Boolean(reviewProjectId)}
+        projectId={reviewProjectId}
+        onClose={() => setReviewProjectId(undefined)}
       />
     </>
   );

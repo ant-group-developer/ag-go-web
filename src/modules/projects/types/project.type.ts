@@ -1,5 +1,6 @@
 export type Project = {
   id: string;
+  ownerUserId?: string;
   name: string;
   folderId: string;
   categoryId: string | null;
@@ -16,6 +17,8 @@ export type Project = {
   provinceName?: string | null;
   categoryName?: string | null;
   thumbnailAssetId?: string | null;
+  originalBytes?: string;
+  renderedBytes?: string;
   createdAt: string;
   updatedAt: string;
   description: string | null;
