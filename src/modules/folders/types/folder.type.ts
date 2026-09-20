@@ -3,6 +3,7 @@ export type Folder = {
   parentId: string | null;
   name: string;
   pathText: string;
+  pathIds?: string[];
   depth: number;
   sortOrder: number;
   isActive: boolean;

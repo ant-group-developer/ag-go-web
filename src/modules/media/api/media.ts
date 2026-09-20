@@ -1,4 +1,4 @@
-import { apiClient, ApiError, apiUrl } from '../../../shared/lib/api-client';
+import { apiClient, ApiError, apiHeaders, apiUrl } from '../../../shared/lib/api-client';
 
 export type Asset = {
   id: string;
@@ -58,6 +58,26 @@ export function reorderProjectMedia(projectId: string, mediaIds: string[]) {
     method: 'PATCH',
     body: JSON.stringify({ mediaIds }),
   });
+}
+
+export function setProjectThumbnail(projectId: string, projectMediaId: string | null) {
+  return apiClient(`/projects/${projectId}/thumbnail`, {
+    method: 'PATCH',
+    body: JSON.stringify({ projectMediaId }),
+  });
+}
+
+export async function getAssetPreviewUrl(
+  assetId: string,
+  variantCode = 'thumbnail',
+): Promise<string> {
+  const response = await fetch(apiUrl(`/assets/${assetId}/preview/${variantCode}`), {
+    headers: await apiHeaders({ Accept: 'image/*' }),
+  });
+  if (!response.ok) {
+    throw new ApiError(`Asset preview request failed: ${response.status}`, response.status);
+  }
+  return URL.createObjectURL(await response.blob());
 }
 
 export type UploadSession = {

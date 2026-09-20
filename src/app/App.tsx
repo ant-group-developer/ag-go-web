@@ -18,7 +18,15 @@ import {
 } from 'lucide-react';
 import { lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import {
+  Link,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+  useParams,
+} from 'react-router-dom';
 
 const CategoriesPage = lazy(() =>
   import('../modules/categories/pages/categories-page').then(({ CategoriesPage }) => ({
@@ -50,9 +58,9 @@ const HealthPage = lazy(() =>
     default: HealthPage,
   })),
 );
-const ProjectMediaPage = lazy(() =>
-  import('../modules/media/pages/project-media-page').then(({ ProjectMediaPage }) => ({
-    default: ProjectMediaPage,
+const ProjectDetailPage = lazy(() =>
+  import('../modules/projects/pages/project-detail-page').then(({ ProjectDetailPage }) => ({
+    default: ProjectDetailPage,
   })),
 );
 const ProjectsPage = lazy(() =>
@@ -234,7 +242,8 @@ export function App() {
               />
             }
           />
-          <Route path="/projects/:projectId/media" element={<ProjectMediaPage />} />
+          <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
+          <Route path="/projects/:projectId/media" element={<LegacyProjectMediaRedirect />} />
           <Route path="/catalogs" element={<Navigate to="/catalogs/categories" replace />} />
           <Route
             path="/catalogs/overview"
@@ -275,4 +284,9 @@ export function App() {
       </Suspense>
     </ProLayout>
   );
+}
+
+function LegacyProjectMediaRedirect() {
+  const { projectId = '' } = useParams();
+  return <Navigate to={`/projects/${projectId}`} replace />;
 }

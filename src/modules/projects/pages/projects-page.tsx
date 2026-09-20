@@ -3,13 +3,14 @@ import { Alert, Button, Empty } from 'antd';
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { CreateProjectModal } from '../components/create-project-modal';
 import { useProjects } from '../hooks/use-projects';
 import type { Project } from '../types/project.type';
 
 export function ProjectsPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [createOpen, setCreateOpen] = useState(false);
   const projects = useProjects();
   const columns: ProColumns<Project>[] = [
@@ -18,7 +19,7 @@ export function ProjectsPage() {
       dataIndex: 'name',
       width: 320,
       ellipsis: true,
-      render: (_, project) => <Link to={`/projects/${project.id}/media`}>{project.name}</Link>,
+      render: (_, project) => <Link to={`/projects/${project.id}`}>{project.name}</Link>,
     },
     { title: t('projects.folder'), dataIndex: 'folderId', width: 360, ellipsis: true },
     { title: t('projects.evaluationStatus'), dataIndex: 'evaluationStatus', width: 180 },
@@ -78,7 +79,14 @@ export function ProjectsPage() {
           />
         )}
       </PageContainer>
-      <CreateProjectModal open={createOpen} onClose={() => setCreateOpen(false)} />
+      <CreateProjectModal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onComplete={(project) => {
+          setCreateOpen(false);
+          navigate(`/projects/${project.id}`);
+        }}
+      />
     </>
   );
 }
