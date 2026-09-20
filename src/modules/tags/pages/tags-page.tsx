@@ -1,5 +1,5 @@
 import { PageContainer, ProTable, type ProColumns } from '@ant-design/pro-components';
-import { Alert, Empty } from 'antd';
+import { Alert } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useTags } from '../hooks/use-tags';
 import type { Tag } from '../types/tag.type';
@@ -39,11 +39,7 @@ export function TagsPage() {
               }),
           }}
           columns={columns}
-          tableProps={{
-            sticky: true,
-            scroll: { x: 'max-content', y: 'calc(100vh - 280px)' },
-            locale: { emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> },
-          }}
+          sticky={{ offsetHeader: 56 }}
         />
       ) : null}
     </PageContainer>

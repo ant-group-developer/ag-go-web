@@ -74,10 +74,7 @@ export function ProjectsPage() {
                 }),
             }}
             columns={columns}
-            tableProps={{
-              sticky: true,
-              scroll: { x: 'max-content', y: 'calc(100vh - 280px)' },
-            }}
+            sticky={{ offsetHeader: 56 }}
           />
         )}
       </PageContainer>

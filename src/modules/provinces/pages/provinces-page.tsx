@@ -1,5 +1,5 @@
 import { PageContainer, ProTable, type ProColumns } from '@ant-design/pro-components';
-import { Alert, Button, Empty, Image, Input, Select, Space } from 'antd';
+import { Alert, Button, Image, Input, Select, Space } from 'antd';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useCountries } from '../../countries/hooks/use-countries';
@@ -132,11 +132,7 @@ export function ProvincesPage() {
           onChange: (page, pageSize) => setPagination({ page, pageSize }),
         }}
         onRequestError={setRequestError}
-        tableProps={{
-          sticky: true,
-          scroll: { x: 'max-content', y: 'calc(100vh - 360px)' },
-          locale: { emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> },
-        }}
+        sticky={{ offsetHeader: 56 }}
       />
     </PageContainer>
   );

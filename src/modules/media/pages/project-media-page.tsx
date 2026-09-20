@@ -234,10 +234,7 @@ export function ProjectMediaPage() {
                   ),
                 },
               ]}
-              tableProps={{
-                sticky: true,
-                scroll: { x: 'max-content', y: 'calc(100vh - 380px)' },
-              }}
+              sticky={{ offsetHeader: 56 }}
             />
           )}
         </Card>

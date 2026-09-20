@@ -1,5 +1,5 @@
 import { PageContainer, ProTable, type ProColumns } from '@ant-design/pro-components';
-import { Alert, Button, Empty, Form, Image, Input, Modal, Space } from 'antd';
+import { Alert, Button, Form, Image, Input, Modal, Space } from 'antd';
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -104,11 +104,7 @@ export function CountriesPage() {
                 }),
             }}
             columns={columns}
-            tableProps={{
-              sticky: true,
-              scroll: { x: 'max-content', y: 'calc(100vh - 320px)' },
-              locale: { emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> },
-            }}
+            sticky={{ offsetHeader: 56 }}
           />
         ) : null}
       </PageContainer>
