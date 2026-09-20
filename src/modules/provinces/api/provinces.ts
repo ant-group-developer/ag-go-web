@@ -7,8 +7,8 @@ export function getProvinces(params: ProvinceQueryParams): Promise<ProvincePage>
     pageSize: String(params.pageSize),
   });
 
-  if (params.search) {
-    query.set('search', params.search);
+  if (params.keyword) {
+    query.set('keyword', params.keyword);
   }
   if (params.countryId) {
     query.set('countryId', params.countryId);

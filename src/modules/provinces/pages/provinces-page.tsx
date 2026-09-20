@@ -106,7 +106,7 @@ export function ProvincesPage() {
           const response = await getProvinces({
             page: params.current ?? pagination.page,
             pageSize: params.pageSize ?? pagination.pageSize,
-            search: search || undefined,
+            keyword: search || undefined,
             countryId,
           });
           return {
@@ -115,7 +115,7 @@ export function ProvincesPage() {
             total: response.total,
           };
         }}
-        params={{ search, countryId }}
+        params={{ keyword: search, countryId }}
         search={false}
         options={{ reload: true, density: false, setting: false, fullScreen: false }}
         columns={columns}

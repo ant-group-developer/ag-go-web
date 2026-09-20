@@ -11,7 +11,7 @@ export type Province = {
 export type ProvinceQueryParams = {
   page: number;
   pageSize: number;
-  search?: string;
+  keyword?: string;
   countryId?: string;
 };
 
