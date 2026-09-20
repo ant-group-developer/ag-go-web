@@ -1,4 +1,5 @@
-import { apiClient, ApiError, apiHeaders, apiUrl } from '../../../shared/lib/api-client';
+import axios from 'axios';
+import { apiBlob, apiClient, ApiError, apiUrl } from '../../../shared/lib/api-client';
 
 export type Asset = {
   id: string;
@@ -71,13 +72,7 @@ export async function getAssetPreviewUrl(
   assetId: string,
   variantCode = 'thumbnail',
 ): Promise<string> {
-  const response = await fetch(apiUrl(`/assets/${assetId}/preview/${variantCode}`), {
-    headers: await apiHeaders({ Accept: 'image/*' }),
-  });
-  if (!response.ok) {
-    throw new ApiError(`Asset preview request failed: ${response.status}`, response.status);
-  }
-  return URL.createObjectURL(await response.blob());
+  return URL.createObjectURL(await apiBlob(`/assets/${assetId}/preview/${variantCode}`));
 }
 
 export type UploadSession = {
@@ -111,29 +106,27 @@ export function uploadAssetContent(
   file: File,
   onProgress: (progress: number) => void,
 ): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const request = new XMLHttpRequest();
-    request.open('PUT', apiUrl(session.uploadUrl));
-    const headers = new Headers({
-      'Content-Type': file.type || 'application/octet-stream',
+  return axios
+    .put(apiUrl(session.uploadUrl), file, {
+      headers: { 'Content-Type': file.type || 'application/octet-stream' },
+      onUploadProgress: (event) => {
+        if (event.total) {
+          onProgress(Math.round((event.loaded / event.total) * 100));
+        }
+      },
+    })
+    .then(() => {
+      onProgress(100);
+    })
+    .catch((error: unknown) => {
+      if (axios.isAxiosError(error)) {
+        throw new ApiError(
+          error.response?.data || error.message || 'Upload failed',
+          error.response?.status ?? 0,
+        );
+      }
+      throw error;
     });
-    headers.forEach((value, key) => request.setRequestHeader(key, value));
-    request.upload.onprogress = (event) => {
-      if (event.lengthComputable) {
-        onProgress(Math.round((event.loaded / event.total) * 100));
-      }
-    };
-    request.onerror = () => reject(new ApiError('Upload failed', 0));
-    request.onload = () => {
-      if (request.status >= 200 && request.status < 300) {
-        onProgress(100);
-        resolve();
-      } else {
-        reject(new ApiError(request.responseText || 'Upload failed', request.status));
-      }
-    };
-    request.send(file);
-  });
 }
 
 export function completeUpload(assetId: string, uploadSessionId: string) {

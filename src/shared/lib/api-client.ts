@@ -1,3 +1,4 @@
+import axios, { AxiosError, type AxiosRequestConfig, type RawAxiosRequestHeaders } from 'axios';
 import { getAccessToken } from '../../auth/auth-client';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api';
@@ -31,63 +32,140 @@ export class ApiError extends Error {
   }
 }
 
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  adapter: 'fetch',
+  headers: {
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+  },
+});
+
+api.interceptors.request.use(async (config) => {
+  if (!config.headers.Authorization) {
+    config.headers.Authorization = `Bearer ${await getAccessToken()}`;
+  }
+  return config;
+});
+
 export function apiUrl(path: string): string {
   return /^https?:\/\//i.test(path) ? path : `${API_BASE_URL}${path}`;
 }
 
-export async function apiHeaders(init?: HeadersInit): Promise<Headers> {
-  const headers = new Headers(init);
-  headers.set('Accept', headers.get('Accept') ?? 'application/json');
-  if (!headers.has('Authorization')) {
-    headers.set('Authorization', `Bearer ${await getAccessToken()}`);
+export async function apiClient<T>(path: string, init?: RequestInit): Promise<T> {
+  const config: AxiosRequestConfig = {
+    url: path,
+    method: init?.method ?? 'GET',
+    headers: toAxiosHeaders(init?.headers),
+    data: init?.body,
+  };
+
+  try {
+    const response = await api.request<T | ApiResponse<T>>(config);
+    const body = response.data;
+    const envelope = isApiResponse<T>(body) ? body : undefined;
+
+    if (envelope?.success === false) {
+      throw createApiError(envelope, response.status, response.headers);
+    }
+
+    return (envelope ? envelope.data : body) as T;
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+
+    throw toApiError(error);
   }
+}
+
+export async function apiBlob(path: string): Promise<Blob> {
+  try {
+    const response = await api.request<Blob>({
+      url: path,
+      method: 'GET',
+      responseType: 'blob',
+      headers: { Accept: 'image/*' },
+    });
+    return response.data;
+  } catch (error) {
+    throw toApiError(error);
+  }
+}
+
+function toAxiosHeaders(headers?: HeadersInit): RawAxiosRequestHeaders {
+  if (!headers) {
+    return {};
+  }
+
+  if (headers instanceof Headers) {
+    return Object.fromEntries(headers.entries());
+  }
+
+  if (Array.isArray(headers)) {
+    return Object.fromEntries(headers);
+  }
+
   return headers;
 }
 
-export async function apiClient<T>(path: string, init?: RequestInit): Promise<T> {
-  const headers = await apiHeaders(init?.headers);
-  headers.set('Content-Type', headers.get('Content-Type') ?? 'application/json');
-
-  const response = await fetch(apiUrl(path), {
-    ...init,
-    headers,
-  });
-
-  const body = await readResponseBody(response);
-  const envelope = isApiResponse<unknown>(body) ? body : undefined;
-
-  if (!response.ok || envelope?.success === false) {
-    const error = envelope?.error;
-    const fallbackMessage =
-      typeof body === 'string'
-        ? body
-        : body && typeof body === 'object' && 'message' in body && typeof body.message === 'string'
-          ? body.message
-          : `API request failed: ${response.status}`;
-    throw new ApiError(
-      error?.message ?? fallbackMessage,
-      response.status,
-      error?.code,
-      envelope?.requestId ?? response.headers.get('x-request-id') ?? undefined,
-      error?.details,
-      error?.fieldErrors,
-    );
+function toApiError(error: unknown): ApiError {
+  if (!axios.isAxiosError(error)) {
+    return new ApiError(error instanceof Error ? error.message : 'API request failed', 0);
   }
 
-  return (envelope ? envelope.data : body) as T;
+  const axiosError = error as AxiosError<unknown>;
+  const responseBody = axiosError.response?.data;
+  const envelope = isApiResponse<unknown>(responseBody) ? responseBody : undefined;
+  const payload = envelope?.error;
+  const fallbackMessage = getResponseMessage(responseBody) ?? axiosError.message;
+
+  return new ApiError(
+    payload?.message ?? fallbackMessage,
+    axiosError.response?.status ?? 0,
+    payload?.code,
+    envelope?.requestId ?? getHeader(axiosError, 'x-request-id'),
+    payload?.details,
+    payload?.fieldErrors,
+  );
 }
 
-async function readResponseBody(response: Response): Promise<unknown> {
-  const text = await response.text();
-  if (!text) {
-    return undefined;
+function createApiError(
+  envelope: ApiResponse<unknown>,
+  status: number,
+  headers: Record<string, unknown>,
+): ApiError {
+  return new ApiError(
+    envelope.error?.message ?? 'API request failed',
+    status,
+    envelope.error?.code,
+    envelope.requestId ?? getHeaderValue(headers, 'x-request-id'),
+    envelope.error?.details,
+    envelope.error?.fieldErrors,
+  );
+}
+
+function getResponseMessage(value: unknown): string | undefined {
+  if (typeof value === 'string') {
+    return value;
   }
 
-  try {
-    return JSON.parse(text) as unknown;
-  } catch {
-    return text;
+  if (value && typeof value === 'object' && 'message' in value) {
+    const message = value.message;
+    return typeof message === 'string' ? message : undefined;
   }
+
+  return undefined;
+}
+
+function getHeader(error: AxiosError, name: string): string | undefined {
+  const value = error.response?.headers?.[name];
+  return typeof value === 'string' ? value : undefined;
+}
+
+function getHeaderValue(headers: Record<string, unknown>, name: string): string | undefined {
+  const value = headers[name] ?? headers[name.toLowerCase()];
+  return typeof value === 'string' ? value : undefined;
 }
 
 function isApiResponse<T>(value: unknown): value is ApiResponse<T> {
