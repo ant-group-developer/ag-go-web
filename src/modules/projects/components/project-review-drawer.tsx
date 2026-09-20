@@ -31,6 +31,7 @@ import {
   getAssetPreviewUrl,
   getProjectMedia,
   getProjectMediaEvaluationHistory,
+  retryAssetProcessing,
   updateProjectMedia,
   type ProjectMedia,
   type ProjectMediaEvaluation,
@@ -307,11 +308,15 @@ function ProjectOverview({ project }: { project: Project }) {
 function MediaDetails({
   media,
   evaluationLoading,
+  retryLoading,
   onEvaluate,
+  onRetry,
 }: {
   media: ProjectMedia;
   evaluationLoading: boolean;
+  retryLoading: boolean;
   onEvaluate: (status: ProjectMedia['evaluationStatus'], comment: string | null) => void;
+  onRetry: () => void;
 }) {
   const { t } = useTranslation();
   const evaluation = getEvaluationStatus(media.evaluationStatus, t);
@@ -353,6 +358,18 @@ function MediaDetails({
         <Descriptions.Item label={t('media.status')}>
           {media.asset.processingStatus}
         </Descriptions.Item>
+        {media.asset.processingError ? (
+          <Descriptions.Item label={t('media.status')}>
+            <Typography.Text type="danger">{media.asset.processingError}</Typography.Text>
+          </Descriptions.Item>
+        ) : null}
+        {media.asset.processingStatus === 'failed' ? (
+          <Descriptions.Item label={t('media.actions')}>
+            <Button icon={<ReloadOutlined />} loading={retryLoading} size="small" onClick={onRetry}>
+              {t('media.retryProcessing')}
+            </Button>
+          </Descriptions.Item>
+        ) : null}
         <Descriptions.Item label={t('media.caption')}>{media.caption || '—'}</Descriptions.Item>
       </Descriptions>
       <Divider />
@@ -466,6 +483,16 @@ export function ProjectReviewDrawer({ open, projectId, onClose }: ProjectReviewD
     },
     onError: (error) => {
       void message.error(error instanceof Error ? error.message : t('projects.evaluationFailed'));
+    },
+  });
+  const retry = useMutation({
+    mutationFn: () => retryAssetProcessing(selectedMedia?.asset.id ?? ''),
+    onSuccess: () => {
+      void media.refetch();
+      void message.success(t('media.retryProcessingSuccess'));
+    },
+    onError: (error) => {
+      void message.error(error instanceof Error ? error.message : t('media.retryProcessingFailed'));
     },
   });
 
@@ -610,7 +637,9 @@ export function ProjectReviewDrawer({ open, projectId, onClose }: ProjectReviewD
                 <MediaDetails
                   evaluationLoading={evaluation.isPending}
                   media={selectedMedia}
+                  retryLoading={retry.isPending}
                   onEvaluate={(status, comment) => evaluation.mutate({ status, comment })}
+                  onRetry={() => retry.mutate()}
                 />
               ) : (
                 <Empty description={t('projects.selectFileToPreview')} />

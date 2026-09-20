@@ -8,6 +8,7 @@ export type Asset = {
   mimeType: string;
   fileSizeBytes: string;
   processingStatus: string;
+  processingError?: string | null;
 };
 
 export type ProjectMedia = {
@@ -186,18 +187,26 @@ export function uploadAssetContent(
 }
 
 export function completeUpload(assetId: string, uploadSessionId: string) {
-  return apiClient<{ id: string; processingStatus: string; renderJobId: string }>(
-    `/assets/${assetId}/complete`,
-    {
-      method: 'POST',
-      body: JSON.stringify({ uploadSessionId }),
-    },
-  );
+  return apiClient<{
+    id: string;
+    processingStatus: string;
+    renderJobId: string | null;
+    outboxEventId: string | null;
+  }>(`/assets/${assetId}/complete`, {
+    method: 'POST',
+    body: JSON.stringify({ uploadSessionId }),
+  });
 }
 
 export function abortUpload(assetId: string, uploadSessionId: string) {
   return apiClient<{ success: boolean }>(`/assets/${assetId}/abort`, {
     method: 'POST',
     body: JSON.stringify({ uploadSessionId }),
+  });
+}
+
+export function retryAssetProcessing(assetId: string) {
+  return apiClient<{ id: string; outboxEventId: string }>(`/assets/${assetId}/retry`, {
+    method: 'POST',
   });
 }

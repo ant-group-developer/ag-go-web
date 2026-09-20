@@ -212,6 +212,9 @@ const resources = {
         countryFilter: 'Lọc theo quốc gia',
       },
       media: {
+        retryProcessing: 'Xử lý lại media',
+        retryProcessingSuccess: 'Đã đưa media vào hàng đợi xử lý lại.',
+        retryProcessingFailed: 'Không thể xử lý lại media.',
         projectMedia: 'Media dự án',
         dropFiles: 'Kéo thả hoặc nhấn để chọn ảnh và video',
         dropFilesHint: 'File sẽ được tải lên Cloudflare R2 và gắn vào dự án.',
