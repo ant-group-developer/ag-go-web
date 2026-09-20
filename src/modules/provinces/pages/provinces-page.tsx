@@ -40,14 +40,14 @@ export function ProvincesPage() {
   const columns = useMemo<ProColumns<Province>[]>(
     () => [
       {
-        title: t('catalogs.name', 'Tên tỉnh/thành phố'),
+        title: t('catalogs.name'),
         dataIndex: 'name',
         width: 280,
         ellipsis: true,
       },
-      { title: t('catalogs.code', 'Mã'), dataIndex: 'code', width: 120 },
+      { title: t('catalogs.code'), dataIndex: 'code', width: 120 },
       {
-        title: t('catalogs.country', 'Quốc gia'),
+        title: t('catalogs.country'),
         width: 280,
         render: (_, province) => (
           <Space>
@@ -78,7 +78,7 @@ export function ProvincesPage() {
           onChange={(event) => setSearchInput(event.target.value)}
           onClear={() => applySearch('')}
           onSearch={applySearch}
-          placeholder={t('catalogs.provinceSearch', 'Tìm tỉnh/thành phố hoặc quốc gia')}
+          placeholder={t('catalogs.provinceSearch')}
           style={{ width: 320 }}
         />
         <Select
@@ -88,14 +88,14 @@ export function ProvincesPage() {
           loading={countries.isPending}
           value={countryId}
           onChange={applyCountry}
-          placeholder={t('catalogs.countryFilter', 'Lọc theo quốc gia')}
+          placeholder={t('catalogs.countryFilter')}
           options={countries.data?.map((country) => ({
             value: country.id,
             label: country.name,
           }))}
           style={{ width: 240 }}
         />
-        <Button onClick={resetFilters}>{t('common.reset', 'Đặt lại')}</Button>
+        <Button onClick={resetFilters}>{t('common.reset')}</Button>
       </Space>
 
       {requestError ? <Alert type="error" message={requestError.message} /> : null}
@@ -125,7 +125,6 @@ export function ProvincesPage() {
           showSizeChanger: true,
           showTotal: (total, range) =>
             t('common.paginationTotal', {
-              defaultValue: 'Hiển thị {{start}}-{{end}} trên tổng số {{total}} bản ghi',
               start: range[0],
               end: range[1],
               total,

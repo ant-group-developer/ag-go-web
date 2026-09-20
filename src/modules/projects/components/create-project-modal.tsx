@@ -27,9 +27,9 @@ export function CreateProjectModal({ open, onClose }: CreateProjectModalProps) {
   return (
     <Modal
       open={open}
-      title={t('projects.create', 'Tạo dự án')}
-      okText={t('projects.create', 'Tạo dự án')}
-      cancelText={t('common.cancel', 'Hủy')}
+      title={t('projects.create')}
+      okText={t('projects.create')}
+      cancelText={t('common.cancel')}
       confirmLoading={create.isPending}
       okButtonProps={{
         disabled: folders.isPending || folders.isError || options.length === 0,
@@ -63,27 +63,25 @@ export function CreateProjectModal({ open, onClose }: CreateProjectModalProps) {
             {
               required: true,
               whitespace: true,
-              message: t('projects.nameRequired', 'Vui lòng nhập tên dự án'),
+              message: t('projects.nameRequired'),
             },
             {
               max: 200,
-              message: t('projects.nameTooLong', 'Tên dự án không được vượt quá 200 ký tự'),
+              message: t('projects.nameTooLong'),
             },
           ]}
         >
-          <Input placeholder={t('projects.namePlaceholder', 'Nhập tên dự án')} />
+          <Input placeholder={t('projects.namePlaceholder')} />
         </Form.Item>
         <Form.Item
           name="folderPath"
           label={t('projects.folder')}
-          rules={[
-            { required: true, message: t('projects.folderRequired', 'Vui lòng chọn thư mục') },
-          ]}
+          rules={[{ required: true, message: t('projects.folderRequired') }]}
           extra={
             folders.isError
               ? folders.error.message
               : options.length === 0
-                ? t('projects.noFolders', 'Bạn chưa có thư mục được cấp quyền chỉnh sửa')
+                ? t('projects.noFolders')
                 : undefined
           }
         >
@@ -91,14 +89,11 @@ export function CreateProjectModal({ open, onClose }: CreateProjectModalProps) {
             options={options}
             showSearch
             changeOnSelect
-            placeholder={t('projects.folderPlaceholder', 'Chọn thư mục lưu dự án')}
+            placeholder={t('projects.folderPlaceholder')}
           />
         </Form.Item>
-        <Form.Item name="description" label={t('projects.description', 'Mô tả')}>
-          <Input.TextArea
-            rows={4}
-            placeholder={t('projects.descriptionPlaceholder', 'Nhập mô tả (không bắt buộc)')}
-          />
+        <Form.Item name="description" label={t('projects.description')}>
+          <Input.TextArea rows={4} placeholder={t('projects.descriptionPlaceholder')} />
         </Form.Item>
         {create.isError ? <Alert type="error" message={create.error.message} /> : null}
       </Form>

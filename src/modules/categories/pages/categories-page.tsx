@@ -8,10 +8,10 @@ export function CategoriesPage() {
   const { t } = useTranslation();
   const categories = useCategories();
   const columns: ProColumns<Category>[] = [
-    { title: t('catalogs.name', 'Tên danh mục'), dataIndex: 'name', width: 280, ellipsis: true },
-    { title: t('catalogs.slug', 'Slug'), dataIndex: 'slug', width: 220, ellipsis: true },
+    { title: t('catalogs.name'), dataIndex: 'name', width: 280, ellipsis: true },
+    { title: t('catalogs.slug'), dataIndex: 'slug', width: 220, ellipsis: true },
     {
-      title: t('catalogs.description', 'Mô tả'),
+      title: t('catalogs.description'),
       dataIndex: 'description',
       width: 420,
       ellipsis: true,
@@ -37,6 +37,14 @@ export function CategoriesPage() {
           manualRequest
           search={false}
           options={{ reload: true, density: false, setting: false, fullScreen: false }}
+          pagination={{
+            showTotal: (total, range) =>
+              t('common.paginationTotal', {
+                start: range[0],
+                end: range[1],
+                total,
+              }),
+          }}
           columns={columns}
           tableProps={{
             sticky: true,

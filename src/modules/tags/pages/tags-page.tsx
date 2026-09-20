@@ -8,7 +8,7 @@ export function TagsPage() {
   const { t } = useTranslation();
   const tags = useTags();
   const columns: ProColumns<Tag>[] = [
-    { title: t('catalogs.name', 'Tên tag'), dataIndex: 'name', width: 360, ellipsis: true },
+    { title: t('catalogs.name'), dataIndex: 'name', width: 360, ellipsis: true },
   ];
 
   return (
@@ -30,6 +30,14 @@ export function TagsPage() {
           manualRequest
           search={false}
           options={{ reload: true, density: false, setting: false, fullScreen: false }}
+          pagination={{
+            showTotal: (total, range) =>
+              t('common.paginationTotal', {
+                start: range[0],
+                end: range[1],
+                total,
+              }),
+          }}
           columns={columns}
           tableProps={{
             sticky: true,

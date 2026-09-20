@@ -26,9 +26,9 @@ export function CreateFolderModal({ open, onClose }: CreateFolderModalProps) {
   return (
     <Modal
       open={open}
-      title={t('folders.create', 'Tạo thư mục')}
-      okText={t('folders.create', 'Tạo thư mục')}
-      cancelText={t('common.cancel', 'Hủy')}
+      title={t('folders.create')}
+      okText={t('folders.create')}
+      cancelText={t('common.cancel')}
       confirmLoading={create.isPending}
       onCancel={close}
       onOk={() => form.submit()}
@@ -53,22 +53,22 @@ export function CreateFolderModal({ open, onClose }: CreateFolderModalProps) {
             {
               required: true,
               whitespace: true,
-              message: t('folders.nameRequired', 'Vui lòng nhập tên thư mục'),
+              message: t('folders.nameRequired'),
             },
             {
               max: 200,
-              message: t('folders.nameTooLong', 'Tên thư mục không được vượt quá 200 ký tự'),
+              message: t('folders.nameTooLong'),
             },
           ]}
         >
-          <Input placeholder={t('folders.namePlaceholder', 'Nhập tên thư mục')} />
+          <Input placeholder={t('folders.namePlaceholder')} />
         </Form.Item>
-        <Form.Item name="parentPath" label={t('folders.parent', 'Thư mục cha')}>
+        <Form.Item name="parentPath" label={t('folders.parent')}>
           <Cascader
             allowClear
             options={options}
             showSearch
-            placeholder={t('folders.parentPlaceholder', 'Chọn thư mục cha (không bắt buộc)')}
+            placeholder={t('folders.parentPlaceholder')}
           />
         </Form.Item>
         {folders.isError ? <Alert type="error" message={folders.error.message} /> : null}

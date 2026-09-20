@@ -4,6 +4,25 @@ import { initReactI18next } from 'react-i18next';
 const resources = {
   vi: {
     translation: {
+      required: '${label} là bắt buộc',
+      types: {
+        email: '${label} không đúng định dạng email',
+        number: '${label} phải là số',
+      },
+      number: {
+        range: '${label} phải nằm trong khoảng ${min}-${max}',
+      },
+      string: {
+        range: '${label} phải có độ dài từ ${min} đến ${max} ký tự',
+        min: '${label} phải có ít nhất ${min} ký tự',
+        max: '${label} không được vượt quá ${max} ký tự',
+      },
+      common: {
+        create: 'Tạo',
+        cancel: 'Hủy',
+        reset: 'Đặt lại',
+        paginationTotal: 'Hiển thị {{start}}-{{end}} / {{total}} bản ghi',
+      },
       app: {
         title: 'AG Go',
         phase: 'Giai đoạn 0',
@@ -68,6 +87,12 @@ const resources = {
         name: 'Tên thư mục',
         depth: 'Độ sâu',
         path: 'Đường dẫn',
+        create: 'Tạo thư mục',
+        nameRequired: 'Vui lòng nhập tên thư mục',
+        nameTooLong: 'Tên thư mục không được vượt quá 200 ký tự',
+        namePlaceholder: 'Nhập tên thư mục',
+        parent: 'Thư mục cha',
+        parentPlaceholder: 'Chọn thư mục cha (không bắt buộc)',
       },
       projects: {
         title: 'Dự án',
@@ -75,6 +100,15 @@ const resources = {
         name: 'Tên dự án',
         folder: 'Folder ID',
         evaluationStatus: 'Trạng thái đánh giá',
+        create: 'Tạo dự án',
+        nameRequired: 'Vui lòng nhập tên dự án',
+        nameTooLong: 'Tên dự án không được vượt quá 200 ký tự',
+        namePlaceholder: 'Nhập tên dự án',
+        folderRequired: 'Vui lòng chọn thư mục',
+        noFolders: 'Bạn chưa có thư mục được cấp quyền chỉnh sửa',
+        folderPlaceholder: 'Chọn thư mục lưu dự án',
+        description: 'Mô tả',
+        descriptionPlaceholder: 'Nhập mô tả (không bắt buộc)',
       },
       catalogs: {
         title: 'Danh mục',
@@ -82,6 +116,18 @@ const resources = {
         countries: 'Countries',
         provinces: 'Provinces',
         tags: 'Tags',
+        name: 'Tên',
+        slug: 'Slug',
+        description: 'Mô tả',
+        code: 'Mã',
+        flag: 'Cờ',
+        flagUrl: 'Flag URL',
+        country: 'Quốc gia',
+        createCountry: 'Tạo quốc gia',
+        countryNameRequired: 'Vui lòng nhập tên quốc gia',
+        flagUrlInvalid: 'Flag URL không hợp lệ',
+        provinceSearch: 'Tìm tỉnh/thành phố hoặc quốc gia',
+        countryFilter: 'Lọc theo quốc gia',
       },
       media: {
         title: 'Media của dự án',

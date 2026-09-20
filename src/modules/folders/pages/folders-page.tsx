@@ -36,7 +36,7 @@ export function FoldersPage() {
             icon={<FolderPlus size={16} />}
             onClick={() => setCreateOpen(true)}
           >
-            {t('folders.create', 'Tạo thư mục')}
+            {t('folders.create')}
           </Button>,
         ]}
       >
@@ -58,7 +58,14 @@ export function FoldersPage() {
             manualRequest
             search={false}
             options={{ reload: true, density: false, setting: false, fullScreen: false }}
-            pagination={false}
+            pagination={{
+              showTotal: (total, range) =>
+                t('common.paginationTotal', {
+                  start: range[0],
+                  end: range[1],
+                  total,
+                }),
+            }}
             columns={columns}
             tableProps={{
               sticky: true,

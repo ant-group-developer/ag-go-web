@@ -43,7 +43,7 @@ export function ProjectsPage() {
             icon={<Plus size={16} />}
             onClick={() => setCreateOpen(true)}
           >
-            {t('projects.create', 'Tạo dự án')}
+            {t('projects.create')}
           </Button>,
         ]}
       >
@@ -65,7 +65,14 @@ export function ProjectsPage() {
             manualRequest
             search={false}
             options={{ reload: true, density: false, setting: false, fullScreen: false }}
-            pagination={false}
+            pagination={{
+              showTotal: (total, range) =>
+                t('common.paginationTotal', {
+                  start: range[0],
+                  end: range[1],
+                  total,
+                }),
+            }}
             columns={columns}
             tableProps={{
               sticky: true,

@@ -27,7 +27,7 @@ export function CountriesPage() {
 
   const columns: ProColumns<Country>[] = [
     {
-      title: t('catalogs.flag', 'Cờ'),
+      title: t('catalogs.flag'),
       dataIndex: 'flagUrl',
       width: 80,
       search: false,
@@ -45,10 +45,10 @@ export function CountriesPage() {
           '-'
         ),
     },
-    { title: t('catalogs.name', 'Tên quốc gia'), dataIndex: 'name', width: 240, ellipsis: true },
-    { title: t('catalogs.code', 'Mã'), dataIndex: 'code', width: 120 },
+    { title: t('catalogs.name'), dataIndex: 'name', width: 240, ellipsis: true },
+    { title: t('catalogs.code'), dataIndex: 'code', width: 120 },
     {
-      title: t('catalogs.flagUrl', 'Flag URL'),
+      title: t('catalogs.flagUrl'),
       dataIndex: 'flagUrl',
       width: 420,
       ellipsis: true,
@@ -74,7 +74,7 @@ export function CountriesPage() {
             icon={<Plus size={16} />}
             onClick={() => setCreateOpen(true)}
           >
-            {t('catalogs.createCountry', 'Tạo quốc gia')}
+            {t('catalogs.createCountry')}
           </Button>,
         ]}
       >
@@ -95,6 +95,14 @@ export function CountriesPage() {
             manualRequest
             search={false}
             options={{ reload: true, density: false, setting: false, fullScreen: false }}
+            pagination={{
+              showTotal: (total, range) =>
+                t('common.paginationTotal', {
+                  start: range[0],
+                  end: range[1],
+                  total,
+                }),
+            }}
             columns={columns}
             tableProps={{
               sticky: true,
@@ -106,9 +114,9 @@ export function CountriesPage() {
       </PageContainer>
       <Modal
         open={createOpen}
-        title={t('catalogs.createCountry', 'Tạo quốc gia')}
-        okText={t('common.create', 'Tạo')}
-        cancelText={t('common.cancel', 'Hủy')}
+        title={t('catalogs.createCountry')}
+        okText={t('common.create')}
+        cancelText={t('common.cancel')}
         confirmLoading={create.isPending}
         onCancel={close}
         onOk={() => form.submit()}
@@ -129,26 +137,26 @@ export function CountriesPage() {
         >
           <Form.Item
             name="name"
-            label={t('catalogs.name', 'Tên quốc gia')}
+            label={t('catalogs.name')}
             rules={[
               {
                 required: true,
-                message: t('catalogs.countryNameRequired', 'Vui lòng nhập tên quốc gia'),
+                message: t('catalogs.countryNameRequired'),
               },
             ]}
           >
             <Input />
           </Form.Item>
-          <Form.Item name="code" label={t('catalogs.code', 'Mã')}>
+          <Form.Item name="code" label={t('catalogs.code')}>
             <Input maxLength={10} />
           </Form.Item>
           <Form.Item
             name="flagUrl"
-            label={t('catalogs.flagUrl', 'Flag URL')}
+            label={t('catalogs.flagUrl')}
             rules={[
               {
                 type: 'url',
-                message: t('catalogs.flagUrlInvalid', 'Flag URL không hợp lệ'),
+                message: t('catalogs.flagUrlInvalid'),
               },
             ]}
           >
