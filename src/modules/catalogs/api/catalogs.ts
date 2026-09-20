@@ -1,9 +1,5 @@
 import { apiClient } from '../../../shared/lib/api-client';
-
-export type CatalogItem = {
-  id: string;
-  name: string;
-};
+import type { CatalogItem } from '../types/catalog-item.type';
 
 export function getCategories(): Promise<CatalogItem[]> {
   return apiClient<CatalogItem[]>('/categories');

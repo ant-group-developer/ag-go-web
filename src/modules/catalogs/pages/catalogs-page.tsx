@@ -2,15 +2,16 @@ import { useQueries } from '@tanstack/react-query';
 import { Alert, Card, Col, Empty, List, Row, Spin, Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { getCategories, getCountries, getProvinces, getTags } from '../api/catalogs';
+import { catalogQueryKeys } from '../queries/catalog-query-keys';
 
 export function CatalogsPage() {
   const { t } = useTranslation();
   const catalogs = useQueries({
     queries: [
-      { queryKey: ['catalogs', 'categories'], queryFn: getCategories },
-      { queryKey: ['catalogs', 'countries'], queryFn: getCountries },
-      { queryKey: ['catalogs', 'provinces'], queryFn: getProvinces },
-      { queryKey: ['catalogs', 'tags'], queryFn: getTags },
+      { queryKey: catalogQueryKeys.resource('categories'), queryFn: getCategories },
+      { queryKey: catalogQueryKeys.resource('countries'), queryFn: getCountries },
+      { queryKey: catalogQueryKeys.resource('provinces'), queryFn: getProvinces },
+      { queryKey: catalogQueryKeys.resource('tags'), queryFn: getTags },
     ],
   });
   const hasError = catalogs.some((query) => query.isError);

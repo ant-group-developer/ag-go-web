@@ -1,15 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { Alert, Card, Empty, List, Spin, Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
-import {
-  getCategories,
-  getCountries,
-  getProvinces,
-  getTags,
-  type CatalogItem,
-} from '../api/catalogs';
-
-type CatalogResource = 'categories' | 'countries' | 'provinces' | 'tags';
+import { getCategories, getCountries, getProvinces, getTags } from '../api/catalogs';
+import { catalogQueryKeys } from '../queries/catalog-query-keys';
+import type { CatalogItemPageProps } from '../types/catalog-item-page-props.type';
+import type { CatalogItem } from '../types/catalog-item.type';
+import type { CatalogResource } from '../types/catalog-resource.type';
 
 const resourceConfig: Record<
   CatalogResource,
@@ -24,15 +20,11 @@ const resourceConfig: Record<
   tags: { titleKey: 'catalogs.tags', queryFn: getTags },
 };
 
-type CatalogItemPageProps = {
-  resource: CatalogResource;
-};
-
 export function CatalogItemPage({ resource }: CatalogItemPageProps) {
   const { t } = useTranslation();
   const config = resourceConfig[resource];
   const items = useQuery({
-    queryKey: ['catalogs', resource],
+    queryKey: catalogQueryKeys.resource(resource),
     queryFn: config.queryFn,
   });
 

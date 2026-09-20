@@ -2,11 +2,12 @@ import { useQuery } from '@tanstack/react-query';
 import { Alert, Card, Descriptions, Spin, Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { getHealth } from '../api/health';
+import { systemQueryKeys } from '../queries/system-query-keys';
 
 export function HealthPage() {
   const { t } = useTranslation();
   const health = useQuery({
-    queryKey: ['system', 'health'],
+    queryKey: systemQueryKeys.health(),
     queryFn: getHealth,
   });
 

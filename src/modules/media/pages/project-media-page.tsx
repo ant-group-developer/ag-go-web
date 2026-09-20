@@ -16,6 +16,7 @@ import {
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
+import { projectQueryKeys } from '../../projects/queries/project-query-keys';
 import {
   abortUpload,
   attachProjectMedia,
@@ -27,11 +28,8 @@ import {
   uploadAssetContent,
   type ProjectMedia,
 } from '../api/media';
-
-type UploadFormValues = {
-  caption?: string;
-  sortOrder?: number;
-};
+import { mediaQueryKeys } from '../queries/media-query-keys';
+import type { UploadFormValues } from '../types/upload-form-values.type';
 
 export function ProjectMediaPage() {
   const { projectId = '' } = useParams();
@@ -41,7 +39,7 @@ export function ProjectMediaPage() {
   const [selectedFile, setSelectedFile] = useState<File>();
   const [uploadProgress, setUploadProgress] = useState(0);
   const media = useQuery({
-    queryKey: ['projects', projectId, 'media'],
+    queryKey: mediaQueryKeys.project(projectId),
     queryFn: () => getProjectMedia(projectId),
     enabled: Boolean(projectId),
   });
@@ -78,8 +76,8 @@ export function ProjectMediaPage() {
       form.resetFields();
       setSelectedFile(undefined);
       setUploadProgress(100);
-      void queryClient.invalidateQueries({ queryKey: ['projects', projectId, 'media'] });
-      void queryClient.invalidateQueries({ queryKey: ['projects'] });
+      void queryClient.invalidateQueries({ queryKey: mediaQueryKeys.project(projectId) });
+      void queryClient.invalidateQueries({ queryKey: projectQueryKeys.all() });
     },
     onSettled: () => {
       window.setTimeout(() => setUploadProgress(0), 800);
@@ -88,14 +86,14 @@ export function ProjectMediaPage() {
   const remove = useMutation({
     mutationFn: removeProjectMedia,
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['projects', projectId, 'media'] });
-      void queryClient.invalidateQueries({ queryKey: ['projects'] });
+      void queryClient.invalidateQueries({ queryKey: mediaQueryKeys.project(projectId) });
+      void queryClient.invalidateQueries({ queryKey: projectQueryKeys.all() });
     },
   });
   const reorder = useMutation({
     mutationFn: (mediaIds: string[]) => reorderProjectMedia(projectId, mediaIds),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['projects', projectId, 'media'] });
+      void queryClient.invalidateQueries({ queryKey: mediaQueryKeys.project(projectId) });
     },
   });
 
