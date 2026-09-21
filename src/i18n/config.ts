@@ -49,6 +49,7 @@ const resources = {
         permissions: 'Phân quyền',
         settings: 'Cấu hình',
         logs: 'Log',
+        logout: 'Đăng xuất',
       },
       placeholder: {
         statisticsTitle: 'Thống kê',
@@ -180,7 +181,7 @@ const resources = {
         title: 'Dự án',
         empty: 'Chưa có dự án hoặc bạn chưa được cấp quyền.',
         name: 'Tên dự án',
-        folder: 'Folder ID',
+        folder: 'Thư mục',
         evaluationStatus: 'Trạng thái đánh giá',
         create: 'Tạo dự án',
         nameRequired: 'Vui lòng nhập tên dự án',

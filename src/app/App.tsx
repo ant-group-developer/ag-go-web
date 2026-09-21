@@ -11,6 +11,7 @@ import {
   Globe,
   LayoutDashboard,
   List,
+  LogOut,
   MapPinned,
   ScrollText,
   Settings,
@@ -131,8 +132,8 @@ export function App() {
       },
       {
         key: 'logout',
-        icon: <LogoutOutlined />,
-        label: 'Đăng xuất',
+        icon: <LogOut size={16} />,
+        label: t('menu.logout'),
         onClick: handleLogout,
       },
     ],
