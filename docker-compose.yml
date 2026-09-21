@@ -1,0 +1,21 @@
+services:
+  web:
+    image: ag-go-web:${TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:3000/api}
+        VITE_AUTH0_DOMAIN: ${VITE_AUTH0_DOMAIN:-replace-with-auth0-domain}
+        VITE_AUTH0_CLIENT_ID: ${VITE_AUTH0_CLIENT_ID:-replace-with-auth0-application-client-id}
+        VITE_AUTH0_AUDIENCE: ${VITE_AUTH0_AUDIENCE:-https://replace-with-api-identifier/}
+    ports:
+      - '${WEB_PORT:-5173}:80'
+    mem_limit: ${WEB_MEMORY_LIMIT:-512m}
+    cpus: ${WEB_CPUS:-1}
+    deploy:
+      resources:
+        limits:
+          cpus: '${WEB_CPUS:-1}'
+          memory: ${WEB_MEMORY_LIMIT:-512m}
+    restart: unless-stopped

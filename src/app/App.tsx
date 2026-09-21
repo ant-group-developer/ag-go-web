@@ -1,5 +1,7 @@
+import { LogoutOutlined } from '@ant-design/icons';
 import { ProLayout, type ProLayoutProps } from '@ant-design/pro-components';
-import { theme as antdTheme, Spin } from 'antd';
+import { useAuth0 } from '@auth0/auth0-react';
+import { theme as antdTheme, Avatar, Dropdown, Flex, MenuProps, Spin, Typography } from 'antd';
 import {
   Activity,
   BarChart3,
@@ -81,8 +83,57 @@ export function App() {
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { user, logout } = useAuth0();
 
   const { token } = antdTheme.useToken();
+
+  const handleLogout = () => {
+    void logout({ logoutParams: { returnTo: window.location.origin } });
+  };
+
+  const userEmail = user?.email ?? '';
+  const userInitials = userEmail.slice(0, 2).toUpperCase();
+
+  const avatarDropdownMenu: MenuProps = {
+    items: [
+      {
+        key: 'user',
+        label: (
+          <Flex gap={12} align="center">
+            <Avatar
+              size={40}
+              style={{
+                backgroundColor: token.colorPrimary,
+                flexShrink: 0,
+              }}
+            >
+              {userInitials}
+            </Avatar>
+
+            <Flex vertical style={{ minWidth: 0 }}>
+              <Typography.Text strong ellipsis>
+                {userEmail}
+              </Typography.Text>
+
+              <Typography.Text type="secondary" ellipsis>
+                {userEmail}
+              </Typography.Text>
+            </Flex>
+          </Flex>
+        ),
+        disabled: true,
+      },
+      {
+        type: 'divider',
+      },
+      {
+        key: 'logout',
+        icon: <LogoutOutlined />,
+        label: 'Đăng xuất',
+        onClick: handleLogout,
+      },
+    ],
+  };
 
   const route: ProLayoutProps['route'] = {
     path: '/',
@@ -208,6 +259,25 @@ export function App() {
       menuItemRender={(item, dom) => (item.path ? <Link to={item.path}>{dom}</Link> : dom)}
       onMenuHeaderClick={() => navigate('/')}
       contentStyle={{ padding: 24 }}
+      avatarProps={{
+        src: user?.picture,
+        size: 'small',
+        style: { backgroundColor: token.colorPrimary },
+        children: !user?.picture ? userInitials : undefined,
+        title: <span style={{ fontSize: 13 }}>{userEmail}</span>,
+        render: (_props, dom) => (
+          <Dropdown
+            menu={avatarDropdownMenu}
+            trigger={['click']}
+            placement="bottomRight"
+            className="user-dropdown"
+          >
+            <span style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+              {dom}
+            </span>
+          </Dropdown>
+        ),
+      }}
     >
       <Suspense fallback={<Spin fullscreen />}>
         <Routes>
