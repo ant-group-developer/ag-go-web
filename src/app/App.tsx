@@ -135,6 +135,7 @@ export function App() {
         icon: <LogOut size={16} />,
         label: t('menu.logout'),
         onClick: handleLogout,
+        danger: true,
       },
     ],
   };
