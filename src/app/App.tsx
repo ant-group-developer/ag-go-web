@@ -93,6 +93,8 @@ export function App() {
 
   const userEmail = user?.email ?? '';
   const userInitials = userEmail.slice(0, 2).toUpperCase();
+  const nickname = user?.nickname ?? '';
+  const avatarUrl = user?.picture ?? '';
 
   const avatarDropdownMenu: MenuProps = {
     items: [
@@ -101,6 +103,7 @@ export function App() {
         label: (
           <Flex gap={12} align="center">
             <Avatar
+              src={avatarUrl}
               size={40}
               style={{
                 backgroundColor: token.colorPrimary,
@@ -112,7 +115,7 @@ export function App() {
 
             <Flex vertical style={{ minWidth: 0 }}>
               <Typography.Text strong ellipsis>
-                {userEmail}
+                {nickname}
               </Typography.Text>
 
               <Typography.Text type="secondary" ellipsis>
