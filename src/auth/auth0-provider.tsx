@@ -26,7 +26,7 @@ function TokenBridge({ children }: PropsWithChildren) {
 }
 
 function AuthenticatedApp({ children }: PropsWithChildren) {
-  const { isLoading, isAuthenticated, loginWithRedirect, logout, user } = useAuth0();
+  const { isLoading, isAuthenticated, loginWithRedirect } = useAuth0();
 
   if (isLoading) {
     return <Spin fullscreen tip="Đang xác thực..." />;
@@ -46,23 +46,7 @@ function AuthenticatedApp({ children }: PropsWithChildren) {
     );
   }
 
-  return (
-    <>
-      <div style={{ position: 'fixed', right: 24, top: 16, zIndex: 1000 }}>
-        <Button
-          size="small"
-          onClick={() =>
-            void logout({
-              logoutParams: { returnTo: window.location.origin },
-            })
-          }
-        >
-          {user?.name ? `Đăng xuất ${user.name}` : 'Đăng xuất'}
-        </Button>
-      </div>
-      {children}
-    </>
-  );
+  return <>{children}</>;
 }
 
 export function Auth0AppProvider({ children }: PropsWithChildren) {
