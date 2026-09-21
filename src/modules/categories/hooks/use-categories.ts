@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
-import { getCategories } from '../api/categories';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { createCategory, getCategories } from '../api/categories';
 import { categoryQueryKeys } from '../queries/category-query-keys';
 
 export function useCategories(enabled = true) {
@@ -7,5 +7,14 @@ export function useCategories(enabled = true) {
     queryKey: categoryQueryKeys.list(),
     queryFn: getCategories,
     enabled,
+  });
+}
+
+export function useCreateCategory() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createCategory,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: categoryQueryKeys.all() }),
   });
 }

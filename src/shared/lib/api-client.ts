@@ -37,7 +37,6 @@ const api = axios.create({
   adapter: 'fetch',
   headers: {
     Accept: 'application/json',
-    'Content-Type': 'application/json',
   },
 });
 
@@ -53,10 +52,14 @@ export function apiUrl(path: string): string {
 }
 
 export async function apiClient<T>(path: string, init?: RequestInit): Promise<T> {
+  const headers = toAxiosHeaders(init?.headers);
+  if (typeof init?.body === 'string' && !hasContentType(headers)) {
+    headers['Content-Type'] = 'application/json';
+  }
   const config: AxiosRequestConfig = {
     url: path,
     method: init?.method ?? 'GET',
-    headers: toAxiosHeaders(init?.headers),
+    headers,
     data: init?.body,
   };
 
@@ -107,6 +110,10 @@ function toAxiosHeaders(headers?: HeadersInit): RawAxiosRequestHeaders {
   }
 
   return headers;
+}
+
+function hasContentType(headers: RawAxiosRequestHeaders): boolean {
+  return Object.keys(headers).some((name) => name.toLowerCase() === 'content-type');
 }
 
 function toApiError(error: unknown): ApiError {

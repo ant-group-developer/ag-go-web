@@ -1,18 +1,21 @@
 import { PageContainer, ProTable, type ProColumns } from '@ant-design/pro-components';
 import { Alert, Button, Form, Image, Input, Modal, Space } from 'antd';
-import { Plus } from 'lucide-react';
+import { FileUp, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useCountries, useCreateCountry } from '../hooks/use-countries';
+import { CatalogImportModal } from '../../../shared/components/catalog-import-modal';
+import { useCountries, useCreateCountry, useImportCountries } from '../hooks/use-countries';
 import type { CountryFormValues } from '../types/country-form-values.type';
 import type { Country } from '../types/country.type';
 
 export function CountriesPage() {
   const { t } = useTranslation();
   const [createOpen, setCreateOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [form] = Form.useForm<CountryFormValues>();
   const countries = useCountries();
   const create = useCreateCountry();
+  const importCountries = useImportCountries();
 
   const resetAndClose = () => {
     form.resetFields();
@@ -68,6 +71,9 @@ export function CountriesPage() {
       <PageContainer
         title={t('catalogs.countries')}
         extra={[
+          <Button key="import" icon={<FileUp size={16} />} onClick={() => setImportOpen(true)}>
+            {t('catalogs.importCsv')}
+          </Button>,
           <Button
             key="create"
             type="primary"
@@ -161,6 +167,15 @@ export function CountriesPage() {
           {create.isError ? <Alert type="error" message={create.error.message} /> : null}
         </Form>
       </Modal>
+      <CatalogImportModal
+        open={importOpen}
+        title={t('catalogs.importCountriesTitle')}
+        description={t('catalogs.importCountriesDescription')}
+        loading={importCountries.isPending}
+        onCancel={() => setImportOpen(false)}
+        onImport={importCountries.mutateAsync}
+        onSuccess={() => setImportOpen(false)}
+      />
     </>
   );
 }
