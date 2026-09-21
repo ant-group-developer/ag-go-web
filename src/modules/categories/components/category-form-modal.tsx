@@ -49,7 +49,7 @@ export function CategoryFormModal({ open, onClose }: CategoryFormModalProps) {
           create.mutate(
             {
               name: values.name.trim(),
-              slug: values.slug.trim().toLowerCase(),
+              slug: createSlug(values.name),
               description: values.description?.trim() || undefined,
               sortOrder: values.sortOrder,
             },
@@ -77,11 +77,16 @@ export function CategoryFormModal({ open, onClose }: CategoryFormModalProps) {
             },
           ]}
         >
-          <Input maxLength={200} placeholder={t('catalogs.categoryNamePlaceholder')} />
+          <Input
+            maxLength={200}
+            placeholder={t('catalogs.categoryNamePlaceholder')}
+            onChange={(event) => form.setFieldValue('slug', createSlug(event.target.value))}
+          />
         </Form.Item>
         <Form.Item
           name="slug"
           label={t('catalogs.slug')}
+          extra={t('catalogs.categorySlugAutoHint')}
           rules={[
             {
               required: true,
@@ -94,7 +99,7 @@ export function CategoryFormModal({ open, onClose }: CategoryFormModalProps) {
             },
           ]}
         >
-          <Input maxLength={220} placeholder={t('catalogs.categorySlugPlaceholder')} />
+          <Input readOnly maxLength={220} placeholder={t('catalogs.categorySlugAutoPlaceholder')} />
         </Form.Item>
         <Form.Item name="description" label={t('catalogs.description')}>
           <Input.TextArea rows={3} placeholder={t('catalogs.categoryDescriptionPlaceholder')} />
@@ -116,4 +121,15 @@ export function CategoryFormModal({ open, onClose }: CategoryFormModalProps) {
       </Form>
     </Modal>
   );
+}
+
+function createSlug(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[đĐ]/g, 'd')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
 }
