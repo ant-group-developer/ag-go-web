@@ -1,7 +1,7 @@
+import { LogoutOutlined } from '@ant-design/icons';
 import { ProLayout, type ProLayoutProps } from '@ant-design/pro-components';
 import { useAuth0 } from '@auth0/auth0-react';
-import { LogoutOutlined } from '@ant-design/icons';
-import { Avatar, Dropdown, theme as antdTheme, Spin, Typography, MenuProps, Flex } from 'antd';
+import { theme as antdTheme, Avatar, Dropdown, Flex, MenuProps, Spin, Typography } from 'antd';
 import {
   Activity,
   BarChart3,
@@ -264,9 +264,7 @@ export function App() {
         size: 'small',
         style: { backgroundColor: token.colorPrimary },
         children: !user?.picture ? userInitials : undefined,
-        title: (
-          <span style={{ fontSize: 13 }}>{userEmail}</span>
-        ),
+        title: <span style={{ fontSize: 13 }}>{userEmail}</span>,
         render: (_props, dom) => (
           <Dropdown
             menu={avatarDropdownMenu}
