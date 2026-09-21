@@ -89,7 +89,7 @@ function AuthenticatedApp({ children }: PropsWithChildren) {
 
           <p
             style={{
-              margin: '0 0 36px',
+              margin: '0 0 20px',
               fontSize: 14,
               color: 'rgba(0, 0, 0, 0.7)',
               textAlign: 'center',

@@ -315,6 +315,7 @@ export function App() {
             dropdownRender={() => avatarDropdownMenu}
             trigger={['click']}
             placement="bottomRight"
+            className="user-dropdown"
           >
             <span style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
               {dom}
