@@ -1,5 +1,5 @@
 import { Auth0Provider, useAuth0 } from '@auth0/auth0-react';
-import { Alert, Button, Card, Flex, Spin, Typography } from 'antd';
+import { Alert, Button, Flex, Spin, Typography } from 'antd';
 import type { PropsWithChildren } from 'react';
 import { useEffect } from 'react';
 import { clearAccessTokenGetter, setAccessTokenGetter } from './auth-client';
@@ -101,8 +101,7 @@ function AuthenticatedApp({ children }: PropsWithChildren) {
               fontSize: 15,
               fontWeight: 600,
               borderRadius: 10,
-              background:
-                'linear-gradient(135deg, #1677ff 0%, #635DFF 100%)',
+              background: 'linear-gradient(135deg, #1677ff 0%, #635DFF 100%)',
               border: 'none',
               boxShadow: '0 4px 16px rgba(22, 119, 255, 0.40)',
               letterSpacing: '0.3px',
