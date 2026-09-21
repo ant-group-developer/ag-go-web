@@ -1,6 +1,7 @@
 import { ProLayout, type ProLayoutProps } from '@ant-design/pro-components';
 import { useAuth0 } from '@auth0/auth0-react';
-import { Avatar, Dropdown, theme as antdTheme, Spin, Typography } from 'antd';
+import { LogoutOutlined } from '@ant-design/icons';
+import { Avatar, Dropdown, theme as antdTheme, Spin, Typography, MenuProps, Flex } from 'antd';
 import {
   Activity,
   BarChart3,
@@ -93,90 +94,46 @@ export function App() {
   const userEmail = user?.email ?? '';
   const userInitials = userEmail.slice(0, 2).toUpperCase();
 
-  const avatarDropdownMenu = (
-    <div
-      style={{
-        minWidth: 240,
-        padding: '12px 0 4px',
-        background: token.colorBgContainer,
-        borderRadius: token.borderRadiusLG,
-        boxShadow: token.boxShadowSecondary,
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          padding: '0 16px 12px',
-          borderBottom: `1px solid ${token.colorBorderSecondary}`,
-        }}
-      >
-        <Avatar
-          size={40}
-          style={{ backgroundColor: token.colorPrimary, flexShrink: 0 }}
-        >
-          {userInitials}
-        </Avatar>
-        <div style={{ minWidth: 0 }}>
-          <Typography.Text
-            strong
-            ellipsis
-            style={{ display: 'block', fontSize: 14 }}
-          >
-            {userEmail}
-          </Typography.Text>
-          <Typography.Text
-            type="secondary"
-            ellipsis
-            style={{ display: 'block', fontSize: 12 }}
-          >
-            {userEmail}
-          </Typography.Text>
-        </div>
-      </div>
-      <div style={{ padding: '4px 0' }}>
-        <button
-          onClick={handleLogout}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            width: '100%',
-            padding: '8px 16px',
-            border: 'none',
-            background: 'transparent',
-            cursor: 'pointer',
-            fontSize: 14,
-            color: token.colorText,
-            transition: 'background 0.2s',
-          }}
-          onMouseEnter={(e) =>
-            (e.currentTarget.style.background = token.colorBgTextHover)
-          }
-          onMouseLeave={(e) =>
-            (e.currentTarget.style.background = 'transparent')
-          }
-        >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-            <polyline points="16 17 21 12 16 7" />
-            <line x1="21" y1="12" x2="9" y2="12" />
-          </svg>
-          Đăng xuất
-        </button>
-      </div>
-    </div>
-  );
+  const avatarDropdownMenu: MenuProps = {
+    items: [
+      {
+        key: 'user',
+        label: (
+          <Flex gap={12} align="center">
+            <Avatar
+              size={40}
+              style={{
+                backgroundColor: token.colorPrimary,
+                flexShrink: 0,
+              }}
+            >
+              {userInitials}
+            </Avatar>
+
+            <Flex vertical style={{ minWidth: 0 }}>
+              <Typography.Text strong ellipsis>
+                {userEmail}
+              </Typography.Text>
+
+              <Typography.Text type="secondary" ellipsis>
+                {userEmail}
+              </Typography.Text>
+            </Flex>
+          </Flex>
+        ),
+        disabled: true,
+      },
+      {
+        type: 'divider',
+      },
+      {
+        key: 'logout',
+        icon: <LogoutOutlined />,
+        label: 'Đăng xuất',
+        onClick: handleLogout,
+      },
+    ],
+  };
 
   const route: ProLayoutProps['route'] = {
     path: '/',
@@ -312,7 +269,7 @@ export function App() {
         ),
         render: (_props, dom) => (
           <Dropdown
-            dropdownRender={() => avatarDropdownMenu}
+            menu={avatarDropdownMenu}
             trigger={['click']}
             placement="bottomRight"
             className="user-dropdown"
