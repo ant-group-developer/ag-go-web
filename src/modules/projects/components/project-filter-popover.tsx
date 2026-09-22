@@ -1,5 +1,6 @@
 import { Button, Empty, Input, Popover, Select, Spin, Tree, Typography } from 'antd';
 import type { DataNode } from 'antd/es/tree';
+import { t } from 'i18next';
 import {
   Filter as FilterIcon,
   Folder as FolderIcon,
@@ -16,7 +17,6 @@ import { useFolders } from '../../folders/hooks/use-folders';
 import type { Folder as FolderType } from '../../folders/types/folder.type';
 import { useProvinces } from '../../provinces/hooks/use-provinces';
 import { useTags } from '../../tags/hooks/use-tags';
-import { t } from 'i18next';
 
 export type ProjectFilterValues = {
   keyword?: string;
@@ -138,12 +138,12 @@ const filterCategories: Array<{
   icon: React.ReactNode;
   label: string;
 }> = [
-    { key: 'keyword', icon: <Search size={16} />, label: 'Từ khóa' },
-    { key: 'folder', icon: <FolderIcon size={16} />, label: 'Thư mục' },
-    { key: 'category', icon: <Layers size={16} />, label: 'Danh mục' },
-    { key: 'tags', icon: <TagIcon size={16} />, label: 'Tags' },
-    { key: 'location', icon: <MapPin size={16} />, label: 'Địa điểm' },
-  ];
+  { key: 'keyword', icon: <Search size={16} />, label: 'Từ khóa' },
+  { key: 'folder', icon: <FolderIcon size={16} />, label: 'Thư mục' },
+  { key: 'category', icon: <Layers size={16} />, label: 'Danh mục' },
+  { key: 'tags', icon: <TagIcon size={16} />, label: 'Tags' },
+  { key: 'location', icon: <MapPin size={16} />, label: 'Địa điểm' },
+];
 
 function getCategoryFilterCount(key: FilterCategory, value: ProjectFilterValues): number {
   switch (key) {

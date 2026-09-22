@@ -98,9 +98,8 @@ export const getEvaluationConfig = (
     else label = t('projects.statusNeedsEvaluation');
   } else {
     label =
-      PROJECT_EVALUATION_STATUS_LABEL[
-      statusStr as keyof typeof PROJECT_EVALUATION_STATUS_LABEL
-      ] || PROJECT_EVALUATION_STATUS_LABEL[PROJECT_EVALUATION_STATUS.NEEDS_EVALUATION];
+      PROJECT_EVALUATION_STATUS_LABEL[statusStr as keyof typeof PROJECT_EVALUATION_STATUS_LABEL] ||
+      PROJECT_EVALUATION_STATUS_LABEL[PROJECT_EVALUATION_STATUS.NEEDS_EVALUATION];
   }
 
   return {
