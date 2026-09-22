@@ -29,6 +29,8 @@ import {
   useNavigate,
   useParams,
 } from 'react-router-dom';
+import { MyProjectsPage } from '../modules/projects/pages/my-projects-page';
+import { ProjectsEvaluations } from '../modules/projects/pages/projects-evaluations';
 
 const CategoriesPage = lazy(() =>
   import('../modules/categories/pages/categories-page').then(({ CategoriesPage }) => ({
@@ -298,24 +300,8 @@ export function App() {
           <Route path="/health" element={<HealthPage />} />
           <Route path="/folders" element={<FoldersPage />} />
           <Route path="/projects" element={<ProjectsPage />} />
-          <Route
-            path="/project-evaluations"
-            element={
-              <FeaturePlaceholderPage
-                title={t('placeholder.projectEvaluationsTitle')}
-                description={t('placeholder.projectEvaluationsDescription')}
-              />
-            }
-          />
-          <Route
-            path="/my-projects"
-            element={
-              <FeaturePlaceholderPage
-                title={t('placeholder.myProjectsTitle')}
-                description={t('placeholder.myProjectsDescription')}
-              />
-            }
-          />
+          <Route path="/project-evaluations" element={<ProjectsEvaluations />} />
+          <Route path="/my-projects" element={<MyProjectsPage />} />
           <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
           <Route path="/projects/:projectId/media" element={<LegacyProjectMediaRedirect />} />
           <Route path="/catalogs" element={<Navigate to="/catalogs/categories" replace />} />
