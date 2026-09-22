@@ -79,23 +79,17 @@ function ProjectThumbnailCell({ assetId }: { assetId?: string | null }) {
     }
 
     let disposed = false;
-    let createdUrl: string | undefined;
     void getAssetPreviewUrl(assetId)
       .then((url) => {
         if (disposed) {
-          URL.revokeObjectURL(url);
           return;
         }
-        createdUrl = url;
         setPreviewUrl(url);
       })
       .catch(() => setPreviewUrl(undefined));
 
     return () => {
       disposed = true;
-      if (createdUrl) {
-        URL.revokeObjectURL(createdUrl);
-      }
     };
   }, [assetId]);
 

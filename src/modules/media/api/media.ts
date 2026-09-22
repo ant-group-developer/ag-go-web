@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { apiBlob, apiClient, ApiError, apiUrl } from '../../../shared/lib/api-client';
+import { apiClient, ApiError, apiUrl } from '../../../shared/lib/api-client';
 
 export type Asset = {
   id: string;
@@ -129,7 +129,11 @@ export async function getAssetPreviewUrl(
   assetId: string,
   variantCode = 'thumbnail',
 ): Promise<string> {
-  return URL.createObjectURL(await apiBlob(`/assets/${assetId}/preview/${variantCode}`));
+  const query = new URLSearchParams({ variantCode });
+  const result = await apiClient<{ url: string }>(
+    `/assets/${assetId}/preview-url?${query.toString()}`,
+  );
+  return result.url;
 }
 
 export type UploadSession = {

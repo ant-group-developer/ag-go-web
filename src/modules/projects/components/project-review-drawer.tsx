@@ -119,23 +119,17 @@ function MediaPreview({ media }: { media: ProjectMedia }) {
     }
 
     let disposed = false;
-    let objectUrl: string | undefined;
     void getAssetPreviewUrl(media.assetId, 'preview')
       .then((url) => {
         if (disposed) {
-          URL.revokeObjectURL(url);
           return;
         }
-        objectUrl = url;
         setPreviewUrl(url);
       })
       .catch(() => setPreviewUrl(undefined));
 
     return () => {
       disposed = true;
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-      }
     };
   }, [isReady, media.assetId]);
 
@@ -194,23 +188,17 @@ function MediaThumbnail({ media }: { media: ProjectMedia }) {
     }
 
     let disposed = false;
-    let objectUrl: string | undefined;
     void getAssetPreviewUrl(media.assetId)
       .then((url) => {
         if (disposed) {
-          URL.revokeObjectURL(url);
           return;
         }
-        objectUrl = url;
         setPreviewUrl(url);
       })
       .catch(() => setPreviewUrl(undefined));
 
     return () => {
       disposed = true;
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-      }
     };
   }, [media.asset.processingStatus, media.assetId]);
 

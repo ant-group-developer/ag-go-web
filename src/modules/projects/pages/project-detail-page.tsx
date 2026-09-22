@@ -51,7 +51,6 @@ export function ProjectDetailPage() {
   const [form] = Form.useForm<ProjectDetailFormValues>();
   const initializedProjectId = useRef<string | undefined>(undefined);
   const initializedThumbnailProjectId = useRef<string | undefined>(undefined);
-  const thumbnailPreviewUrlRef = useRef<string | undefined>(undefined);
   const uploadedThumbnailRef = useRef<{ uid: string; projectMediaId: string } | undefined>(
     undefined,
   );
@@ -75,23 +74,10 @@ export function ProjectDetailPage() {
     Boolean(countryId),
   );
 
-  useEffect(
-    () => () => {
-      if (thumbnailPreviewUrlRef.current) {
-        URL.revokeObjectURL(thumbnailPreviewUrlRef.current);
-      }
-    },
-    [],
-  );
-
   useEffect(() => {
     initializedProjectId.current = undefined;
     initializedThumbnailProjectId.current = undefined;
     uploadedThumbnailRef.current = undefined;
-    if (thumbnailPreviewUrlRef.current) {
-      URL.revokeObjectURL(thumbnailPreviewUrlRef.current);
-      thumbnailPreviewUrlRef.current = undefined;
-    }
     form.resetFields();
   }, [form, projectId]);
 
@@ -147,10 +133,8 @@ export function ProjectDetailPage() {
     void getAssetPreviewUrl(thumbnailMedia.assetId)
       .then((url) => {
         if (disposed) {
-          URL.revokeObjectURL(url);
           return;
         }
-        thumbnailPreviewUrlRef.current = url;
         const currentFiles: UploadFile[] = form.getFieldValue('thumbnail') ?? [];
         if (currentFiles.some((file) => file.uid === thumbnailMedia.id)) {
           form.setFieldValue('thumbnail', [
