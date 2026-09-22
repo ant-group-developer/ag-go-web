@@ -1,11 +1,4 @@
-import {
-  Button,
-  Cascader,
-  Input,
-  Popover,
-  Select,
-  Typography,
-} from 'antd';
+import { Button, Cascader, Input, Popover, Select, Typography } from 'antd';
 import { Filter, Folder, MapPin, Search, Tag as TagIcon, ToggleLeft } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -39,12 +32,12 @@ const filterCategories: Array<{
   icon: React.ReactNode;
   label: string;
 }> = [
-    { key: 'keyword', icon: <Search size={15} />, label: 'Từ khóa' },
-    { key: 'folder', icon: <Folder size={15} />, label: 'Thư mục' },
-    { key: 'status', icon: <ToggleLeft size={15} />, label: 'Danh mục' },
-    { key: 'tags', icon: <TagIcon size={15} />, label: 'Tags' },
-    { key: 'location', icon: <MapPin size={15} />, label: 'Địa điểm' },
-  ];
+  { key: 'keyword', icon: <Search size={15} />, label: 'Từ khóa' },
+  { key: 'folder', icon: <Folder size={15} />, label: 'Thư mục' },
+  { key: 'status', icon: <ToggleLeft size={15} />, label: 'Danh mục' },
+  { key: 'tags', icon: <TagIcon size={15} />, label: 'Tags' },
+  { key: 'location', icon: <MapPin size={15} />, label: 'Địa điểm' },
+];
 
 function FilterContent({
   value,
@@ -68,14 +61,13 @@ function FilterContent({
 
   const folderOptions = buildFolderCascaderOptions(folders.data ?? []);
 
-  const activeCount =
-    [
-      value.keyword,
-      value.folderPath?.length,
-      value.countryId || value.provinceId,
-      value.categoryId,
-      value.tagIds?.length,
-    ].filter(Boolean).length;
+  const activeCount = [
+    value.keyword,
+    value.folderPath?.length,
+    value.countryId || value.provinceId,
+    value.categoryId,
+    value.tagIds?.length,
+  ].filter(Boolean).length;
 
   const visibleCategories = filterCategories.filter((c) =>
     c.label.toLowerCase().includes(searchSidebar.toLowerCase()),
@@ -113,9 +105,7 @@ function FilterContent({
               placeholder={t('projects.folderFilterPlaceholder')}
               showSearch
               value={value.folderPath}
-              onChange={(v) =>
-                onChange({ ...value, folderPath: v as string[] | undefined })
-              }
+              onChange={(v) => onChange({ ...value, folderPath: v as string[] | undefined })}
               style={{ width: '100%' }}
             />
           </div>
@@ -167,7 +157,10 @@ function FilterContent({
               Địa điểm
             </Typography.Text>
             <div>
-              <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>
+              <Typography.Text
+                type="secondary"
+                style={{ fontSize: 12, display: 'block', marginBottom: 6 }}
+              >
                 Quốc gia
               </Typography.Text>
               <Select
@@ -182,7 +175,10 @@ function FilterContent({
               />
             </div>
             <div>
-              <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>
+              <Typography.Text
+                type="secondary"
+                style={{ fontSize: 12, display: 'block', marginBottom: 6 }}
+              >
                 Tỉnh/Thành phố
               </Typography.Text>
               <Select
@@ -299,13 +295,7 @@ export function ProjectFilterPopover({
       placement="bottomLeft"
       arrow={false}
       styles={{ body: { padding: 0, borderRadius: 12, overflow: 'hidden' } }}
-      content={
-        <FilterContent
-          value={value}
-          onChange={onChange}
-          onClear={onClear}
-        />
-      }
+      content={<FilterContent value={value} onChange={onChange} onClear={onClear} />}
     >
       <Button
         icon={<Filter size={14} />}

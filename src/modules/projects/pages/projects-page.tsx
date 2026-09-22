@@ -21,8 +21,8 @@ import { useNavigate } from 'react-router-dom';
 import { getAssetPreviewUrl } from '../../media/api/media';
 import { getProjects } from '../api/projects';
 import { CreateProjectModal } from '../components/create-project-modal';
-import { ProjectFilterPopover } from '../components/project-filter-popover';
 import type { ProjectFilterValues } from '../components/project-filter-popover';
+import { ProjectFilterPopover } from '../components/project-filter-popover';
 import { ProjectGridView } from '../components/project-grid-view';
 import { ProjectReviewDrawer } from '../components/project-review-drawer';
 import { useDeleteProject } from '../hooks/use-projects';
@@ -500,20 +500,14 @@ export function ProjectsPage() {
           )}
           toolBarRender={() => [
             /* View mode toggle */
-            <Tooltip
-              key="view-list"
-              title="Dạng danh sách"
-            >
+            <Tooltip key="view-list" title="Dạng danh sách">
               <Button
                 icon={<LayoutList size={16} />}
                 type={viewMode === 'list' ? 'primary' : 'default'}
                 onClick={() => setViewMode('list')}
               />
             </Tooltip>,
-            <Tooltip
-              key="view-grid"
-              title="Dạng lưới"
-            >
+            <Tooltip key="view-grid" title="Dạng lưới">
               <Button
                 icon={<LayoutGrid size={16} />}
                 type={viewMode === 'grid' ? 'primary' : 'default'}

@@ -1,4 +1,3 @@
-import { LogoutOutlined } from '@ant-design/icons';
 import { ProLayout, type ProLayoutProps } from '@ant-design/pro-components';
 import { useAuth0 } from '@auth0/auth0-react';
 import { theme as antdTheme, Avatar, Dropdown, Flex, MenuProps, Spin, Typography } from 'antd';

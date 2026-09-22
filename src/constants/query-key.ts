@@ -1,11 +1,11 @@
 export const QUERY_KEY = {
-    CATEGORY: {
-        KEY: 'CATEGORY',
-        GET_LIST: 'GET_LIST_CATEGORY',
-        GET_DETAIL: 'GET_DETAIL_CATEGORY',
-    },
-    PROJECT: {
-        KEY: 'PROJECT',
-        GET_DETAIL: 'GET_DETAIL_PROJECT',
-    },
+  CATEGORY: {
+    KEY: 'CATEGORY',
+    GET_LIST: 'GET_LIST_CATEGORY',
+    GET_DETAIL: 'GET_DETAIL_CATEGORY',
+  },
+  PROJECT: {
+    KEY: 'PROJECT',
+    GET_DETAIL: 'GET_DETAIL_PROJECT',
+  },
 };
