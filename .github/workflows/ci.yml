@@ -1,4 +1,4 @@
-name: ag-go-web CI
+name: Continuous Integration
 
 on:
   push:
