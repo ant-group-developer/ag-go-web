@@ -31,6 +31,7 @@ import {
 
 import { PROJECT_EVALUATION_STATUS, PROJECT_EVALUATION_STATUS_LABEL } from '../constants/index';
 import styles from './project-grid-view.module.css';
+import { formatDate } from '../utils/date.util';
 
 const { Paragraph } = Typography;
 
@@ -229,11 +230,6 @@ export function ProjectGridView({
       </div>
     );
   }
-
-  const formatDate = (dateString?: string | null) => {
-    if (!dateString) return '—';
-    return dayjs(dateString).format('HH:mm DD/MM/YYYY');
-  };
 
   return (
     <>

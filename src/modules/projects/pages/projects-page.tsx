@@ -31,6 +31,8 @@ import { useDeleteProject } from '../hooks/use-projects';
 import { projectQueryKeys } from '../queries/project-query-keys';
 import type { ProjectListParams } from '../types/project-list-params.type';
 import type { Project } from '../types/project.type';
+import { formatDate } from '../utils/date.util';
+import { getProjectStatus } from '../utils/project-status.util';
 
 const projectUrlParams = {
   keyword: parseAsString,
@@ -43,17 +45,6 @@ const projectUrlParams = {
   page: parseAsInteger.withDefault(1),
   pageSize: parseAsInteger.withDefault(20),
 };
-
-function formatDateTime(value: string | undefined): string {
-  if (!value) {
-    return '—';
-  }
-
-  return new Intl.DateTimeFormat('vi-VN', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(value));
-}
 
 function ProjectThumbnailCell({ assetId }: { assetId?: string | null }) {
   const { t } = useTranslation();
@@ -116,23 +107,6 @@ function ProjectThumbnailCell({ assetId }: { assetId?: string | null }) {
       preview
     />
   );
-}
-
-function getProjectStatus(status: string, t: (key: string) => string) {
-  switch (status) {
-    case 'draft':
-      return { color: 'default', label: t('projects.statusDraft') };
-    case 'pending':
-      return { color: 'processing', label: t('projects.statusPending') };
-    case 'completed':
-      return { color: 'success', label: t('projects.statusCompleted') };
-    case 'partially_completed':
-      return { color: 'warning', label: t('projects.statusPartiallyCompleted') };
-    case 'failed':
-      return { color: 'error', label: t('projects.statusFailed') };
-    default:
-      return { color: 'default', label: status };
-  }
 }
 
 export function ProjectsPage() {
@@ -318,8 +292,8 @@ export function ProjectsPage() {
       key: 'evaluationStatus',
       width: 160,
       render: (_, project) => {
-        const status = getProjectStatus(project.evaluationStatus, t);
-        return <Tag color={status.color}>{status.label}</Tag>;
+        const status = getProjectStatus(project.evaluationStatus);
+        return <Tag color={status.color}>{t(status.label)}</Tag>;
       },
     },
     {
@@ -327,14 +301,14 @@ export function ProjectsPage() {
       dataIndex: 'createdAt',
       key: 'createdAt',
       width: 170,
-      render: (_, project) => formatDateTime(project.createdAt),
+      render: (_, project) => formatDate(project.createdAt),
     },
     {
       title: t('projects.updatedAt'),
       dataIndex: 'updatedAt',
       key: 'updatedAt',
       width: 170,
-      render: (_, project) => formatDateTime(project.updatedAt),
+      render: (_, project) => formatDate(project.updatedAt),
     },
     {
       title: t('projects.actions'),
