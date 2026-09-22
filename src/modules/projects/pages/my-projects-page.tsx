@@ -112,7 +112,7 @@ function ProjectThumbnailCell({ assetId }: { assetId?: string | null }) {
   );
 }
 
-export function ProjectsPage() {
+export function MyProjectsPage() {
   const { t } = useTranslation();
   const { message } = AntApp.useApp();
   const navigate = useNavigate();

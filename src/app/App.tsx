@@ -1,4 +1,3 @@
-import { LogoutOutlined } from '@ant-design/icons';
 import { ProLayout, type ProLayoutProps } from '@ant-design/pro-components';
 import { useAuth0 } from '@auth0/auth0-react';
 import { theme as antdTheme, Avatar, Dropdown, Flex, MenuProps, Spin, Typography } from 'antd';
@@ -11,6 +10,7 @@ import {
   Globe,
   LayoutDashboard,
   List,
+  LogOut,
   MapPinned,
   ScrollText,
   Settings,
@@ -29,6 +29,8 @@ import {
   useNavigate,
   useParams,
 } from 'react-router-dom';
+import { MyProjectsPage } from '../modules/projects/pages/my-projects-page';
+import { ProjectsEvaluations } from '../modules/projects/pages/projects-evaluations';
 
 const CategoriesPage = lazy(() =>
   import('../modules/categories/pages/categories-page').then(({ CategoriesPage }) => ({
@@ -93,6 +95,8 @@ export function App() {
 
   const userEmail = user?.email ?? '';
   const userInitials = userEmail.slice(0, 2).toUpperCase();
+  const nickname = user?.nickname ?? '';
+  const avatarUrl = user?.picture ?? '';
 
   const avatarDropdownMenu: MenuProps = {
     items: [
@@ -101,6 +105,7 @@ export function App() {
         label: (
           <Flex gap={12} align="center">
             <Avatar
+              src={avatarUrl}
               size={40}
               style={{
                 backgroundColor: token.colorPrimary,
@@ -112,7 +117,7 @@ export function App() {
 
             <Flex vertical style={{ minWidth: 0 }}>
               <Typography.Text strong ellipsis>
-                {userEmail}
+                {nickname}
               </Typography.Text>
 
               <Typography.Text type="secondary" ellipsis>
@@ -128,9 +133,10 @@ export function App() {
       },
       {
         key: 'logout',
-        icon: <LogoutOutlined />,
-        label: 'Đăng xuất',
+        icon: <LogOut size={16} />,
+        label: t('menu.logout'),
         onClick: handleLogout,
+        danger: true,
       },
     ],
   };
@@ -294,24 +300,8 @@ export function App() {
           <Route path="/health" element={<HealthPage />} />
           <Route path="/folders" element={<FoldersPage />} />
           <Route path="/projects" element={<ProjectsPage />} />
-          <Route
-            path="/project-evaluations"
-            element={
-              <FeaturePlaceholderPage
-                title={t('placeholder.projectEvaluationsTitle')}
-                description={t('placeholder.projectEvaluationsDescription')}
-              />
-            }
-          />
-          <Route
-            path="/my-projects"
-            element={
-              <FeaturePlaceholderPage
-                title={t('placeholder.myProjectsTitle')}
-                description={t('placeholder.myProjectsDescription')}
-              />
-            }
-          />
+          <Route path="/project-evaluations" element={<ProjectsEvaluations />} />
+          <Route path="/my-projects" element={<MyProjectsPage />} />
           <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
           <Route path="/projects/:projectId/media" element={<LegacyProjectMediaRedirect />} />
           <Route path="/catalogs" element={<Navigate to="/catalogs/categories" replace />} />
