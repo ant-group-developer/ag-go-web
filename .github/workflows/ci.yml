@@ -1,10 +1,11 @@
-name: ag-go-web CI
+name: Continuous Integration
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
-    branches: [main]
+    branches: [main, dev]
+  workflow_dispatch:
 
 jobs:
   verify:
@@ -21,3 +22,7 @@ jobs:
       - run: yarn lint
       - run: yarn test --run
       - run: yarn build
+      - name: Validate Docker Compose
+        run: docker compose --env-file .env.example config --quiet
+      - name: Build Docker image
+        run: docker build --tag ag-go-web:ci .
