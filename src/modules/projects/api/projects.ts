@@ -15,7 +15,9 @@ export function getProjects(params: ProjectListParams = {}): Promise<ProjectPage
   if (params.keyword) {
     query.set('keyword', params.keyword);
   }
-  if (params.folderId) {
+  if (params.folderIds?.length) {
+    query.set('folderIds', params.folderIds.join(','));
+  } else if (params.folderId) {
     query.set('folderId', params.folderId);
   }
   if (params.countryId) {

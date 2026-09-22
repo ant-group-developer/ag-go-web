@@ -30,17 +30,9 @@ import {
 } from 'lucide-react';
 
 import { PROJECT_EVALUATION_STATUS, PROJECT_EVALUATION_STATUS_LABEL } from '../constants/index';
-// import { AdminProjectDetailDrawer } from './detail/admin-project-detail-drawer';
-import styles from './project-grid-view-v2.module.css';
+import styles from './project-grid-view.module.css';
 
 const { Paragraph } = Typography;
-
-// const VISIBILITY_CONFIG: Record<string, { icon: any; color: string }> = {
-//     public: { icon: Globe, color: 'success' },
-//     private: { icon: Lock, color: 'default' },
-//     internal: { icon: Shield, color: 'processing' },
-//     unlisted: { icon: EyeOff, color: 'warning' },
-// };
 
 export interface ProjectGridItem {
   id: string;
@@ -84,7 +76,11 @@ export interface ProjectGridItem {
   videoCount?: number;
 }
 
-export const getEvaluationConfig = (status: string | undefined, token: any) => {
+export const getEvaluationConfig = (
+  status: string | undefined,
+  token: any,
+  t?: (key: string) => string,
+) => {
   if (!status) return null;
 
   const statusStr = status.toLowerCase();
@@ -92,6 +88,20 @@ export const getEvaluationConfig = (status: string | undefined, token: any) => {
   const isRejected = statusStr === PROJECT_EVALUATION_STATUS.FAILED;
   const isPartial = statusStr === PROJECT_EVALUATION_STATUS.PARTIALLY_COMPLETED;
   const isDraft = statusStr === PROJECT_EVALUATION_STATUS.DRAFT;
+
+  let label: string;
+  if (t) {
+    if (isApproved) label = t('projects.statusCompleted');
+    else if (isRejected) label = t('projects.statusFailed');
+    else if (isPartial) label = t('projects.statusPartiallyCompleted');
+    else if (isDraft) label = t('projects.statusDraft');
+    else label = t('projects.statusNeedsEvaluation');
+  } else {
+    label =
+      PROJECT_EVALUATION_STATUS_LABEL[
+      statusStr as keyof typeof PROJECT_EVALUATION_STATUS_LABEL
+      ] || PROJECT_EVALUATION_STATUS_LABEL[PROJECT_EVALUATION_STATUS.NEEDS_EVALUATION];
+  }
 
   return {
     color: isApproved
@@ -112,9 +122,7 @@ export const getEvaluationConfig = (status: string | undefined, token: any) => {
           : isDraft
             ? token.colorFillSecondary
             : token.colorWarningBg,
-    label:
-      PROJECT_EVALUATION_STATUS_LABEL[statusStr as keyof typeof PROJECT_EVALUATION_STATUS_LABEL] ||
-      PROJECT_EVALUATION_STATUS_LABEL[PROJECT_EVALUATION_STATUS.NEEDS_EVALUATION],
+    label,
   };
 };
 
@@ -123,6 +131,7 @@ interface ProjectGridViewProps {
   isLoading: boolean;
   isAdminView?: boolean;
   canEvaluate?: boolean;
+  onView?: (id: string) => void;
   onEdit: (id: string) => void;
   onDelete: (item: ProjectGridItem) => void;
   onEvaluate?: (item: ProjectGridItem) => void;
@@ -134,21 +143,23 @@ export function ProjectGridView({
   isLoading,
   isAdminView = false,
   canEvaluate = false,
+  onView,
   onEdit,
   onDelete,
   onEvaluate,
   isDeletingId,
 }: ProjectGridViewProps) {
   const { token } = theme.useToken();
-  const { t } = useTranslation('project');
-  const { t: tManage } = useTranslation('manage');
-  const { t: tCommon } = useTranslation('common');
-  const { t: tProjectDetail } = useTranslation('projectDetail');
+  const { t } = useTranslation();
 
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [selectedProjectId, setSelectedProjectId] = React.useState<string | null>(null);
 
   const handleOpenDrawer = (projectId: string) => {
+    if (onView) {
+      onView(projectId);
+      return;
+    }
     setSelectedProjectId(projectId);
     setDrawerOpen(true);
   };
@@ -213,13 +224,15 @@ export function ProjectGridView({
   if (!isLoading && items.length === 0) {
     return (
       <div style={{ padding: '40px 0' }}>
-        <Empty description={<Typography.Text type="secondary">{t('empty')}</Typography.Text>} />
+        <Empty
+          description={<Typography.Text type="secondary">{t('projects.empty')}</Typography.Text>}
+        />
       </div>
     );
   }
 
   const formatDate = (dateString?: string | null) => {
-    if (!dateString) return '-';
+    if (!dateString) return '—';
     return dayjs(dateString).format('HH:mm DD/MM/YYYY');
   };
 
@@ -227,8 +240,7 @@ export function ProjectGridView({
     <>
       <Row gutter={[24, 24]}>
         {items.map((item) => {
-          const isCompleted = item.evaluation_status === PROJECT_EVALUATION_STATUS.COMPLETED;
-          const evalConfig = getEvaluationConfig(item.evaluation_status, token);
+          const evalConfig = getEvaluationConfig(item.evaluation_status, token, t);
 
           return (
             <Col xs={24} sm={24} md={12} lg={12} xl={8} xxl={6} key={item.id}>
@@ -242,10 +254,8 @@ export function ProjectGridView({
                   </div>
                 )}
 
-                {/* Gradient mờ từ dưới lên cho nội dung */}
                 <div className={styles.gradient} />
 
-                {/* Status tag - góc trái trên */}
                 {evalConfig && (
                   <div className={styles.statusTag}>
                     <div
@@ -266,16 +276,20 @@ export function ProjectGridView({
                 {/* Media counts - góc phải trên */}
                 <div className={styles.mediaCounts}>
                   {(item.imageCount ?? 0) > 0 && (
-                    <div className={styles.mediaCountBadge}>
-                      <ImageIcon size={14} />
-                      <span>{item.imageCount}</span>
-                    </div>
+                    <Tooltip title={`${item.imageCount} ${t('media.image')}`}>
+                      <div className={styles.mediaCountBadge}>
+                        <ImageIcon size={14} />
+                        <span>{item.imageCount}</span>
+                      </div>
+                    </Tooltip>
                   )}
                   {(item.videoCount ?? 0) > 0 && (
-                    <div className={styles.mediaCountBadge}>
-                      <Clapperboard size={14} />
-                      <span>{item.videoCount}</span>
-                    </div>
+                    <Tooltip title={`${item.videoCount} ${t('media.video')}`}>
+                      <div className={styles.mediaCountBadge}>
+                        <Clapperboard size={14} />
+                        <span>{item.videoCount}</span>
+                      </div>
+                    </Tooltip>
                   )}
                 </div>
 
@@ -307,16 +321,16 @@ export function ProjectGridView({
                         <MapPin size={16} className={styles.iconColor} />
                       </div>
                       <div className={styles.infoContent}>
-                        <div className={styles.infoLabel}>{tCommon('location')}</div>
+                        <div className={styles.infoLabel}>{t('common.location')}</div>
                         <div
                           className={styles.infoValue}
                           title={
                             [item.province?.name, item.country?.name].filter(Boolean).join(', ') ||
-                            '-'
+                            '—'
                           }
                         >
                           {[item.province?.name, item.country?.name].filter(Boolean).join(', ') ||
-                            '-'}
+                            '—'}
                         </div>
                       </div>
                     </div>
@@ -331,9 +345,12 @@ export function ProjectGridView({
                         {item.author?.name?.charAt(0)?.toUpperCase()}
                       </Avatar>
                       <div className={styles.infoContent}>
-                        <div className={styles.infoLabel}>{tCommon('author')}</div>
-                        <div className={styles.infoValue} title={item.author?.name || 'Unknown'}>
-                          {item.author?.name || 'Unknown'}
+                        <div className={styles.infoLabel}>{t('common.author')}</div>
+                        <div
+                          className={styles.infoValue}
+                          title={item.author?.name || t('common.unknown')}
+                        >
+                          {item.author?.name || t('common.unknown')}
                         </div>
                       </div>
                     </div>
@@ -344,12 +361,12 @@ export function ProjectGridView({
                         <Folder size={16} className={styles.iconColor} />
                       </div>
                       <div className={styles.infoContent}>
-                        <div className={styles.infoLabel}>{tCommon('folder')}</div>
+                        <div className={styles.infoLabel}>{t('projects.folder')}</div>
                         <div
                           className={styles.infoValue}
-                          title={item.folder?.path || item.folder?.name || '-'}
+                          title={item.folder?.path || item.folder?.name || '—'}
                         >
-                          {item.folder?.name || '-'}
+                          {item.folder?.name || '—'}
                         </div>
                       </div>
                     </div>
@@ -360,7 +377,7 @@ export function ProjectGridView({
                         <Clock size={16} className={styles.iconColor} />
                       </div>
                       <div className={styles.infoContent}>
-                        <div className={styles.infoLabel}>{tManage('columns.updatedAt')}</div>
+                        <div className={styles.infoLabel}>{t('projects.updatedAt')}</div>
                         <div className={styles.infoValue}>
                           {formatDate(item.updatedAt || item.publishedAt || item.createdAt)}
                         </div>
@@ -370,7 +387,7 @@ export function ProjectGridView({
 
                   {/* Actions */}
                   <div className={styles.actionsWrapper}>
-                    <Tooltip title={tCommon('view')}>
+                    <Tooltip title={t('common.view')}>
                       <Button
                         type="default"
                         shape="circle"
@@ -378,10 +395,11 @@ export function ProjectGridView({
                         icon={<Eye size={20} />}
                         onClick={() => handleOpenDrawer(item.id)}
                         className={styles.actionButton}
+                        aria-label={t('common.view')}
                       />
                     </Tooltip>
 
-                    <Tooltip title={tCommon('edit')}>
+                    <Tooltip title={t('common.edit')}>
                       <Button
                         type="default"
                         shape="circle"
@@ -389,32 +407,32 @@ export function ProjectGridView({
                         icon={<SquarePen size={18} />}
                         onClick={() => onEdit(item.id)}
                         className={styles.actionButton}
+                        aria-label={t('common.edit')}
                       />
                     </Tooltip>
 
                     {canEvaluate && onEvaluate && (
-                      <Tooltip title={tCommon('evaluate')}>
+                      <Tooltip title={t('projects.review')}>
                         <Button
                           type="default"
                           shape="circle"
                           size="large"
                           icon={<CheckCircle size={18} />}
                           onClick={() => onEvaluate(item)}
-                          // disabled={isCompleted}
                           className={styles.actionButton}
+                          aria-label={t('projects.review')}
                         />
                       </Tooltip>
                     )}
 
                     <Popconfirm
-                      title={tProjectDetail('delete')}
-                      description={tManage('deleteConfirmTitle')}
+                      title={t('projects.deleteConfirm', { name: item.title })}
                       onConfirm={() => onDelete(item)}
-                      okText={tCommon('delete')}
-                      cancelText={tCommon('cancel')}
+                      okText={t('common.delete')}
+                      cancelText={t('common.cancel')}
                       okButtonProps={{ danger: true }}
                     >
-                      <Tooltip title={tCommon('delete')}>
+                      <Tooltip title={t('common.delete')}>
                         <Button
                           danger
                           shape="circle"
@@ -422,6 +440,7 @@ export function ProjectGridView({
                           icon={<Trash size={18} />}
                           disabled={isDeletingId === item.id}
                           className={styles.actionButton}
+                          aria-label={t('common.delete')}
                         />
                       </Tooltip>
                     </Popconfirm>
@@ -432,12 +451,6 @@ export function ProjectGridView({
           );
         })}
       </Row>
-
-      {/* <AdminProjectDetailDrawer
-                open={drawerOpen}
-                onClose={() => setDrawerOpen(false)}
-                projectId={selectedProjectId}
-            /> */}
     </>
   );
 }

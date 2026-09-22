@@ -3,6 +3,7 @@ export type ProjectListParams = {
   pageSize?: number;
   keyword?: string;
   folderId?: string;
+  folderIds?: string[];
   countryId?: string;
   provinceId?: string;
   categoryId?: string;

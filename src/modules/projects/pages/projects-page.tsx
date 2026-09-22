@@ -7,11 +7,13 @@ import {
   Button,
   Image,
   Input,
+  Pagination,
   Popconfirm,
   Space,
   Tag,
   Tooltip,
   Typography,
+  theme,
 } from 'antd';
 import { ClipboardCheck, LayoutGrid, LayoutList, Pencil, Plus, Trash2 } from 'lucide-react';
 import { parseAsArrayOf, parseAsInteger, parseAsString, useQueryStates } from 'nuqs';
@@ -33,6 +35,7 @@ import type { Project } from '../types/project.type';
 const projectUrlParams = {
   keyword: parseAsString,
   folderId: parseAsString,
+  folderIds: parseAsArrayOf(parseAsString).withDefault([]),
   tagIds: parseAsArrayOf(parseAsString).withDefault([]),
   countryId: parseAsString,
   provinceId: parseAsString,
@@ -53,6 +56,7 @@ function formatDateTime(value: string | undefined): string {
 }
 
 function ProjectThumbnailCell({ assetId }: { assetId?: string | null }) {
+  const { t } = useTranslation();
   const [previewUrl, setPreviewUrl] = useState<string>();
 
   useEffect(() => {
@@ -85,7 +89,7 @@ function ProjectThumbnailCell({ assetId }: { assetId?: string | null }) {
   if (!previewUrl) {
     return (
       <div
-        aria-label="Chưa có thumbnail"
+        aria-label={t('projects.noThumbnail')}
         style={{
           alignItems: 'center',
           background: '#f5f5f5',
@@ -145,11 +149,17 @@ export function ProjectsPage() {
   const [listError, setListError] = useState<string>();
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
   const [gridData, setGridData] = useState<Project[]>([]);
+  const [totalCount, setTotalCount] = useState<number>(0);
+  const { token } = theme.useToken();
 
   // Local filter state for popover (controlled)
   const [filterValues, setFilterValues] = useState<ProjectFilterValues>({
     keyword: urlState.keyword ?? undefined,
-    folderPath: urlState.folderId ? [urlState.folderId] : undefined,
+    folderIds: urlState.folderIds?.length
+      ? urlState.folderIds
+      : urlState.folderId
+        ? [urlState.folderId]
+        : undefined,
     countryId: urlState.countryId ?? undefined,
     provinceId: urlState.provinceId ?? undefined,
     categoryId: urlState.categoryId ?? undefined,
@@ -163,8 +173,8 @@ export function ProjectsPage() {
   const activeFilterCount = useMemo(
     () =>
       [
-        filterValues.keyword,
-        filterValues.folderPath?.length,
+        filterValues.keyword?.trim(),
+        filterValues.folderIds?.length,
         filterValues.countryId || filterValues.provinceId,
         filterValues.categoryId,
         filterValues.tagIds?.length,
@@ -175,7 +185,8 @@ export function ProjectsPage() {
   const applyFilter = async (values: ProjectFilterValues) => {
     await setUrlState({
       keyword: values.keyword?.trim() || null,
-      folderId: values.folderPath?.at(-1) ?? null,
+      folderId: values.folderIds?.[0] ?? null,
+      folderIds: values.folderIds?.length ? values.folderIds : null,
       tagIds: values.tagIds?.length ? values.tagIds : null,
       countryId: values.countryId ?? null,
       provinceId: values.provinceId ?? null,
@@ -187,6 +198,9 @@ export function ProjectsPage() {
 
   const handleFilterChange = (values: ProjectFilterValues) => {
     setFilterValues(values);
+    if (values.keyword !== undefined && values.keyword !== keywordInput) {
+      setKeywordInput(values.keyword);
+    }
     void applyFilter(values);
   };
 
@@ -196,6 +210,7 @@ export function ProjectsPage() {
     void setUrlState({
       keyword: null,
       folderId: null,
+      folderIds: null,
       tagIds: null,
       countryId: null,
       provinceId: null,
@@ -371,6 +386,12 @@ export function ProjectsPage() {
     <>
       <PageContainer
         title={t('projects.title')}
+        style={{
+          background: token.colorBgContainer,
+          paddingBlock: 16,
+          paddingInline: 16,
+          borderRadius: 6,
+        }}
         extra={[
           <Button
             key="create"
@@ -401,7 +422,7 @@ export function ProjectsPage() {
             persistenceType: 'localStorage',
           }}
           headerTitle={
-            <Space.Compact style={{ width: 420 }}>
+            <Space size={12}>
               <ProjectFilterPopover
                 value={filterValues}
                 onChange={handleFilterChange}
@@ -410,14 +431,15 @@ export function ProjectsPage() {
               />
               <Input.Search
                 allowClear
-                placeholder="Tìm kiếm theo tên dự án"
+                size="large"
+                placeholder={t('projects.keywordPlaceholder')}
                 value={keywordInput}
                 onChange={(e) => setKeywordInput(e.target.value)}
                 onSearch={handleKeywordSearch}
                 onPressEnter={handleKeywordSearch}
-                style={{ flex: 1 }}
+                style={{ width: 350 }}
               />
-            </Space.Compact>
+            </Space>
           }
           options={{ reload: true, density: false, setting: true, fullScreen: false }}
           pagination={{
@@ -437,7 +459,11 @@ export function ProjectsPage() {
           request={async ({ current, pageSize }) => {
             const params: ProjectListParams = {
               ...(urlState.keyword ? { keyword: urlState.keyword } : {}),
-              ...(urlState.folderId ? { folderId: urlState.folderId } : {}),
+              ...(urlState.folderIds?.length
+                ? { folderIds: urlState.folderIds }
+                : urlState.folderId
+                  ? { folderId: urlState.folderId }
+                  : {}),
               ...(urlState.tagIds.length ? { tagIds: urlState.tagIds } : {}),
               ...(urlState.countryId ? { countryId: urlState.countryId } : {}),
               ...(urlState.provinceId ? { provinceId: urlState.provinceId } : {}),
@@ -452,6 +478,7 @@ export function ProjectsPage() {
               });
               setListError(undefined);
               setGridData(result.items);
+              setTotalCount(result.total);
               return { data: result.items, success: true, total: result.total };
             } catch (error) {
               setListError(error instanceof Error ? error.message : t('projects.loadFailed'));
@@ -466,33 +493,62 @@ export function ProjectsPage() {
             <>
               {domList.toolbar}
               {viewMode === 'grid' ? (
-                <ProjectGridView
-                  items={gridData.map((p) => ({
-                    id: p.id,
-                    title: p.name,
-                    slug: p.id,
-                    visibility: 'public',
-                    evaluation_status: p.evaluationStatus,
-                    createdAt: p.createdAt,
-                    updatedAt: p.updatedAt,
-                    cover: null,
-                    stats: { views: 0, likes: 0, comments: 0 },
-                    folder: p.folderPath ? { id: p.folderId, name: p.folderPath } : undefined,
-                    province: p.provinceName
-                      ? { id: p.provinceId ?? '', name: p.provinceName }
-                      : undefined,
-                    country: p.countryName
-                      ? { id: p.countryId ?? '', name: p.countryName }
-                      : undefined,
-                    imageCount: p.imageCount,
-                    videoCount: p.videoCount,
-                  }))}
-                  isLoading={false}
-                  onEdit={(id) => navigate(`/projects/${id}`)}
-                  onDelete={(item) => void handleDelete(item.id)}
-                  onEvaluate={(item) => setReviewProjectId(item.id)}
-                  canEvaluate
-                />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <ProjectGridView
+                    items={gridData.map((p) => ({
+                      id: p.id,
+                      title: p.name,
+                      slug: p.id,
+                      visibility: 'public',
+                      evaluation_status: p.evaluationStatus,
+                      createdAt: p.createdAt,
+                      updatedAt: p.updatedAt,
+                      cover: null,
+                      stats: { views: 0, likes: 0, comments: 0 },
+                      folder: p.folderPath ? { id: p.folderId, name: p.folderPath } : undefined,
+                      province: p.provinceName
+                        ? { id: p.provinceId ?? '', name: p.provinceName }
+                        : undefined,
+                      country: p.countryName
+                        ? { id: p.countryId ?? '', name: p.countryName }
+                        : undefined,
+                      imageCount: p.imageCount,
+                      videoCount: p.videoCount,
+                    }))}
+                    isLoading={false}
+                    onView={(id) => navigate(`/projects/${id}`)}
+                    onEdit={(id) => navigate(`/projects/${id}`)}
+                    onDelete={(item) => void handleDelete(item.id)}
+                    onEvaluate={(item) => setReviewProjectId(item.id)}
+                    canEvaluate
+                  />
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'flex-end',
+                      marginTop: 12,
+                      paddingBottom: 16,
+                    }}
+                  >
+                    <Pagination
+                      current={urlState.page}
+                      pageSize={urlState.pageSize}
+                      total={totalCount}
+                      showSizeChanger
+                      pageSizeOptions={[10, 20, 50, 100]}
+                      showTotal={(total, range) =>
+                        t('common.paginationTotal', {
+                          start: range[0],
+                          end: range[1],
+                          total,
+                        })
+                      }
+                      onChange={(page, pageSize) => {
+                        void setUrlState({ page, pageSize });
+                      }}
+                    />
+                  </div>
+                </div>
               ) : (
                 domList.table
               )}
@@ -500,15 +556,17 @@ export function ProjectsPage() {
           )}
           toolBarRender={() => [
             /* View mode toggle */
-            <Tooltip key="view-list" title="Dạng danh sách">
+            <Tooltip key="view-list" title={t('projects.viewList')}>
               <Button
+                aria-label={t('projects.viewList')}
                 icon={<LayoutList size={16} />}
                 type={viewMode === 'list' ? 'primary' : 'default'}
                 onClick={() => setViewMode('list')}
               />
             </Tooltip>,
-            <Tooltip key="view-grid" title="Dạng lưới">
+            <Tooltip key="view-grid" title={t('projects.viewGrid')}>
               <Button
+                aria-label={t('projects.viewGrid')}
                 icon={<LayoutGrid size={16} />}
                 type={viewMode === 'grid' ? 'primary' : 'default'}
                 onClick={() => setViewMode('grid')}
