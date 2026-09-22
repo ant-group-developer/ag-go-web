@@ -4,6 +4,7 @@ import { useAuth0 } from '@auth0/auth0-react';
 import { theme as antdTheme, Avatar, Dropdown, Flex, MenuProps, Spin, Typography } from 'antd';
 import {
   Activity,
+  AppWindow,
   BarChart3,
   ClipboardCheck,
   Folder,
@@ -18,7 +19,7 @@ import {
   Tags,
   User,
 } from 'lucide-react';
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Link,
@@ -29,6 +30,7 @@ import {
   useNavigate,
   useParams,
 } from 'react-router-dom';
+import { useAccountApplications } from '../modules/account/hooks/use-account-applications';
 
 const CategoriesPage = lazy(() =>
   import('../modules/categories/pages/categories-page').then(({ CategoriesPage }) => ({
@@ -84,6 +86,7 @@ export function App() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { user, logout } = useAuth0();
+  const applications = useAccountApplications();
 
   const { token } = antdTheme.useToken();
 
@@ -93,6 +96,25 @@ export function App() {
 
   const userEmail = user?.email ?? '';
   const userInitials = userEmail.slice(0, 2).toUpperCase();
+  const appList = useMemo<NonNullable<ProLayoutProps['appList']>>(
+    () =>
+      (applications.data ?? []).map((application) => ({
+        title: application.name,
+        desc: application.description,
+        icon: application.logo ? (
+          <img
+            src={application.logo}
+            alt=""
+            style={{ width: 46, height: 46, objectFit: 'contain', borderRadius: 6 }}
+          />
+        ) : (
+          <AppWindow size={46} />
+        ),
+        url: application.website ?? undefined,
+        target: application.website ? '_blank' : undefined,
+      })),
+    [applications.data],
+  );
 
   const avatarDropdownMenu: MenuProps = {
     items: [
@@ -247,6 +269,7 @@ export function App() {
       }}
       siderWidth={220}
       className="app-shell"
+      appList={appList}
       title={t('app.title')}
       logo={false}
       layout="mix"
