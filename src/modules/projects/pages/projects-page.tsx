@@ -5,47 +5,30 @@ import {
   Alert,
   App as AntApp,
   Button,
-  Cascader,
-  Col,
-  Form,
   Image,
   Input,
   Popconfirm,
-  Row,
-  Select,
   Space,
   Tag,
   Tooltip,
   Typography,
 } from 'antd';
-import { ClipboardCheck, Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { ClipboardCheck, LayoutGrid, LayoutList, Pencil, Plus, Trash2 } from 'lucide-react';
 import { parseAsArrayOf, parseAsInteger, parseAsString, useQueryStates } from 'nuqs';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { useCategories } from '../../categories/hooks/use-categories';
-import { useCountries } from '../../countries/hooks/use-countries';
-import { useFolders } from '../../folders/hooks/use-folders';
-import { buildFolderCascaderOptions } from '../../folders/utils/build-folder-cascader-options';
 import { getAssetPreviewUrl } from '../../media/api/media';
-import { useProvinces } from '../../provinces/hooks/use-provinces';
-import { useTags } from '../../tags/hooks/use-tags';
 import { getProjects } from '../api/projects';
 import { CreateProjectModal } from '../components/create-project-modal';
+import { ProjectFilterPopover } from '../components/project-filter-popover';
+import type { ProjectFilterValues } from '../components/project-filter-popover';
+import { ProjectGridView } from '../components/project-grid-view';
 import { ProjectReviewDrawer } from '../components/project-review-drawer';
 import { useDeleteProject } from '../hooks/use-projects';
 import { projectQueryKeys } from '../queries/project-query-keys';
 import type { ProjectListParams } from '../types/project-list-params.type';
 import type { Project } from '../types/project.type';
-
-type ProjectFilterValues = {
-  keyword?: string;
-  folderPath?: string[];
-  countryId?: string;
-  provinceId?: string;
-  categoryId?: string;
-  tagIds?: string[];
-};
 
 const projectUrlParams = {
   keyword: parseAsString,
@@ -154,38 +137,42 @@ export function ProjectsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const actionRef = useRef<ActionType | undefined>(undefined);
-  const [filterForm] = Form.useForm<ProjectFilterValues>();
   const [urlState, setUrlState] = useQueryStates(projectUrlParams, {
     history: 'replace',
   });
   const [createOpen, setCreateOpen] = useState(false);
   const [reviewProjectId, setReviewProjectId] = useState<string>();
   const [listError, setListError] = useState<string>();
-  const countryId = Form.useWatch('countryId', filterForm);
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
+  const [gridData, setGridData] = useState<Project[]>([]);
+
+  // Local filter state for popover (controlled)
+  const [filterValues, setFilterValues] = useState<ProjectFilterValues>({
+    keyword: urlState.keyword ?? undefined,
+    folderPath: urlState.folderId ? [urlState.folderId] : undefined,
+    countryId: urlState.countryId ?? undefined,
+    provinceId: urlState.provinceId ?? undefined,
+    categoryId: urlState.categoryId ?? undefined,
+    tagIds: urlState.tagIds?.length ? urlState.tagIds : undefined,
+  });
+
+  const [keywordInput, setKeywordInput] = useState(urlState.keyword ?? '');
+
   const projectsDelete = useDeleteProject();
-  const folders = useFolders();
-  const categories = useCategories();
-  const countries = useCountries();
-  const tags = useTags();
-  const provinces = useProvinces({ page: 1, pageSize: 100, countryId }, Boolean(countryId));
-  const folderOptions = useMemo(
-    () => buildFolderCascaderOptions(folders.data ?? []),
-    [folders.data],
+
+  const activeFilterCount = useMemo(
+    () =>
+      [
+        filterValues.keyword,
+        filterValues.folderPath?.length,
+        filterValues.countryId || filterValues.provinceId,
+        filterValues.categoryId,
+        filterValues.tagIds?.length,
+      ].filter(Boolean).length,
+    [filterValues],
   );
 
-  useEffect(() => {
-    const selectedFolder = folders.data?.find((folder) => folder.id === urlState.folderId);
-    filterForm.setFieldsValue({
-      keyword: urlState.keyword ?? undefined,
-      folderPath: selectedFolder?.pathIds ?? (urlState.folderId ? [urlState.folderId] : undefined),
-      tagIds: urlState.tagIds,
-      countryId: urlState.countryId ?? undefined,
-      provinceId: urlState.provinceId ?? undefined,
-      categoryId: urlState.categoryId ?? undefined,
-    });
-  }, [filterForm, folders.data, urlState]);
-
-  const applyFilters = async (values: ProjectFilterValues) => {
+  const applyFilter = async (values: ProjectFilterValues) => {
     await setUrlState({
       keyword: values.keyword?.trim() || null,
       folderId: values.folderPath?.at(-1) ?? null,
@@ -195,6 +182,33 @@ export function ProjectsPage() {
       categoryId: values.categoryId ?? null,
       page: 1,
     });
+    void actionRef.current?.reload();
+  };
+
+  const handleFilterChange = (values: ProjectFilterValues) => {
+    setFilterValues(values);
+    void applyFilter(values);
+  };
+
+  const handleClearFilter = () => {
+    setFilterValues({});
+    setKeywordInput('');
+    void setUrlState({
+      keyword: null,
+      folderId: null,
+      tagIds: null,
+      countryId: null,
+      provinceId: null,
+      categoryId: null,
+      page: 1,
+    });
+    void actionRef.current?.reload();
+  };
+
+  const handleKeywordSearch = () => {
+    const newValues = { ...filterValues, keyword: keywordInput.trim() || undefined };
+    setFilterValues(newValues);
+    void applyFilter(newValues);
   };
 
   const handleDelete = async (projectId: string) => {
@@ -368,110 +382,6 @@ export function ProjectsPage() {
           </Button>,
         ]}
       >
-        <Form<ProjectFilterValues>
-          form={filterForm}
-          layout="vertical"
-          onFinish={applyFilters}
-          style={{ marginBottom: 16 }}
-        >
-          <Row gutter={[12, 0]} align="bottom">
-            <Col xs={24} sm={12} lg={8} xxl={4}>
-              <Form.Item name="keyword" label={t('projects.keyword')}>
-                <Input allowClear placeholder={t('projects.keywordPlaceholder')} />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12} lg={8} xxl={4}>
-              <Form.Item name="folderPath" label={t('projects.folder')}>
-                <Cascader
-                  allowClear
-                  changeOnSelect
-                  options={folderOptions}
-                  placeholder={t('projects.folderFilterPlaceholder')}
-                  showSearch
-                />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12} lg={8} xxl={4}>
-              <Form.Item name="tagIds" label={t('projects.tags')}>
-                <Select
-                  allowClear
-                  mode="multiple"
-                  optionFilterProp="label"
-                  options={tags.data?.map((tag) => ({ value: tag.id, label: tag.name }))}
-                  placeholder={t('projects.tagsFilterPlaceholder')}
-                  showSearch
-                />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12} lg={8} xxl={4}>
-              <Form.Item name="countryId" label={t('projects.country')}>
-                <Select
-                  allowClear
-                  optionFilterProp="label"
-                  options={countries.data?.map((country) => ({
-                    value: country.id,
-                    label: country.name,
-                  }))}
-                  placeholder={t('projects.countryPlaceholder')}
-                  showSearch
-                  onChange={() => filterForm.setFieldValue('provinceId', undefined)}
-                />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12} lg={8} xxl={4}>
-              <Form.Item name="provinceId" label={t('projects.province')}>
-                <Select
-                  allowClear
-                  disabled={!countryId}
-                  loading={provinces.isPending}
-                  optionFilterProp="label"
-                  options={provinces.data?.items.map((province) => ({
-                    value: province.id,
-                    label: province.name,
-                  }))}
-                  placeholder={t('projects.provincePlaceholder')}
-                  showSearch
-                />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12} lg={8} xxl={4}>
-              <Form.Item name="categoryId" label={t('projects.category')}>
-                <Select
-                  allowClear
-                  optionFilterProp="label"
-                  options={categories.data?.map((category) => ({
-                    value: category.id,
-                    label: category.name,
-                  }))}
-                  placeholder={t('projects.categoryPlaceholder')}
-                  showSearch
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Space>
-            <Button htmlType="submit" icon={<Search size={16} />} type="primary">
-              {t('common.search')}
-            </Button>
-            <Button
-              onClick={() => {
-                filterForm.resetFields();
-                void setUrlState({
-                  keyword: null,
-                  folderId: null,
-                  tagIds: null,
-                  countryId: null,
-                  provinceId: null,
-                  categoryId: null,
-                  page: 1,
-                });
-              }}
-            >
-              {t('common.reset')}
-            </Button>
-          </Space>
-        </Form>
-
         {listError ? (
           <Alert
             closable
@@ -490,6 +400,25 @@ export function ProjectsPage() {
             persistenceKey: 'ag-go.projects.columns.v1',
             persistenceType: 'localStorage',
           }}
+          headerTitle={
+            <Space.Compact style={{ width: 420 }}>
+              <ProjectFilterPopover
+                value={filterValues}
+                onChange={handleFilterChange}
+                onClear={handleClearFilter}
+                activeCount={activeFilterCount}
+              />
+              <Input.Search
+                allowClear
+                placeholder="Tìm kiếm theo tên dự án"
+                value={keywordInput}
+                onChange={(e) => setKeywordInput(e.target.value)}
+                onSearch={handleKeywordSearch}
+                onPressEnter={handleKeywordSearch}
+                style={{ flex: 1 }}
+              />
+            </Space.Compact>
+          }
           options={{ reload: true, density: false, setting: true, fullScreen: false }}
           pagination={{
             current: urlState.page,
@@ -522,6 +451,7 @@ export function ProjectsPage() {
                 queryFn: () => getProjects(params),
               });
               setListError(undefined);
+              setGridData(result.items);
               return { data: result.items, success: true, total: result.total };
             } catch (error) {
               setListError(error instanceof Error ? error.message : t('projects.loadFailed'));
@@ -532,6 +462,65 @@ export function ProjectsPage() {
           search={false}
           scroll={{ x: 1680 }}
           sticky={{ offsetHeader: 56 }}
+          tableRender={(_props, _defaultDom, domList) => (
+            <>
+              {domList.toolbar}
+              {viewMode === 'grid' ? (
+                <ProjectGridView
+                  items={gridData.map((p) => ({
+                    id: p.id,
+                    title: p.name,
+                    slug: p.id,
+                    visibility: 'public',
+                    evaluation_status: p.evaluationStatus,
+                    createdAt: p.createdAt,
+                    updatedAt: p.updatedAt,
+                    cover: null,
+                    stats: { views: 0, likes: 0, comments: 0 },
+                    folder: p.folderPath ? { id: p.folderId, name: p.folderPath } : undefined,
+                    province: p.provinceName
+                      ? { id: p.provinceId ?? '', name: p.provinceName }
+                      : undefined,
+                    country: p.countryName
+                      ? { id: p.countryId ?? '', name: p.countryName }
+                      : undefined,
+                    imageCount: p.imageCount,
+                    videoCount: p.videoCount,
+                  }))}
+                  isLoading={false}
+                  onEdit={(id) => navigate(`/projects/${id}`)}
+                  onDelete={(item) => void handleDelete(item.id)}
+                  onEvaluate={(item) => setReviewProjectId(item.id)}
+                  canEvaluate
+                />
+              ) : (
+                domList.table
+              )}
+            </>
+          )}
+          toolBarRender={() => [
+            /* View mode toggle */
+            <Tooltip
+              key="view-list"
+              title="Dạng danh sách"
+            >
+              <Button
+                icon={<LayoutList size={16} />}
+                type={viewMode === 'list' ? 'primary' : 'default'}
+                onClick={() => setViewMode('list')}
+              />
+            </Tooltip>,
+            <Tooltip
+              key="view-grid"
+              title="Dạng lưới"
+            >
+              <Button
+                icon={<LayoutGrid size={16} />}
+                type={viewMode === 'grid' ? 'primary' : 'default'}
+                onClick={() => setViewMode('grid')}
+              />
+            </Tooltip>,
+          ]}
           onChange={(pagination) => {
             void setUrlState({
               page: pagination.current ?? 1,
