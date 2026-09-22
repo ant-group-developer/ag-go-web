@@ -20,7 +20,7 @@ import { useTags } from '../../tags/hooks/use-tags';
 
 export type ProjectFilterValues = {
   keyword?: string;
-  folderIds?: string[];
+  folderId?: string;
   countryId?: string;
   provinceId?: string;
   categoryId?: string;
@@ -138,19 +138,19 @@ const filterCategories: Array<{
   icon: React.ReactNode;
   label: string;
 }> = [
-  { key: 'keyword', icon: <Search size={16} />, label: 'Từ khóa' },
-  { key: 'folder', icon: <FolderIcon size={16} />, label: 'Thư mục' },
-  { key: 'category', icon: <Layers size={16} />, label: 'Danh mục' },
-  { key: 'tags', icon: <TagIcon size={16} />, label: 'Tags' },
-  { key: 'location', icon: <MapPin size={16} />, label: 'Địa điểm' },
-];
+    { key: 'keyword', icon: <Search size={16} />, label: 'Từ khóa' },
+    { key: 'folder', icon: <FolderIcon size={16} />, label: 'Thư mục' },
+    { key: 'category', icon: <Layers size={16} />, label: 'Danh mục' },
+    { key: 'tags', icon: <TagIcon size={16} />, label: 'Tags' },
+    { key: 'location', icon: <MapPin size={16} />, label: 'Địa điểm' },
+  ];
 
 function getCategoryFilterCount(key: FilterCategory, value: ProjectFilterValues): number {
   switch (key) {
     case 'keyword':
       return value.keyword?.trim() ? 1 : 0;
     case 'folder':
-      return value.folderIds?.length ?? 0;
+      return value.folderId?.trim() ? 1 : 0;
     case 'category':
       return value.categoryId ? 1 : 0;
     case 'tags':
@@ -209,7 +209,7 @@ function FilterContent({
     () =>
       [
         value.keyword?.trim(),
-        value.folderIds?.length,
+        value.folderId?.trim(),
         value.countryId || value.provinceId,
         value.categoryId,
         value.tagIds?.length,
@@ -265,11 +265,11 @@ function FilterContent({
                   {t('projects.folder')}
                 </Typography.Text>
               </div>
-              {(value.folderIds?.length ?? 0) > 0 && (
+              {value.folderId?.trim() && (
                 <Button
                   type="link"
                   size="small"
-                  onClick={() => onChange({ ...value, folderIds: undefined })}
+                  onClick={() => onChange({ ...value, folderId: undefined })}
                   style={{ padding: 0, fontSize: 12 }}
                 >
                   {t('projects.clearFolder')}
@@ -330,7 +330,7 @@ function FilterContent({
                   checkStrictly={false}
                   selectable={false}
                   treeData={folderTree}
-                  checkedKeys={value.folderIds ?? []}
+                  checkedKeys={value.folderId ? [value.folderId] : []}
                   expandedKeys={expandedKeys}
                   autoExpandParent={autoExpandParent}
                   onExpand={(keys) => {
@@ -342,7 +342,8 @@ function FilterContent({
                     const ids = (keys as string[]).map(String);
                     onChange({
                       ...value,
-                      folderIds: ids.length > 0 ? ids : undefined,
+                      // folderIds: ids.length > 0 ? ids : undefined,
+                      folderId: ids.length > 0 ? ids[0] : undefined,
                     });
                   }}
                   style={{ background: 'transparent', fontSize: 13.5 }}
