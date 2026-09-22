@@ -11,6 +11,7 @@ import {
   Popconfirm,
   Row,
   Skeleton,
+  Tag,
   Tooltip,
   Typography,
   theme,
@@ -28,8 +29,8 @@ import {
   Trash,
 } from 'lucide-react';
 
-import { PROJECT_EVALUATION_STATUS, PROJECT_EVALUATION_STATUS_LABEL } from '../constants/index';
 import { formatDate } from '../utils/date.util';
+import { getProjectStatus } from '../utils/project-status.util';
 import styles from './project-grid-view.module.css';
 
 const { Paragraph } = Typography;
@@ -76,17 +77,13 @@ export interface ProjectGridItem {
   videoCount?: number;
 }
 
-// Antd Grid mặc định chỉ có breakpoint tới `xxl` (>=1600px) nên nếu gán span cố định
-// cho xxl (vd span=6 => 4 cột), màn hình rộng hơn 1600px bao nhiêu cũng chỉ dừng ở 4 cột.
-// Hook này đo bề rộng thực của container (ResizeObserver) rồi tự tính span cho Col,
-// cho phép grid tiếp tục thêm cột khi container rất rộng (2K, ultrawide, v.v.).
 const GRID_BREAKPOINTS: { minWidth: number; span: number }[] = [
-  { minWidth: 2200, span: 3 }, // >=2200px: 8 cột
-  { minWidth: 1900, span: 4 }, // >=1900px: 6 cột
-  { minWidth: 1600, span: 6 }, // >=1600px: 4 cột (tương đương xxl mặc định)
-  { minWidth: 1200, span: 8 }, // >=1200px: 3 cột (tương đương xl)
-  { minWidth: 768, span: 12 }, // >=768px: 2 cột (tương đương md/lg)
-  { minWidth: 0, span: 24 }, // còn lại: 1 cột
+  { minWidth: 2200, span: 4 },
+  { minWidth: 1900, span: 4 },
+  { minWidth: 1600, span: 6 },
+  { minWidth: 1200, span: 8 },
+  { minWidth: 768, span: 12 },
+  { minWidth: 0, span: 24 },
 ];
 
 const getColSpanByWidth = (width: number) => {
@@ -122,55 +119,6 @@ function useResponsiveColSpan<T extends HTMLElement = HTMLDivElement>() {
   return { containerRef, colSpan };
 }
 
-export const getEvaluationConfig = (
-  status: string | undefined,
-  token: any,
-  t?: (key: string) => string,
-) => {
-  if (!status) return null;
-
-  const statusStr = status.toLowerCase();
-  const isApproved = statusStr === PROJECT_EVALUATION_STATUS.COMPLETED;
-  const isRejected = statusStr === PROJECT_EVALUATION_STATUS.FAILED;
-  const isPartial = statusStr === PROJECT_EVALUATION_STATUS.PARTIALLY_COMPLETED;
-  const isDraft = statusStr === PROJECT_EVALUATION_STATUS.DRAFT;
-
-  let label: string;
-  if (t) {
-    if (isApproved) label = t('projects.statusCompleted');
-    else if (isRejected) label = t('projects.statusFailed');
-    else if (isPartial) label = t('projects.statusPartiallyCompleted');
-    else if (isDraft) label = t('projects.statusDraft');
-    else label = t('projects.statusNeedsEvaluation');
-  } else {
-    label =
-      PROJECT_EVALUATION_STATUS_LABEL[statusStr as keyof typeof PROJECT_EVALUATION_STATUS_LABEL] ||
-      PROJECT_EVALUATION_STATUS_LABEL[PROJECT_EVALUATION_STATUS.NEEDS_EVALUATION];
-  }
-
-  return {
-    color: isApproved
-      ? token.colorSuccess
-      : isRejected
-        ? token.colorError
-        : isPartial
-          ? token.colorInfo
-          : isDraft
-            ? token.colorTextSecondary
-            : token.colorWarning,
-    bgColor: isApproved
-      ? token.colorSuccessBg
-      : isRejected
-        ? token.colorErrorBg
-        : isPartial
-          ? token.colorInfoBg
-          : isDraft
-            ? token.colorFillSecondary
-            : token.colorWarningBg,
-    label,
-  };
-};
-
 interface ProjectGridViewProps {
   items: ProjectGridItem[];
   isLoading: boolean;
@@ -186,7 +134,6 @@ interface ProjectGridViewProps {
 export function ProjectGridView({
   items,
   isLoading,
-  isAdminView = false,
   canEvaluate = false,
   onView,
   onEdit,
@@ -198,8 +145,8 @@ export function ProjectGridView({
   const { t } = useTranslation();
   const { containerRef, colSpan } = useResponsiveColSpan<HTMLDivElement>();
 
-  const [drawerOpen, setDrawerOpen] = React.useState(false);
-  const [selectedProjectId, setSelectedProjectId] = React.useState<string | null>(null);
+  const [, setDrawerOpen] = React.useState(false);
+  const [, setSelectedProjectId] = React.useState<string | null>(null);
 
   const handleOpenDrawer = (projectId: string) => {
     if (onView) {
@@ -279,7 +226,7 @@ export function ProjectGridView({
     <div ref={containerRef}>
       <Row gutter={[24, 24]}>
         {items.map((item) => {
-          const evalConfig = getEvaluationConfig(item.evaluation_status, token, t);
+          const status = getProjectStatus(item.evaluation_status ?? '');
 
           return (
             <Col span={colSpan} key={item.id}>
@@ -295,22 +242,9 @@ export function ProjectGridView({
 
                 <div className={styles.gradient} />
 
-                {evalConfig && (
-                  <div className={styles.statusTag}>
-                    <div
-                      style={{
-                        backgroundColor: evalConfig.bgColor,
-                        color: evalConfig.color,
-                        padding: '2px 8px',
-                        borderRadius: 4,
-                        fontSize: 12,
-                        fontWeight: 600,
-                      }}
-                    >
-                      {evalConfig.label}
-                    </div>
-                  </div>
-                )}
+                <div className={styles.statusTag}>
+                  <Tag color={status.color}>{t(status.label)}</Tag>
+                </div>
 
                 {/* Media counts - góc phải trên */}
                 <div className={styles.mediaCounts}>
