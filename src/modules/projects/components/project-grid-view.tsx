@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -15,7 +15,6 @@ import {
   Typography,
   theme,
 } from 'antd';
-import dayjs from 'dayjs';
 import {
   Camera,
   CheckCircle,
@@ -30,8 +29,8 @@ import {
 } from 'lucide-react';
 
 import { PROJECT_EVALUATION_STATUS, PROJECT_EVALUATION_STATUS_LABEL } from '../constants/index';
-import styles from './project-grid-view.module.css';
 import { formatDate } from '../utils/date.util';
+import styles from './project-grid-view.module.css';
 
 const { Paragraph } = Typography;
 
@@ -75,6 +74,52 @@ export interface ProjectGridItem {
   };
   imageCount?: number;
   videoCount?: number;
+}
+
+// Antd Grid mặc định chỉ có breakpoint tới `xxl` (>=1600px) nên nếu gán span cố định
+// cho xxl (vd span=6 => 4 cột), màn hình rộng hơn 1600px bao nhiêu cũng chỉ dừng ở 4 cột.
+// Hook này đo bề rộng thực của container (ResizeObserver) rồi tự tính span cho Col,
+// cho phép grid tiếp tục thêm cột khi container rất rộng (2K, ultrawide, v.v.).
+const GRID_BREAKPOINTS: { minWidth: number; span: number }[] = [
+  { minWidth: 2200, span: 3 }, // >=2200px: 8 cột
+  { minWidth: 1900, span: 4 }, // >=1900px: 6 cột
+  { minWidth: 1600, span: 6 }, // >=1600px: 4 cột (tương đương xxl mặc định)
+  { minWidth: 1200, span: 8 }, // >=1200px: 3 cột (tương đương xl)
+  { minWidth: 768, span: 12 }, // >=768px: 2 cột (tương đương md/lg)
+  { minWidth: 0, span: 24 }, // còn lại: 1 cột
+];
+
+const getColSpanByWidth = (width: number) => {
+  const matched = GRID_BREAKPOINTS.find((bp) => width >= bp.minWidth);
+  return matched ? matched.span : 24;
+};
+
+function useResponsiveColSpan<T extends HTMLElement = HTMLDivElement>() {
+  const [colSpan, setColSpan] = useState<number>(8);
+  const observerRef = useRef<ResizeObserver | null>(null);
+
+  const containerRef = useCallback((node: T | null) => {
+    // Gỡ observer cũ (nếu có) trước khi gắn vào node mới
+    observerRef.current?.disconnect();
+    observerRef.current = null;
+
+    if (!node || typeof ResizeObserver === 'undefined') return;
+
+    setColSpan(getColSpanByWidth(node.getBoundingClientRect().width));
+
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (entry) setColSpan(getColSpanByWidth(entry.contentRect.width));
+    });
+    observer.observe(node);
+    observerRef.current = observer;
+  }, []);
+
+  useEffect(() => {
+    return () => observerRef.current?.disconnect();
+  }, []);
+
+  return { containerRef, colSpan };
 }
 
 export const getEvaluationConfig = (
@@ -151,6 +196,7 @@ export function ProjectGridView({
 }: ProjectGridViewProps) {
   const { token } = theme.useToken();
   const { t } = useTranslation();
+  const { containerRef, colSpan } = useResponsiveColSpan<HTMLDivElement>();
 
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [selectedProjectId, setSelectedProjectId] = React.useState<string | null>(null);
@@ -166,58 +212,56 @@ export function ProjectGridView({
 
   if (isLoading) {
     return (
-      <Row gutter={[24, 24]}>
-        {Array.from({ length: 8 }).map((_, i) => (
-          <Col xs={24} sm={24} md={12} lg={12} xl={8} xxl={6} key={`skeleton-${i}`}>
-            <div
-              className={styles.card}
-              style={{
-                border: `1px solid ${token.colorBorderSecondary}`,
-                cursor: 'default',
-              }}
-            >
-              {/* Nền ảnh mờ */}
+      <div ref={containerRef}>
+        <Row gutter={[24, 24]}>
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Col span={colSpan} key={`skeleton-${i}`}>
               <div
-                className={styles.skeletonCard}
-                style={{ position: 'absolute', inset: 0, borderRadius: 0 }}
-              />
-
-              {/* Status Tag (Top Left) */}
-              <div style={{ position: 'absolute', top: 12, left: 12 }}>
-                <Skeleton.Button active size="small" style={{ width: 80, borderRadius: 100 }} />
-              </div>
-
-              {/* Media Counts (Top Right) */}
-              <div style={{ position: 'absolute', top: 12, right: 12, display: 'flex', gap: 8 }}>
-                <Skeleton.Button active size="small" style={{ width: 50, borderRadius: 100 }} />
-                <Skeleton.Button active size="small" style={{ width: 50, borderRadius: 100 }} />
-              </div>
-
-              {/* Title & Info (Bottom) */}
-              <div className={styles.titleWrapper}>
-                <Skeleton.Input
-                  active
-                  size="small"
-                  style={{ width: '90%', height: 24, borderRadius: 4 }}
+                className={styles.card}
+                style={{
+                  border: `1px solid ${token.colorBorderSecondary}`,
+                  cursor: 'default',
+                }}
+              >
+                <div
+                  className={styles.skeletonCard}
+                  style={{ position: 'absolute', inset: 0, borderRadius: 0 }}
                 />
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                  <Skeleton.Avatar
-                    active
-                    size="small"
-                    shape="circle"
-                    style={{ width: 20, height: 20 }}
-                  />
+
+                <div style={{ position: 'absolute', top: 12, left: 12 }}>
+                  <Skeleton.Button active size="small" style={{ width: 80, borderRadius: 100 }} />
+                </div>
+
+                <div style={{ position: 'absolute', top: 12, right: 12, display: 'flex', gap: 8 }}>
+                  <Skeleton.Button active size="small" style={{ width: 50, borderRadius: 100 }} />
+                  <Skeleton.Button active size="small" style={{ width: 50, borderRadius: 100 }} />
+                </div>
+
+                <div className={styles.titleWrapper}>
                   <Skeleton.Input
                     active
                     size="small"
-                    style={{ width: '60%', height: 16, borderRadius: 4 }}
+                    style={{ width: '90%', height: 24, borderRadius: 4 }}
                   />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                    <Skeleton.Avatar
+                      active
+                      size="small"
+                      shape="circle"
+                      style={{ width: 20, height: 20 }}
+                    />
+                    <Skeleton.Input
+                      active
+                      size="small"
+                      style={{ width: '60%', height: 16, borderRadius: 4 }}
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
-          </Col>
-        ))}
-      </Row>
+            </Col>
+          ))}
+        </Row>
+      </div>
     );
   }
 
@@ -232,13 +276,13 @@ export function ProjectGridView({
   }
 
   return (
-    <>
+    <div ref={containerRef}>
       <Row gutter={[24, 24]}>
         {items.map((item) => {
           const evalConfig = getEvaluationConfig(item.evaluation_status, token, t);
 
           return (
-            <Col xs={24} sm={24} md={12} lg={12} xl={8} xxl={6} key={item.id}>
+            <Col span={colSpan} key={item.id}>
               <div className={styles.card}>
                 {/* Ảnh full card */}
                 {item.cover?.url ? (
@@ -446,6 +490,6 @@ export function ProjectGridView({
           );
         })}
       </Row>
-    </>
+    </div>
   );
 }

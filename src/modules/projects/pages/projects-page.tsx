@@ -1,3 +1,4 @@
+import { AppstoreOutlined, BarsOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { PageContainer, ProTable } from '@ant-design/pro-components';
 import { useQueryClient } from '@tanstack/react-query';
@@ -9,13 +10,15 @@ import {
   Input,
   Pagination,
   Popconfirm,
+  Radio,
   Space,
   Tag,
   Tooltip,
   Typography,
   theme,
 } from 'antd';
-import { ClipboardCheck, LayoutGrid, LayoutList, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ClipboardCheck, Pencil, Plus, Trash2 } from 'lucide-react';
+
 import { parseAsArrayOf, parseAsInteger, parseAsString, useQueryStates } from 'nuqs';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -529,23 +532,34 @@ export function ProjectsPage() {
             </>
           )}
           toolBarRender={() => [
-            /* View mode toggle */
-            <Tooltip key="view-list" title={t('projects.viewList')}>
-              <Button
-                aria-label={t('projects.viewList')}
-                icon={<LayoutList size={16} />}
-                type={viewMode === 'list' ? 'primary' : 'default'}
-                onClick={() => setViewMode('list')}
-              />
-            </Tooltip>,
-            <Tooltip key="view-grid" title={t('projects.viewGrid')}>
-              <Button
-                aria-label={t('projects.viewGrid')}
-                icon={<LayoutGrid size={16} />}
-                type={viewMode === 'grid' ? 'primary' : 'default'}
-                onClick={() => setViewMode('grid')}
-              />
-            </Tooltip>,
+            <Radio.Group
+              key="view-mode"
+              value={viewMode}
+              onChange={(e) => setViewMode(e.target.value)}
+              buttonStyle="solid"
+            >
+              <Radio.Button
+                value="list"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <BarsOutlined />
+              </Radio.Button>
+
+              <Radio.Button
+                value="grid"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <AppstoreOutlined />
+              </Radio.Button>
+            </Radio.Group>,
           ]}
           onChange={(pagination) => {
             void setUrlState({
