@@ -1,444 +1,420 @@
 {
-    "summary": {
-        "totalProjects": {
-            "value": 248,
-            "deltaPercent": 12,
-            "trend": "up"
-        },
-        "totalMediaFiles": {
-            "value": 12540,
-            "deltaPercent": 18,
-            "trend": "up"
-        },
-        "pendingEvaluation": {
-            "value": 342,
-            "deltaPercent": 5,
-            "trend": "down"
-        },
-        "approvedMedia": {
-            "value": 10892,
-            "deltaPercent": 16,
-            "trend": "up"
-        },
-        "rejectedMedia": {
-            "value": 1306,
-            "deltaPercent": 8,
-            "trend": "down"
-        },
-        "totalUserProjects": {
-            "value": 78,
-            "deltaPercent": 10,
-            "trend": "down"
-        }
+  "summary": {
+    "totalProjects": {
+      "value": 248,
+      "deltaPercent": 12,
+      "trend": "up"
     },
-    "projectOverview": {
-        "range": "last30days",
-        "labels": [
-            "Aug 24",
-            "Aug 27",
-            "Aug 30",
-            "Sep 02",
-            "Sep 05",
-            "Sep 08",
-            "Sep 11",
-            "Sep 14",
-            "Sep 17",
-            "Sep 20",
-            "Sep 23"
-        ],
-        "projects": [
-            18,
-            22,
-            20,
-            26,
-            24,
-            30,
-            28,
-            33,
-            31,
-            29,
-            35
-        ],
-        "mediaFiles": [
-            420,
-            480,
-            460,
-            560,
-            540,
-            610,
-            590,
-            700,
-            680,
-            650,
-            760
-        ]
+    "totalMediaFiles": {
+      "value": 12540,
+      "deltaPercent": 18,
+      "trend": "up"
     },
-    "mediaEvaluationResults": {
-        "total": 12540,
-        "segments": [
-            {
-                "key": "approved",
-                "label": "Approved",
-                "value": 10892,
-                "percent": 86.8,
-                "color": "#22c55e"
-            },
-            {
-                "key": "rejected",
-                "label": "Rejected",
-                "value": 1306,
-                "percent": 10.4,
-                "color": "#f87171"
-            },
-            {
-                "key": "needsReview",
-                "label": "Needs Review",
-                "value": 342,
-                "percent": 2.8,
-                "color": "#fbbf24"
-            }
-        ]
+    "pendingEvaluation": {
+      "value": 342,
+      "deltaPercent": 5,
+      "trend": "down"
     },
-    "recentActivities": [
-        {
-            "id": "act-1",
-            "type": "approved",
-            "text": "Media \"IMG_3847.jpg\" was approved",
-            "project": "Summer Campaign",
-            "time": "2 hours ago"
-        },
-        {
-            "id": "act-2",
-            "type": "rejected",
-            "text": "Media \"video_001.mp4\" was rejected",
-            "project": "Brand Promo",
-            "time": "3 hours ago"
-        },
-        {
-            "id": "act-3",
-            "type": "created",
-            "text": "New project created",
-            "project": "Fall Collection",
-            "time": "5 hours ago"
-        },
-        {
-            "id": "act-4",
-            "type": "evaluated",
-            "text": "Evaluation completed",
-            "project": "Product Launch",
-            "time": "6 hours ago"
-        },
-        {
-            "id": "act-5",
-            "type": "uploaded",
-            "text": "Media \"banner_01.png\" was uploaded",
-            "project": "Winter Sale",
-            "time": "8 hours ago"
-        }
+    "approvedMedia": {
+      "value": 10892,
+      "deltaPercent": 16,
+      "trend": "up"
+    },
+    "rejectedMedia": {
+      "value": 1306,
+      "deltaPercent": 8,
+      "trend": "down"
+    },
+    "totalUserProjects": {
+      "value": 78,
+      "deltaPercent": 10,
+      "trend": "down"
+    }
+  },
+  "projectOverview": {
+    "range": "last30days",
+    "labels": [
+      "Aug 24",
+      "Aug 27",
+      "Aug 30",
+      "Sep 02",
+      "Sep 05",
+      "Sep 08",
+      "Sep 11",
+      "Sep 14",
+      "Sep 17",
+      "Sep 20",
+      "Sep 23"
     ],
-    "topProjectsByMediaCount": [
-        {
-            "id": "p-1",
-            "name": "Summer Campaign",
-            "mediaCount": 2842,
-            "percent": 22.7
-        },
-        {
-            "id": "p-2",
-            "name": "Product Launch",
-            "mediaCount": 2316,
-            "percent": 18.5
-        },
-        {
-            "id": "p-3",
-            "name": "Brand Promo",
-            "mediaCount": 1892,
-            "percent": 15.1
-        },
-        {
-            "id": "p-4",
-            "name": "Winter Sale",
-            "mediaCount": 1437,
-            "percent": 11.5
-        },
-        {
-            "id": "p-5",
-            "name": "Fall Collection",
-            "mediaCount": 1203,
-            "percent": 9.6
-        }
-    ],
-    "mediaTypeDistribution": {
-        "total": 12540,
-        "segments": [
-            {
-                "key": "image",
-                "label": "Image",
-                "value": 7812,
-                "percent": 62.3,
-                "color": "#6366f1",
-                "size": "1,4 Gb"
-            },
-            {
-                "key": "video",
-                "label": "Video",
-                "value": 3601,
-                "percent": 28.7,
-                "color": "#f59e0b",
-                "size": "1,5 Tb"
-            }
-        ]
-    },
-    "storageStatistics": {
-        "total": {
-            "value": 5,
-            "unit": "TB"
-        },
-        "used": {
-            "value": 3.22,
-            "unit": "TB"
-        },
-        "available": {
-            "value": 1.78,
-            "unit": "TB"
-        },
-        "usedPercent": 64.4
-    },
-    "systemHealth": {
-        "status": "healthy",
-        "statusLabel": "All systems operational",
-        "uptimePercent": 99.98,
-        "lastChecked": "2 minutes ago",
-        "services": [
-            {
-                "name": "API Server",
-                "status": "healthy",
-                "latencyMs": 42
-            },
-            {
-                "name": "Database",
-                "status": "healthy",
-                "latencyMs": 12
-            },
-            {
-                "name": "Storage",
-                "status": "healthy",
-                "latencyMs": 8
-            },
-            {
-                "name": "Media Processing Queue",
-                "status": "warning",
-                "latencyMs": 210
-            },
-            {
-                "name": "CDN",
-                "status": "healthy",
-                "latencyMs": 30
-            }
-        ]
-    },
-    "topProjectsBy": {
-        "view": [
-            {
-                "id": "p-1",
-                "name": "Summer Campaign",
-                "value": 18420
-            },
-            {
-                "id": "p-2",
-                "name": "Product Launch",
-                "value": 15230
-            },
-            {
-                "id": "p-3",
-                "name": "Brand Promo",
-                "value": 12840
-            },
-            {
-                "id": "p-4",
-                "name": "Winter Sale",
-                "value": 9650
-            },
-            {
-                "id": "p-5",
-                "name": "Fall Collection",
-                "value": 7320
-            }
-        ],
-        "media": [
-            {
-                "id": "p-1",
-                "name": "Summer Campaign",
-                "value": 2842
-            },
-            {
-                "id": "p-2",
-                "name": "Product Launch",
-                "value": 2316
-            },
-            {
-                "id": "p-3",
-                "name": "Brand Promo",
-                "value": 1892
-            },
-            {
-                "id": "p-4",
-                "name": "Winter Sale",
-                "value": 1437
-            },
-            {
-                "id": "p-5",
-                "name": "Fall Collection",
-                "value": 1203
-            }
-        ],
-        "size": [
-            {
-                "id": "p-1",
-                "name": "Summer Campaign",
-                "value": 410,
-                "unit": "GB"
-            },
-            {
-                "id": "p-2",
-                "name": "Product Launch",
-                "value": 332,
-                "unit": "GB"
-            },
-            {
-                "id": "p-3",
-                "name": "Brand Promo",
-                "value": 268,
-                "unit": "GB"
-            },
-            {
-                "id": "p-4",
-                "name": "Winter Sale",
-                "value": 205,
-                "unit": "GB"
-            },
-            {
-                "id": "p-5",
-                "name": "Fall Collection",
-                "value": 172,
-                "unit": "GB"
-            }
-        ],
-        "image": [
-            {
-                "id": "p-1",
-                "name": "Summer Campaign",
-                "value": 1760
-            },
-            {
-                "id": "p-2",
-                "name": "Product Launch",
-                "value": 1435
-            },
-            {
-                "id": "p-3",
-                "name": "Brand Promo",
-                "value": 1170
-            },
-            {
-                "id": "p-4",
-                "name": "Winter Sale",
-                "value": 890
-            },
-            {
-                "id": "p-5",
-                "name": "Fall Collection",
-                "value": 745
-            }
-        ],
-        "video": [
-            {
-                "id": "p-1",
-                "name": "Summer Campaign",
-                "value": 820
-            },
-            {
-                "id": "p-2",
-                "name": "Product Launch",
-                "value": 665
-            },
-            {
-                "id": "p-3",
-                "name": "Brand Promo",
-                "value": 545
-            },
-            {
-                "id": "p-4",
-                "name": "Winter Sale",
-                "value": 415
-            },
-            {
-                "id": "p-5",
-                "name": "Fall Collection",
-                "value": 345
-            }
-        ]
-    },
-    "recentProjects": [
-        {
-            "id": "rp-1",
-            "name": "Summer Campaign",
-            "mediaCount": 842,
-            "approved": 732,
-            "approvedPercent": 86.9,
-            "rejected": 81,
-            "rejectedPercent": 9.6,
-            "pending": 29,
-            "pendingPercent": 3.4,
-            "lastUpdated": "2 hours ago"
-        },
-        {
-            "id": "rp-2",
-            "name": "Product Launch",
-            "mediaCount": 621,
-            "approved": 542,
-            "approvedPercent": 87.3,
-            "rejected": 56,
-            "rejectedPercent": 9.0,
-            "pending": 21,
-            "pendingPercent": 3.4,
-            "lastUpdated": "4 hours ago"
-        },
-        {
-            "id": "rp-3",
-            "name": "Brand Promo",
-            "mediaCount": 438,
-            "approved": 371,
-            "approvedPercent": 84.7,
-            "rejected": 49,
-            "rejectedPercent": 11.2,
-            "pending": 18,
-            "pendingPercent": 4.1,
-            "lastUpdated": "6 hours ago"
-        },
-        {
-            "id": "rp-4",
-            "name": "Winter Sale",
-            "mediaCount": 322,
-            "approved": 281,
-            "approvedPercent": 87.3,
-            "rejected": 31,
-            "rejectedPercent": 9.6,
-            "pending": 10,
-            "pendingPercent": 3.1,
-            "lastUpdated": "8 hours ago"
-        },
-        {
-            "id": "rp-5",
-            "name": "Fall Collection",
-            "mediaCount": 275,
-            "approved": 238,
-            "approvedPercent": 86.5,
-            "rejected": 27,
-            "rejectedPercent": 9.8,
-            "pending": 10,
-            "pendingPercent": 3.6,
-            "lastUpdated": "10 hours ago"
-        }
+    "projects": [18, 22, 20, 26, 24, 30, 28, 33, 31, 29, 35],
+    "mediaFiles": [420, 480, 460, 560, 540, 610, 590, 700, 680, 650, 760]
+  },
+  "mediaEvaluationResults": {
+    "total": 12540,
+    "segments": [
+      {
+        "key": "approved",
+        "label": "Approved",
+        "value": 10892,
+        "percent": 86.8,
+        "color": "#22c55e"
+      },
+      {
+        "key": "rejected",
+        "label": "Rejected",
+        "value": 1306,
+        "percent": 10.4,
+        "color": "#f87171"
+      },
+      {
+        "key": "needsReview",
+        "label": "Needs Review",
+        "value": 342,
+        "percent": 2.8,
+        "color": "#fbbf24"
+      }
     ]
+  },
+  "recentActivities": [
+    {
+      "id": "act-1",
+      "type": "approved",
+      "text": "Media \"IMG_3847.jpg\" was approved",
+      "project": "Summer Campaign",
+      "time": "2 hours ago"
+    },
+    {
+      "id": "act-2",
+      "type": "rejected",
+      "text": "Media \"video_001.mp4\" was rejected",
+      "project": "Brand Promo",
+      "time": "3 hours ago"
+    },
+    {
+      "id": "act-3",
+      "type": "created",
+      "text": "New project created",
+      "project": "Fall Collection",
+      "time": "5 hours ago"
+    },
+    {
+      "id": "act-4",
+      "type": "evaluated",
+      "text": "Evaluation completed",
+      "project": "Product Launch",
+      "time": "6 hours ago"
+    },
+    {
+      "id": "act-5",
+      "type": "uploaded",
+      "text": "Media \"banner_01.png\" was uploaded",
+      "project": "Winter Sale",
+      "time": "8 hours ago"
+    }
+  ],
+  "topProjectsByMediaCount": [
+    {
+      "id": "p-1",
+      "name": "Summer Campaign",
+      "mediaCount": 2842,
+      "percent": 22.7
+    },
+    {
+      "id": "p-2",
+      "name": "Product Launch",
+      "mediaCount": 2316,
+      "percent": 18.5
+    },
+    {
+      "id": "p-3",
+      "name": "Brand Promo",
+      "mediaCount": 1892,
+      "percent": 15.1
+    },
+    {
+      "id": "p-4",
+      "name": "Winter Sale",
+      "mediaCount": 1437,
+      "percent": 11.5
+    },
+    {
+      "id": "p-5",
+      "name": "Fall Collection",
+      "mediaCount": 1203,
+      "percent": 9.6
+    }
+  ],
+  "mediaTypeDistribution": {
+    "total": 12540,
+    "segments": [
+      {
+        "key": "image",
+        "label": "Image",
+        "value": 7812,
+        "percent": 62.3,
+        "color": "#6366f1",
+        "size": "1,4 Gb"
+      },
+      {
+        "key": "video",
+        "label": "Video",
+        "value": 3601,
+        "percent": 28.7,
+        "color": "#f59e0b",
+        "size": "1,5 Tb"
+      }
+    ]
+  },
+  "storageStatistics": {
+    "total": {
+      "value": 5,
+      "unit": "TB"
+    },
+    "used": {
+      "value": 3.22,
+      "unit": "TB"
+    },
+    "available": {
+      "value": 1.78,
+      "unit": "TB"
+    },
+    "usedPercent": 64.4
+  },
+  "systemHealth": {
+    "status": "healthy",
+    "statusLabel": "All systems operational",
+    "uptimePercent": 99.98,
+    "lastChecked": "2 minutes ago",
+    "services": [
+      {
+        "name": "API Server",
+        "status": "healthy",
+        "latencyMs": 42
+      },
+      {
+        "name": "Database",
+        "status": "healthy",
+        "latencyMs": 12
+      },
+      {
+        "name": "Storage",
+        "status": "healthy",
+        "latencyMs": 8
+      },
+      {
+        "name": "Media Processing Queue",
+        "status": "warning",
+        "latencyMs": 210
+      },
+      {
+        "name": "CDN",
+        "status": "healthy",
+        "latencyMs": 30
+      }
+    ]
+  },
+  "topProjectsBy": {
+    "view": [
+      {
+        "id": "p-1",
+        "name": "Summer Campaign",
+        "value": 18420
+      },
+      {
+        "id": "p-2",
+        "name": "Product Launch",
+        "value": 15230
+      },
+      {
+        "id": "p-3",
+        "name": "Brand Promo",
+        "value": 12840
+      },
+      {
+        "id": "p-4",
+        "name": "Winter Sale",
+        "value": 9650
+      },
+      {
+        "id": "p-5",
+        "name": "Fall Collection",
+        "value": 7320
+      }
+    ],
+    "media": [
+      {
+        "id": "p-1",
+        "name": "Summer Campaign",
+        "value": 2842
+      },
+      {
+        "id": "p-2",
+        "name": "Product Launch",
+        "value": 2316
+      },
+      {
+        "id": "p-3",
+        "name": "Brand Promo",
+        "value": 1892
+      },
+      {
+        "id": "p-4",
+        "name": "Winter Sale",
+        "value": 1437
+      },
+      {
+        "id": "p-5",
+        "name": "Fall Collection",
+        "value": 1203
+      }
+    ],
+    "size": [
+      {
+        "id": "p-1",
+        "name": "Summer Campaign",
+        "value": 410,
+        "unit": "GB"
+      },
+      {
+        "id": "p-2",
+        "name": "Product Launch",
+        "value": 332,
+        "unit": "GB"
+      },
+      {
+        "id": "p-3",
+        "name": "Brand Promo",
+        "value": 268,
+        "unit": "GB"
+      },
+      {
+        "id": "p-4",
+        "name": "Winter Sale",
+        "value": 205,
+        "unit": "GB"
+      },
+      {
+        "id": "p-5",
+        "name": "Fall Collection",
+        "value": 172,
+        "unit": "GB"
+      }
+    ],
+    "image": [
+      {
+        "id": "p-1",
+        "name": "Summer Campaign",
+        "value": 1760
+      },
+      {
+        "id": "p-2",
+        "name": "Product Launch",
+        "value": 1435
+      },
+      {
+        "id": "p-3",
+        "name": "Brand Promo",
+        "value": 1170
+      },
+      {
+        "id": "p-4",
+        "name": "Winter Sale",
+        "value": 890
+      },
+      {
+        "id": "p-5",
+        "name": "Fall Collection",
+        "value": 745
+      }
+    ],
+    "video": [
+      {
+        "id": "p-1",
+        "name": "Summer Campaign",
+        "value": 820
+      },
+      {
+        "id": "p-2",
+        "name": "Product Launch",
+        "value": 665
+      },
+      {
+        "id": "p-3",
+        "name": "Brand Promo",
+        "value": 545
+      },
+      {
+        "id": "p-4",
+        "name": "Winter Sale",
+        "value": 415
+      },
+      {
+        "id": "p-5",
+        "name": "Fall Collection",
+        "value": 345
+      }
+    ]
+  },
+  "recentProjects": [
+    {
+      "id": "rp-1",
+      "name": "Summer Campaign",
+      "mediaCount": 842,
+      "approved": 732,
+      "approvedPercent": 86.9,
+      "rejected": 81,
+      "rejectedPercent": 9.6,
+      "pending": 29,
+      "pendingPercent": 3.4,
+      "lastUpdated": "2 hours ago"
+    },
+    {
+      "id": "rp-2",
+      "name": "Product Launch",
+      "mediaCount": 621,
+      "approved": 542,
+      "approvedPercent": 87.3,
+      "rejected": 56,
+      "rejectedPercent": 9.0,
+      "pending": 21,
+      "pendingPercent": 3.4,
+      "lastUpdated": "4 hours ago"
+    },
+    {
+      "id": "rp-3",
+      "name": "Brand Promo",
+      "mediaCount": 438,
+      "approved": 371,
+      "approvedPercent": 84.7,
+      "rejected": 49,
+      "rejectedPercent": 11.2,
+      "pending": 18,
+      "pendingPercent": 4.1,
+      "lastUpdated": "6 hours ago"
+    },
+    {
+      "id": "rp-4",
+      "name": "Winter Sale",
+      "mediaCount": 322,
+      "approved": 281,
+      "approvedPercent": 87.3,
+      "rejected": 31,
+      "rejectedPercent": 9.6,
+      "pending": 10,
+      "pendingPercent": 3.1,
+      "lastUpdated": "8 hours ago"
+    },
+    {
+      "id": "rp-5",
+      "name": "Fall Collection",
+      "mediaCount": 275,
+      "approved": 238,
+      "approvedPercent": 86.5,
+      "rejected": 27,
+      "rejectedPercent": 9.8,
+      "pending": 10,
+      "pendingPercent": 3.6,
+      "lastUpdated": "10 hours ago"
+    }
+  ]
 }

@@ -122,8 +122,8 @@ export function App() {
     currentAccount.isLoading
       ? true
       : isAdminUserType(currentAccount.data?.user_type) ||
-      currentAccount.data?.permissions.includes(permission) ||
-      false;
+        currentAccount.data?.permissions.includes(permission) ||
+        false;
 
   const { token } = antdTheme.useToken();
 
@@ -235,21 +235,21 @@ export function App() {
       },
       ...(hasPermission('go.statistics.read')
         ? [
-          {
-            path: '/statistics',
-            name: t('menu.statistics'),
-            icon: <BarChart3 size={16} />,
-          },
-        ]
+            {
+              path: '/statistics',
+              name: t('menu.statistics'),
+              icon: <BarChart3 size={16} />,
+            },
+          ]
         : []),
       ...(hasPermission('go.render.read')
         ? [
-          {
-            path: '/render',
-            name: 'Render',
-            icon: <Activity size={16} />,
-          },
-        ]
+            {
+              path: '/render',
+              name: 'Render',
+              icon: <Activity size={16} />,
+            },
+          ]
         : []),
       {
         path: '/content',
@@ -257,75 +257,75 @@ export function App() {
         routes: [
           ...(hasPermission('go.project.read')
             ? [
-              {
-                path: '/projects',
-                name: t('menu.projects'),
-                icon: <FolderOpen size={16} />,
-              },
-            ]
+                {
+                  path: '/projects',
+                  name: t('menu.projects'),
+                  icon: <FolderOpen size={16} />,
+                },
+              ]
             : []),
           ...(hasPermission('go.project.evaluate')
             ? [
-              {
-                path: '/project-evaluations',
-                name: t('menu.projectEvaluations'),
-                icon: <ClipboardCheck size={16} />,
-              },
-            ]
+                {
+                  path: '/project-evaluations',
+                  name: t('menu.projectEvaluations'),
+                  icon: <ClipboardCheck size={16} />,
+                },
+              ]
             : []),
           ...(hasPermission('go.project.read')
             ? [
-              {
-                path: '/my-projects',
-                name: t('menu.myProjects'),
-                icon: <User size={16} />,
-              },
-            ]
+                {
+                  path: '/my-projects',
+                  name: t('menu.myProjects'),
+                  icon: <User size={16} />,
+                },
+              ]
             : []),
         ],
       },
       ...(hasPermission('go.folder.manage') || hasPermission('go.catalog.manage')
         ? [
-          {
-            path: '/common-catalogs',
-            name: t('menu.commonCatalogs'),
-            routes: [
-              ...(hasPermission('go.folder.manage')
-                ? [
-                  {
-                    path: '/folders',
-                    name: t('menu.folders'),
-                    icon: <Folder size={16} />,
-                  },
-                ]
-                : []),
-              ...(hasPermission('go.catalog.manage')
-                ? [
-                  {
-                    path: '/catalogs/categories',
-                    name: t('menu.categories'),
-                    icon: <List size={16} />,
-                  },
-                  {
-                    path: '/catalogs/countries',
-                    name: t('menu.countries'),
-                    icon: <Globe size={16} />,
-                  },
-                  {
-                    path: '/catalogs/provinces',
-                    name: t('menu.provinces'),
-                    icon: <MapPinned size={16} />,
-                  },
-                  {
-                    path: '/catalogs/tags',
-                    name: t('menu.tags'),
-                    icon: <Tags size={16} />,
-                  },
-                ]
-                : []),
-            ],
-          },
-        ]
+            {
+              path: '/common-catalogs',
+              name: t('menu.commonCatalogs'),
+              routes: [
+                ...(hasPermission('go.folder.manage')
+                  ? [
+                      {
+                        path: '/folders',
+                        name: t('menu.folders'),
+                        icon: <Folder size={16} />,
+                      },
+                    ]
+                  : []),
+                ...(hasPermission('go.catalog.manage')
+                  ? [
+                      {
+                        path: '/catalogs/categories',
+                        name: t('menu.categories'),
+                        icon: <List size={16} />,
+                      },
+                      {
+                        path: '/catalogs/countries',
+                        name: t('menu.countries'),
+                        icon: <Globe size={16} />,
+                      },
+                      {
+                        path: '/catalogs/provinces',
+                        name: t('menu.provinces'),
+                        icon: <MapPinned size={16} />,
+                      },
+                      {
+                        path: '/catalogs/tags',
+                        name: t('menu.tags'),
+                        icon: <Tags size={16} />,
+                      },
+                    ]
+                  : []),
+              ],
+            },
+          ]
         : []),
       {
         path: '/system',
@@ -333,21 +333,21 @@ export function App() {
         routes: [
           ...(hasPermission('go.settings.manage')
             ? [
-              {
-                path: '/system/settings',
-                name: t('menu.settings'),
-                icon: <Settings size={16} />,
-              },
-            ]
+                {
+                  path: '/system/settings',
+                  name: t('menu.settings'),
+                  icon: <Settings size={16} />,
+                },
+              ]
             : []),
           ...(hasPermission('go.logs.read')
             ? [
-              {
-                path: '/system/logs',
-                name: t('menu.logs'),
-                icon: <ScrollText size={16} />,
-              },
-            ]
+                {
+                  path: '/system/logs',
+                  name: t('menu.logs'),
+                  icon: <ScrollText size={16} />,
+                },
+              ]
             : []),
           {
             path: '/health',

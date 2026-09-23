@@ -9,7 +9,6 @@ import {
   Table,
   Tag,
   Timeline,
-  Tooltip as AntTooltip,
   Typography,
   theme,
 } from 'antd';
@@ -21,7 +20,6 @@ import {
   CheckCircle2,
   Clock3,
   Eye,
-  FileText,
   Film,
   FolderKanban,
   HardDrive,
@@ -85,18 +83,30 @@ const HEALTH_STATUS_META: Record<string, { color: string; label: string }> = {
 
 type TopMetricKey = 'view' | 'media' | 'size' | 'image' | 'video';
 
+type RecentProject = {
+  id: string;
+  name: string;
+  mediaCount: number;
+  approved: number;
+  approvedPercent: number;
+  rejected: number;
+  rejectedPercent: number;
+  pending: number;
+  pendingPercent: number;
+  lastUpdated: string;
+};
 const TOP_PROJECT_METRICS: {
   key: TopMetricKey;
   label: string;
   icon: ReactNode;
   color: string;
 }[] = [
-    { key: 'view', label: 'View', icon: <Eye size={13} />, color: '#0ea5e9' },
-    { key: 'media', label: 'Media', icon: <Film size={13} />, color: '#6366f1' },
-    { key: 'size', label: 'Size', icon: <HardDrive size={13} />, color: AMBER },
-    { key: 'image', label: 'Image', icon: <ImageIcon size={13} />, color: GREEN },
-    { key: 'video', label: 'Video', icon: <Film size={13} />, color: RED },
-  ];
+  { key: 'view', label: 'View', icon: <Eye size={13} />, color: '#0ea5e9' },
+  { key: 'media', label: 'Media', icon: <Film size={13} />, color: '#6366f1' },
+  { key: 'size', label: 'Size', icon: <HardDrive size={13} />, color: AMBER },
+  { key: 'image', label: 'Image', icon: <ImageIcon size={13} />, color: GREEN },
+  { key: 'video', label: 'Video', icon: <Film size={13} />, color: RED },
+];
 
 /* ------------------------------------------------------------------ */
 /*  Summary card                                                       */
@@ -177,10 +187,16 @@ function SummaryCard({ title, value, deltaPercent, trend, icon, color }: Summary
 /*  Custom donut legend                                                */
 /* ------------------------------------------------------------------ */
 
-type Segment = { key: string; label: string; value: number; percent: number; color: string, size: string };
+type Segment = {
+  key: string;
+  label: string;
+  value: number;
+  percent: number;
+  color: string;
+  size: string;
+};
 
 function SegmentLegend({ segments, total }: { segments: Segment[]; total: number }) {
-  const { token } = theme.useToken();
   return (
     <Flex vertical gap={12} style={{ width: '100%' }}>
       {segments.map((s) => (
@@ -206,7 +222,9 @@ function SegmentLegend({ segments, total }: { segments: Segment[]; total: number
             <Text type="secondary" style={{ fontSize: 12, minWidth: 44, textAlign: 'right' }}>
               {((s.value / total) * 100).toFixed(1)}%
             </Text>
-            <Text type="secondary" style={{ fontSize: 12, minWidth: 44, textAlign: 'right' }}>{s.size}</Text>
+            <Text type="secondary" style={{ fontSize: 12, minWidth: 44, textAlign: 'right' }}>
+              {s.size}
+            </Text>
           </Flex>
         </Flex>
       ))}
@@ -248,7 +266,7 @@ function DonutChart({
             ))}
           </Pie>
           <Tooltip
-            formatter={(value: any) => formatNumber(Number(value))}
+            formatter={(value) => formatNumber(Number(value ?? 0))}
             contentStyle={{
               borderRadius: 8,
               border: `1px solid ${token.colorBorderSecondary}`,
@@ -275,14 +293,6 @@ function DonutChart({
   );
 }
 
-/* ------------------------------------------------------------------ */
-/*  Activity meta                                                      */
-/* ------------------------------------------------------------------ */
-
-/* ------------------------------------------------------------------ */
-/*  Storage statistics card                                            */
-/* ------------------------------------------------------------------ */
-
 type StorageStats = {
   total: { value: number; unit: string };
   used: { value: number; unit: string };
@@ -301,7 +311,13 @@ function StorageStatsCard({ storage }: { storage: StorageStats }) {
           <Flex
             align="center"
             justify="center"
-            style={{ width: 32, height: 32, borderRadius: 8, background: '#6366f11a', color: '#6366f1' }}
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              background: '#6366f11a',
+              color: '#6366f1',
+            }}
           >
             <HardDrive size={16} />
           </Flex>
@@ -368,7 +384,6 @@ type SystemHealth = {
 };
 
 function SystemHealthCard({ health }: { health: SystemHealth }) {
-  const { token } = theme.useToken();
   const overall = HEALTH_STATUS_META[health.status] ?? HEALTH_STATUS_META.healthy;
 
   return (
@@ -378,7 +393,13 @@ function SystemHealthCard({ health }: { health: SystemHealth }) {
           <Flex
             align="center"
             justify="center"
-            style={{ width: 32, height: 32, borderRadius: 8, background: `${overall.color}1a`, color: overall.color }}
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              background: `${overall.color}1a`,
+              color: overall.color,
+            }}
           >
             <ShieldCheck size={16} />
           </Flex>
@@ -391,7 +412,12 @@ function SystemHealthCard({ health }: { health: SystemHealth }) {
         </Flex>
         <Tag
           bordered={false}
-          style={{ margin: 0, color: overall.color, background: `${overall.color}1a`, fontWeight: 600 }}
+          style={{
+            margin: 0,
+            color: overall.color,
+            background: `${overall.color}1a`,
+            fontWeight: 600,
+          }}
         >
           {overall.label}
         </Tag>
@@ -526,7 +552,6 @@ export function StatisticsPage() {
 
   const evalSegments = mediaEvaluationResults.segments as Segment[];
   const typeSegments = mediaTypeDistribution.segments as Segment[];
-  const sizeSegments = mediaTypeDistribution.segments as Segment[];
 
   const activeTopMetric = TOP_PROJECT_METRICS.find((m) => m.key === topMetric)!;
   const topProjectsList = (topProjectsBy[topMetric] ?? []) as {
@@ -588,7 +613,7 @@ export function StatisticsPage() {
       dataIndex: 'approvedPercent',
       key: 'approved',
       width: 160,
-      render: (percent: number, row: any) => (
+      render: (percent: number, row: RecentProject) => (
         <Flex vertical gap={4}>
           <Flex justify="space-between">
             <Text style={{ fontSize: 12 }}>{formatNumber(row.approved)}</Text>
@@ -605,7 +630,7 @@ export function StatisticsPage() {
       dataIndex: 'rejectedPercent',
       key: 'rejected',
       width: 160,
-      render: (percent: number, row: any) => (
+      render: (percent: number, row: RecentProject) => (
         <Flex vertical gap={4}>
           <Flex justify="space-between">
             <Text style={{ fontSize: 12 }}>{formatNumber(row.rejected)}</Text>
@@ -622,7 +647,7 @@ export function StatisticsPage() {
       dataIndex: 'pendingPercent',
       key: 'pending',
       width: 140,
-      render: (percent: number, row: any) => (
+      render: (percent: number, row: RecentProject) => (
         <Flex vertical gap={4}>
           <Flex justify="space-between">
             <Text style={{ fontSize: 12 }}>{formatNumber(row.pending)}</Text>
@@ -737,12 +762,7 @@ export function StatisticsPage() {
                     axisLine={false}
                     tickLine={false}
                   />
-                  <YAxis
-                    yAxisId="left"
-                    tick={{ fontSize: 12 }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
+                  <YAxis yAxisId="left" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
                   <YAxis
                     yAxisId="right"
                     orientation="right"
@@ -751,7 +771,7 @@ export function StatisticsPage() {
                     tickLine={false}
                   />
                   <Tooltip
-                    formatter={(value: any) => formatNumber(Number(value))}
+                    formatter={(value) => formatNumber(Number(value ?? 0))}
                     contentStyle={{
                       borderRadius: 8,
                       border: `1px solid ${token.colorBorderSecondary}`,
@@ -784,7 +804,6 @@ export function StatisticsPage() {
         </Col>
 
         <Col xs={24} lg={8}>
-
           <ProCard
             title="Media type distribution"
             bordered
@@ -797,8 +816,6 @@ export function StatisticsPage() {
               <SegmentLegend segments={typeSegments} total={mediaTypeDistribution.total} />
             </div>
           </ProCard>
-
-
         </Col>
       </Row>
 
