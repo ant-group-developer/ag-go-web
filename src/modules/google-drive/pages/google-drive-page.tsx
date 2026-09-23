@@ -50,7 +50,15 @@ export function GoogleDrivePage() {
             </Button>
           </Space>
         ) : (
-          <Button type="primary" onClick={() => start.mutate()} loading={start.isPending}>
+          <Button
+            type="primary"
+            onClick={() =>
+              start.mutate({
+                returnUrl: `${window.location.pathname}${window.location.search}${window.location.hash}`,
+              })
+            }
+            loading={start.isPending}
+          >
             Kết nối Google Drive
           </Button>
         )}

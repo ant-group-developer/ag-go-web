@@ -8,6 +8,7 @@ import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
 import {
   Alert,
   App as AntApp,
+  Avatar,
   Button,
   Card,
   Checkbox,
@@ -270,9 +271,15 @@ function ProjectOverview({ project }: { project: Project }) {
         ) : (
           <Typography.Text type="secondary">—</Typography.Text>
         )}
-        <Typography.Text type="secondary">
-          {t('projects.ownerUserId')}: {project.ownerUserId || '—'}
-        </Typography.Text>
+        <Space size={4}>
+          <Avatar size={18} src={project.ownerUser?.avatar}>
+            {project.ownerUser?.name?.charAt(0)?.toUpperCase()}
+          </Avatar>
+          <Typography.Text type="secondary">
+            {t('common.author')}:{' '}
+            {project.ownerUser?.name || project.ownerUser?.email || t('common.unknown')}
+          </Typography.Text>
+        </Space>
         <Typography.Text type="secondary">
           {t('projects.createdAt')}: {formatDateTime(project.createdAt)}
         </Typography.Text>

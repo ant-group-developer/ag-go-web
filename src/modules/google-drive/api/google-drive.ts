@@ -30,20 +30,44 @@ export type ImportItem = {
   errorMessage: string | null;
 };
 
+export type DriveSourceSummary = {
+  imageCount: number;
+  videoCount: number;
+  fileCount: number;
+  folderCount: number;
+  unsupportedCount: number;
+};
+
 export function getGoogleDriveConnection() {
   return apiClient<GoogleDriveConnection | null>('/google-drive/connection');
 }
 
-export function startGoogleDriveConnection(projectId?: string) {
-  const query = projectId ? `?projectId=${encodeURIComponent(projectId)}` : '';
+export function startGoogleDriveConnection(input?: { projectId?: string; returnUrl?: string }) {
+  const query = new URLSearchParams();
+  if (input?.projectId) {
+    query.set('projectId', input.projectId);
+  }
+  if (input?.returnUrl) {
+    query.set('returnUrl', input.returnUrl);
+  }
+  const queryString = query.toString();
   return apiClient<{ authorizationUrl: string; state: string }>(
-    `/google-drive/connection/start${query}`,
+    `/google-drive/connection/start${queryString ? `?${queryString}` : ''}`,
     { method: 'POST' },
   );
 }
 
 export function getGoogleDrivePickerToken() {
   return apiClient<{ accessToken: string; expiresAt: string }>('/google-drive/picker-token');
+}
+
+export function summarizeGoogleDriveSources(
+  sources: Array<{ fileId: string; driveId?: string }>,
+) {
+  return apiClient<DriveSourceSummary>('/google-drive/sources/summary', {
+    method: 'POST',
+    body: JSON.stringify({ sources }),
+  });
 }
 
 export function disconnectGoogleDrive() {
