@@ -129,14 +129,8 @@ export function ProjectsPage() {
   const [totalCount, setTotalCount] = useState<number>(0);
   const { token } = theme.useToken();
 
-  // Local filter state for popover (controlled)
   const [filterValues, setFilterValues] = useState<ProjectFilterValues>({
     keyword: urlState.keyword ?? undefined,
-    folderIds: urlState.folderIds?.length
-      ? urlState.folderIds
-      : urlState.folderId
-        ? [urlState.folderId]
-        : undefined,
     countryId: urlState.countryId ?? undefined,
     provinceId: urlState.provinceId ?? undefined,
     categoryId: urlState.categoryId ?? undefined,
@@ -151,7 +145,7 @@ export function ProjectsPage() {
     () =>
       [
         filterValues.keyword?.trim(),
-        filterValues.folderIds?.length,
+        filterValues.folderId,
         filterValues.countryId || filterValues.provinceId,
         filterValues.categoryId,
         filterValues.tagIds?.length,
@@ -162,8 +156,7 @@ export function ProjectsPage() {
   const applyFilter = async (values: ProjectFilterValues) => {
     await setUrlState({
       keyword: values.keyword?.trim() || null,
-      folderId: values.folderIds?.[0] ?? null,
-      folderIds: values.folderIds?.length ? values.folderIds : null,
+      folderId: values.folderId ?? null,
       tagIds: values.tagIds?.length ? values.tagIds : null,
       countryId: values.countryId ?? null,
       provinceId: values.provinceId ?? null,
@@ -187,7 +180,7 @@ export function ProjectsPage() {
     void setUrlState({
       keyword: null,
       folderId: null,
-      folderIds: null,
+      // folderIds: null,
       tagIds: null,
       countryId: null,
       provinceId: null,
@@ -215,6 +208,14 @@ export function ProjectsPage() {
 
   const columns: ProColumns<Project>[] = [
     {
+      title: t('projects.thumbnail'),
+      dataIndex: 'thumbnailAssetId',
+      key: 'thumbnail',
+      width: 100,
+      align: 'center',
+      render: (_, project) => <ProjectThumbnailCell assetId={project.thumbnailAssetId} />,
+    },
+    {
       title: t('projects.name'),
       dataIndex: 'name',
       key: 'name',
@@ -226,14 +227,6 @@ export function ProjectsPage() {
           {project.name}
         </Typography.Link>
       ),
-    },
-    {
-      title: t('projects.thumbnail'),
-      dataIndex: 'thumbnailAssetId',
-      key: 'thumbnail',
-      width: 100,
-      align: 'center',
-      render: (_, project) => <ProjectThumbnailCell assetId={project.thumbnailAssetId} />,
     },
     {
       title: t('projects.location'),
