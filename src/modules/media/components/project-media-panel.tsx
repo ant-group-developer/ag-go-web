@@ -1,7 +1,30 @@
-import { InboxOutlined, ReloadOutlined } from '@ant-design/icons';
+import {
+  CheckCircleFilled,
+  ClockCircleOutlined,
+  CloseCircleFilled,
+  DeleteOutlined,
+  FileImageOutlined,
+  InboxOutlined,
+  LoadingOutlined,
+  ReloadOutlined,
+  VideoCameraOutlined,
+} from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { UploadFile, UploadProps } from 'antd';
-import { Alert, App as AntApp, Button, Card, Space, Tag, Typography, Upload } from 'antd';
+import {
+  Alert,
+  App as AntApp,
+  Avatar,
+  Button,
+  Card,
+  List,
+  Progress,
+  Space,
+  Tag,
+  Typography,
+  Upload,
+} from 'antd';
+import type { ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { projectQueryKeys } from '../../projects/queries/project-query-keys';
@@ -180,37 +203,42 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
     return true;
   };
 
-  const handleRemove: UploadProps['onRemove'] = async (file) => {
-    const taskStatus = taskStatusesRef.current[file.uid];
-    if (taskStatus === 'uploading' || (file.status === 'uploading' && taskStatus !== 'queued')) {
-      return false;
-    }
+  const removeFile = useCallback(
+    async (file: ProjectMediaUploadFile) => {
+      const taskStatus = taskStatusesRef.current[file.uid];
+      if (taskStatus === 'uploading' || (file.status === 'uploading' && taskStatus !== 'queued')) {
+        return;
+      }
 
-    if (taskStatus === 'queued') {
-      uploadQueueRef.current = uploadQueueRef.current.filter((task) => task.uid !== file.uid);
-      const nextStatuses = { ...taskStatusesRef.current };
-      delete nextStatuses[file.uid];
-      taskStatusesRef.current = nextStatuses;
-      setTaskStatuses(nextStatuses);
-      return true;
-    }
+      if (taskStatus === 'queued') {
+        uploadQueueRef.current = uploadQueueRef.current.filter((task) => task.uid !== file.uid);
+        const nextStatuses = { ...taskStatusesRef.current };
+        delete nextStatuses[file.uid];
+        taskStatusesRef.current = nextStatuses;
+        setTaskStatuses(nextStatuses);
+        setFileList((current) => current.filter((entry) => entry.uid !== file.uid));
+        return;
+      }
 
-    const existingMedia =
-      items?.find((item) => item.id === file.uid) ?? (file as ProjectMediaUploadFile).response;
-    if (!existingMedia) {
-      setFileList((current) => current.filter((entry) => entry.uid !== file.uid));
-      return true;
-    }
+      const existingMedia = items?.find((item) => item.id === file.uid) ?? file.response;
+      if (!existingMedia) {
+        setFileList((current) => current.filter((entry) => entry.uid !== file.uid));
+        return;
+      }
 
-    try {
-      await removeProjectMedia(existingMedia.id);
-      invalidateProjectData();
-      return true;
-    } catch (error) {
-      void message.error(error instanceof Error ? error.message : t('media.removeFailed'));
-      return false;
-    }
-  };
+      try {
+        await removeProjectMedia(existingMedia.id);
+        setFileList((current) => current.filter((entry) => entry.uid !== file.uid));
+        invalidateProjectData();
+      } catch (error) {
+        void message.error(error instanceof Error ? error.message : t('media.removeFailed'));
+      }
+    },
+    [items, invalidateProjectData, message, t],
+  );
+
+  const isVideoFile = (file: ProjectMediaUploadFile): boolean =>
+    file.response?.asset.assetType === 'video' || Boolean(file.type?.startsWith('video/'));
 
   const statusForFile = (file: ProjectMediaUploadFile): UploadTaskStatus => {
     const taskStatus = taskStatuses[file.uid];
@@ -238,6 +266,12 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
     done: 'success',
     error: 'error',
   };
+  const statusIcons: Record<UploadTaskStatus, ReactNode> = {
+    queued: <ClockCircleOutlined />,
+    uploading: <LoadingOutlined />,
+    done: <CheckCircleFilled />,
+    error: <CloseCircleFilled />,
+  };
   const statusCounts = fileList.reduce<Record<UploadTaskStatus, number>>(
     (counts, file) => {
       counts[statusForFile(file)] += 1;
@@ -245,18 +279,6 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
     },
     { queued: 0, uploading: 0, done: 0, error: 0 },
   );
-
-  const itemRender: NonNullable<UploadProps['itemRender']> = (originNode, file) => {
-    const uploadFile = file as ProjectMediaUploadFile;
-    const status = statusForFile(uploadFile);
-
-    return (
-      <Space align="center" style={{ width: '100%', justifyContent: 'space-between' }} wrap>
-        {originNode}
-        <Tag color={statusColors[status]}>{statusLabels[status]}</Tag>
-      </Space>
-    );
-  };
 
   return (
     <Card
@@ -276,16 +298,16 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
       ) : null}
       <Space size={[8, 8]} wrap style={{ marginBottom: 16 }}>
         <Tag>{t('media.fileCount', { count: fileList.length })}</Tag>
-        <Tag color={statusColors.queued}>
+        <Tag icon={statusIcons.queued} color={statusColors.queued}>
           {statusLabels.queued}: {statusCounts.queued}
         </Tag>
-        <Tag color={statusColors.uploading}>
+        <Tag icon={statusIcons.uploading} color={statusColors.uploading}>
           {statusLabels.uploading}: {statusCounts.uploading}
         </Tag>
-        <Tag color={statusColors.done}>
+        <Tag icon={statusIcons.done} color={statusColors.done}>
           {statusLabels.done}: {statusCounts.done}
         </Tag>
-        <Tag color={statusColors.error}>
+        <Tag icon={statusIcons.error} color={statusColors.error}>
           {statusLabels.error}: {statusCounts.error}
         </Tag>
         <Typography.Text type="secondary">
@@ -295,17 +317,13 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
       <Upload.Dragger
         accept="image/*,video/*"
         multiple
-        listType="picture"
         fileList={fileList}
         customRequest={customRequest}
         beforeUpload={beforeUpload}
         onChange={({ fileList: nextFileList }) =>
           setFileList(nextFileList as ProjectMediaUploadFile[])
         }
-        onRemove={handleRemove}
-        itemRender={itemRender}
-        progress={{ strokeWidth: 2, showInfo: true }}
-        showUploadList={{ showPreviewIcon: true, showDownloadIcon: false, showRemoveIcon: true }}
+        showUploadList={false}
       >
         <p className="ant-upload-drag-icon">
           <InboxOutlined />
@@ -313,9 +331,83 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
         <p className="ant-upload-text">{t('media.dropFiles')}</p>
         <p className="ant-upload-hint">{t('media.dropFilesHint')}</p>
       </Upload.Dragger>
-      {items?.length === 0 && !media.isError ? (
-        <Typography.Text type="secondary">{t('media.empty')}</Typography.Text>
-      ) : null}
+      <List<ProjectMediaUploadFile>
+        style={{ marginTop: 24 }}
+        itemLayout="horizontal"
+        dataSource={fileList}
+        locale={{ emptyText: t('media.empty') }}
+        renderItem={(file) => {
+          const status = statusForFile(file);
+          const video = isVideoFile(file);
+
+          return (
+            <List.Item
+              key={file.uid}
+              style={{
+                padding: '10px 12px',
+                marginBottom: 8,
+                borderRadius: 8,
+                border: '1px solid',
+                borderColor: status === 'error' ? 'rgba(255, 77, 79, 0.35)' : 'rgba(5, 5, 5, 0.06)',
+                background: status === 'error' ? 'rgba(255, 77, 79, 0.04)' : 'rgba(0, 0, 0, 0.015)',
+              }}
+              actions={[
+                <Button
+                  key="delete"
+                  type="text"
+                  danger
+                  aria-label={t('common.delete')}
+                  icon={<DeleteOutlined />}
+                  disabled={status === 'uploading'}
+                  onClick={() => void removeFile(file)}
+                />,
+              ]}
+            >
+              <List.Item.Meta
+                avatar={
+                  <Avatar
+                    shape="square"
+                    size={48}
+                    src={file.thumbUrl}
+                    icon={
+                      !file.thumbUrl ? (
+                        video ? (
+                          <VideoCameraOutlined />
+                        ) : (
+                          <FileImageOutlined />
+                        )
+                      ) : undefined
+                    }
+                  />
+                }
+                title={
+                  <Space size={8} wrap>
+                    <Typography.Text ellipsis style={{ maxWidth: 320, fontWeight: 400 }}>
+                      {file.name}
+                    </Typography.Text>
+                    <Tag
+                      icon={statusIcons[status]}
+                      color={statusColors[status]}
+                      style={{ margin: 0 }}
+                    >
+                      {statusLabels[status]}
+                    </Tag>
+                  </Space>
+                }
+                description={
+                  status === 'uploading' ? (
+                    <Progress
+                      percent={Math.round(file.percent ?? 0)}
+                      size="small"
+                      style={{ maxWidth: 280 }}
+                    />
+                  ) : undefined
+                }
+              />
+            </List.Item>
+          );
+        }}
+      />
     </Card>
   );
 }

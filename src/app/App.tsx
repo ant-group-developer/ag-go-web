@@ -133,6 +133,9 @@ export function App() {
 
   const userEmail = user?.email ?? '';
   const userInitials = userEmail.slice(0, 2).toUpperCase();
+  const nickname = user?.nickname ?? '';
+  const avatarUrl = user?.picture ?? '';
+
   useEffect(() => {
     const settings = webSettings.data;
     if (!settings) {
@@ -186,6 +189,7 @@ export function App() {
         label: (
           <Flex gap={12} align="center">
             <Avatar
+              src={avatarUrl}
               size={40}
               style={{
                 backgroundColor: token.colorPrimary,
@@ -197,7 +201,7 @@ export function App() {
 
             <Flex vertical style={{ minWidth: 0 }}>
               <Typography.Text strong ellipsis>
-                {userEmail}
+                {nickname}
               </Typography.Text>
 
               <Typography.Text type="secondary" ellipsis>
@@ -216,6 +220,7 @@ export function App() {
         icon: <LogoutOutlined />,
         label: 'Đăng xuất',
         onClick: handleLogout,
+        danger: true,
       },
     ],
   };
@@ -400,7 +405,7 @@ export function App() {
         size: 'small',
         style: { backgroundColor: token.colorPrimary },
         children: !user?.picture ? userInitials : undefined,
-        title: <span style={{ fontSize: 13 }}>{userEmail}</span>,
+        title: <span style={{ fontSize: 14, fontWeight: 500 }}>{nickname}</span>,
         render: (_props, dom) => (
           <Dropdown
             menu={avatarDropdownMenu}

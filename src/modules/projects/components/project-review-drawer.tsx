@@ -26,12 +26,8 @@ import {
 } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  createDownload,
-  getDownload,
-  type DownloadResult,
-} from '../../downloads/api/downloads';
 import { getProjectAudit, type AuditLog } from '../../audit/api/audit';
+import { createDownload, getDownload, type DownloadResult } from '../../downloads/api/downloads';
 import {
   getAssetPreviewUrl,
   getProjectMedia,

@@ -24,6 +24,7 @@ import { useCategories } from '../../categories/hooks/use-categories';
 import { useCountries } from '../../countries/hooks/use-countries';
 import { useFolders } from '../../folders/hooks/use-folders';
 import { buildFolderCascaderOptions } from '../../folders/utils/build-folder-cascader-options';
+import { ProjectGoogleDriveImportPanel } from '../../google-drive/components/project-google-drive-import-panel';
 import {
   abortUpload,
   attachProjectMedia,
@@ -38,7 +39,6 @@ import { ProjectMediaPanel } from '../../media/components/project-media-panel';
 import { mediaQueryKeys } from '../../media/queries/media-query-keys';
 import { useProvinces } from '../../provinces/hooks/use-provinces';
 import { useTags } from '../../tags/hooks/use-tags';
-import { ProjectGoogleDriveImportPanel } from '../../google-drive/components/project-google-drive-import-panel';
 import { useProject, useUpdateProject } from '../hooks/use-projects';
 import { projectQueryKeys } from '../queries/project-query-keys';
 import type { ProjectDetailFormValues } from '../types/project-detail-form-values.type';
