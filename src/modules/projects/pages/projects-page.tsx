@@ -22,7 +22,7 @@ import { ClipboardCheck, Pencil, Plus, Trash2 } from 'lucide-react';
 import { parseAsArrayOf, parseAsInteger, parseAsString, useQueryStates } from 'nuqs';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { getAssetPreviewUrl } from '../../media/api/media';
 import { getProjects } from '../api/projects';
 import { CreateProjectModal } from '../components/create-project-modal';
@@ -114,6 +114,7 @@ function ProjectThumbnailCell({ assetId }: { assetId?: string | null }) {
 
 export function ProjectsPage() {
   const { t } = useTranslation();
+  const { projectId: routeProjectId } = useParams<{ projectId?: string }>();
   const { message } = AntApp.useApp();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -123,6 +124,12 @@ export function ProjectsPage() {
   });
   const [createOpen, setCreateOpen] = useState(false);
   const [reviewProjectId, setReviewProjectId] = useState<string>();
+
+  useEffect(() => {
+    if (routeProjectId) {
+      setReviewProjectId(routeProjectId);
+    }
+  }, [routeProjectId]);
   const [listError, setListError] = useState<string>();
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
   const [gridData, setGridData] = useState<Project[]>([]);
@@ -223,7 +230,7 @@ export function ProjectsPage() {
       fixed: 'left',
       ellipsis: true,
       render: (_, project) => (
-        <Typography.Link onClick={() => navigate(`/projects/${project.id}`)}>
+        <Typography.Link onClick={() => setReviewProjectId(project.id)}>
           {project.name}
         </Typography.Link>
       ),
@@ -327,7 +334,7 @@ export function ProjectsPage() {
               aria-label={t('projects.edit')}
               icon={<Pencil size={16} />}
               type="text"
-              onClick={() => navigate(`/projects/${project.id}`)}
+              onClick={() => navigate(`/projects/${project.id}/edit`)}
             />
           </Tooltip>
           <Popconfirm
@@ -486,8 +493,8 @@ export function ProjectsPage() {
                       videoCount: p.videoCount,
                     }))}
                     isLoading={false}
-                    onView={(id) => navigate(`/projects/${id}`)}
-                    onEdit={(id) => navigate(`/projects/${id}`)}
+                    onView={(id) => setReviewProjectId(id)}
+                    onEdit={(id) => navigate(`/projects/${id}/edit`)}
                     onDelete={(item) => void handleDelete(item.id)}
                     onEvaluate={(item) => setReviewProjectId(item.id)}
                     canEvaluate
@@ -567,13 +574,18 @@ export function ProjectsPage() {
         onClose={() => setCreateOpen(false)}
         onComplete={(project) => {
           setCreateOpen(false);
-          navigate(`/projects/${project.id}`);
+          navigate(`/projects/${project.id}/edit`);
         }}
       />
       <ProjectReviewDrawer
         open={Boolean(reviewProjectId)}
         projectId={reviewProjectId}
-        onClose={() => setReviewProjectId(undefined)}
+        onClose={() => {
+          setReviewProjectId(undefined);
+          if (routeProjectId) {
+            navigate('/projects', { replace: true });
+          }
+        }}
       />
     </>
   );
