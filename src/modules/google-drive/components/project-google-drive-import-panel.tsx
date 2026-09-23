@@ -2,12 +2,12 @@ import { DrivePicker, DrivePickerDocsView } from '@googleworkspace/drive-picker-
 import { Button, Card, List, Progress, Space, Tag, Typography } from 'antd';
 import { useState } from 'react';
 import {
+  useCancelDriveImport,
   useCreateDriveImport,
   useDisconnectGoogleDrive,
+  useDriveImport,
   useGoogleDriveConnection,
   useGoogleDrivePickerToken,
-  useDriveImport,
-  useCancelDriveImport,
   useRetryDriveImportItem,
   useStartGoogleDriveConnection,
 } from '../hooks/use-google-drive';
@@ -43,8 +43,7 @@ export function ProjectGoogleDriveImportPanel({ projectId }: { projectId: string
   const openPicker = () => {
     if (pickerToken.data?.accessToken) {
       const picker = document.getElementById('project-drive-picker') as
-        | (HTMLElement & { visible?: boolean })
-        | null;
+        (HTMLElement & { visible?: boolean }) | null;
       if (picker) {
         picker.visible = true;
       }
@@ -134,11 +133,13 @@ export function ProjectGoogleDriveImportPanel({ projectId }: { projectId: string
                 type="primary"
                 loading={createImport.isPending}
                 onClick={() =>
-                  void createImport.mutateAsync({
-                    projectId,
-                    sources: selected,
-                    idempotencyKey: crypto.randomUUID(),
-                  }).then((created) => setBatchId(created.id))
+                  void createImport
+                    .mutateAsync({
+                      projectId,
+                      sources: selected,
+                      idempotencyKey: crypto.randomUUID(),
+                    })
+                    .then((created) => setBatchId(created.id))
                 }
               >
                 Import vào project

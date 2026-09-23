@@ -93,12 +93,14 @@ export function SettingsPage() {
                   Mỗi lần lưu sẽ tạo một version mới. Các render job đang chạy vẫn giữ version cũ,
                   còn batch mới sẽ dùng version mới nhất.
                 </Typography.Paragraph>
-                {profiles.isError ? (
-                  <Alert type="error" message={profiles.error.message} />
-                ) : null}
+                {profiles.isError ? <Alert type="error" message={profiles.error.message} /> : null}
                 {profiles.isLoading ? <Spin /> : null}
                 {profiles.data?.map((profile) => (
-                  <Card key={profile.id} title={`${profile.name} · v${profile.profileVersion}`} style={{ marginTop: 16 }}>
+                  <Card
+                    key={profile.id}
+                    title={`${profile.name} · v${profile.profileVersion}`}
+                    style={{ marginTop: 16 }}
+                  >
                     <Form
                       layout="vertical"
                       initialValues={{
@@ -157,10 +159,12 @@ export function SettingsPage() {
                         <Col xs={24} md={12}>
                           <Form.Item name="outputFormat" label="Output format">
                             <Select
-                              options={['webp', 'jpeg', 'jpg', 'png', 'mp4', 'webm'].map((value) => ({
-                                label: value,
-                                value,
-                              }))}
+                              options={['webp', 'jpeg', 'jpg', 'png', 'mp4', 'webm'].map(
+                                (value) => ({
+                                  label: value,
+                                  value,
+                                }),
+                              )}
                             />
                           </Form.Item>
                         </Col>

@@ -1,7 +1,7 @@
 import { PageContainer } from '@ant-design/pro-components';
 import { useQuery } from '@tanstack/react-query';
-import { Alert, DatePicker, Descriptions, Drawer, Input, Select, Space, Table, Tag } from 'antd';
 import type { TablePaginationConfig } from 'antd';
+import { Alert, DatePicker, Descriptions, Drawer, Input, Select, Space, Table, Tag } from 'antd';
 import { useState } from 'react';
 import { getLogs, type SystemLog } from '../api/logs';
 

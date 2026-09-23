@@ -96,7 +96,9 @@ export function StatisticsPage() {
               <Progress
                 percent={total ? Math.round((value / total) * 100) : 0}
                 format={() => `${value}`}
-                status={key === 'rejected' ? 'exception' : key === 'approved' ? 'success' : 'active'}
+                status={
+                  key === 'rejected' ? 'exception' : key === 'approved' ? 'success' : 'active'
+                }
               />
             </div>
           );

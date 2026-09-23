@@ -67,7 +67,9 @@ export function ProjectEvaluationDrawer({ open, projectId, onClose }: Props) {
   const update = useMutation({
     mutationFn: (values: EvaluationForm) => updateProjectMedia(selected?.id ?? '', values),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: mediaQueryKeys.projectReview(projectId ?? '') });
+      void queryClient.invalidateQueries({
+        queryKey: mediaQueryKeys.projectReview(projectId ?? ''),
+      });
       void queryClient.invalidateQueries({ queryKey: mediaQueryKeys.project(projectId ?? '') });
       void queryClient.invalidateQueries({ queryKey: projectQueryKeys.detail(projectId ?? '') });
       void queryClient.invalidateQueries({ queryKey: projectQueryKeys.list() });
@@ -150,11 +152,7 @@ export function ProjectEvaluationDrawer({ open, projectId, onClose }: Props) {
               layout="vertical"
               onFinish={(values) => update.mutate(values)}
             >
-              <Form.Item
-                name="evaluationStatus"
-                label="Trạng thái"
-                rules={[{ required: true }]}
-              >
+              <Form.Item name="evaluationStatus" label="Trạng thái" rules={[{ required: true }]}>
                 <Select
                   options={[
                     { label: 'Pending', value: 'pending' },

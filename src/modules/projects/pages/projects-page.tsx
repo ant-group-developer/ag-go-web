@@ -1,3 +1,4 @@
+import { AppstoreOutlined, BarsOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { PageContainer, ProTable } from '@ant-design/pro-components';
 import { useQueryClient } from '@tanstack/react-query';
@@ -5,53 +6,41 @@ import {
   Alert,
   App as AntApp,
   Button,
-  Cascader,
-  Col,
-  Form,
   Image,
   Input,
+  Pagination,
   Popconfirm,
-  Row,
-  Select,
+  Radio,
   Space,
   Tag,
   Tooltip,
   Typography,
+  theme,
 } from 'antd';
-import { ClipboardCheck, Eye, Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { ClipboardCheck, Pencil, Plus, Trash2 } from 'lucide-react';
+
 import { parseAsArrayOf, parseAsInteger, parseAsString, useQueryStates } from 'nuqs';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
-import { useCategories } from '../../categories/hooks/use-categories';
-import { useCountries } from '../../countries/hooks/use-countries';
-import { useFolders } from '../../folders/hooks/use-folders';
-import { buildFolderCascaderOptions } from '../../folders/utils/build-folder-cascader-options';
+import { useNavigate } from 'react-router-dom';
 import { getAssetPreviewUrl } from '../../media/api/media';
-import { useProvinces } from '../../provinces/hooks/use-provinces';
-import { useTags } from '../../tags/hooks/use-tags';
 import { getProjects } from '../api/projects';
 import { CreateProjectModal } from '../components/create-project-modal';
-import { ProjectDetailDrawer } from '../components/project-review-drawer';
-import { ProjectEvaluationDrawer } from '../components/project-evaluation-drawer';
+import type { ProjectFilterValues } from '../components/project-filter-popover';
+import { ProjectFilterPopover } from '../components/project-filter-popover';
+import { ProjectGridView } from '../components/project-grid-view';
+import { ProjectReviewDrawer } from '../components/project-review-drawer';
 import { useDeleteProject } from '../hooks/use-projects';
-import { useHasPermission } from '../../account/hooks/use-current-account';
 import { projectQueryKeys } from '../queries/project-query-keys';
 import type { ProjectListParams } from '../types/project-list-params.type';
 import type { Project } from '../types/project.type';
-
-type ProjectFilterValues = {
-  keyword?: string;
-  folderPath?: string[];
-  countryId?: string;
-  provinceId?: string;
-  categoryId?: string;
-  tagIds?: string[];
-};
+import { formatDate } from '../utils/date.util';
+import { getProjectStatus } from '../utils/project-status.util';
 
 const projectUrlParams = {
   keyword: parseAsString,
   folderId: parseAsString,
+  folderIds: parseAsArrayOf(parseAsString).withDefault([]),
   tagIds: parseAsArrayOf(parseAsString).withDefault([]),
   countryId: parseAsString,
   provinceId: parseAsString,
@@ -60,18 +49,8 @@ const projectUrlParams = {
   pageSize: parseAsInteger.withDefault(20),
 };
 
-function formatDateTime(value: string | undefined): string {
-  if (!value) {
-    return '—';
-  }
-
-  return new Intl.DateTimeFormat('vi-VN', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(value));
-}
-
 function ProjectThumbnailCell({ assetId }: { assetId?: string | null }) {
+  const { t } = useTranslation();
   const [previewUrl, setPreviewUrl] = useState<string>();
 
   useEffect(() => {
@@ -81,24 +60,30 @@ function ProjectThumbnailCell({ assetId }: { assetId?: string | null }) {
     }
 
     let disposed = false;
+    let createdUrl: string | undefined;
     void getAssetPreviewUrl(assetId)
       .then((url) => {
         if (disposed) {
+          URL.revokeObjectURL(url);
           return;
         }
+        createdUrl = url;
         setPreviewUrl(url);
       })
       .catch(() => setPreviewUrl(undefined));
 
     return () => {
       disposed = true;
+      if (createdUrl) {
+        URL.revokeObjectURL(createdUrl);
+      }
     };
   }, [assetId]);
 
   if (!previewUrl) {
     return (
       <div
-        aria-label="Chưa có thumbnail"
+        aria-label={t('projects.noThumbnail')}
         style={{
           alignItems: 'center',
           background: '#f5f5f5',
@@ -127,79 +112,88 @@ function ProjectThumbnailCell({ assetId }: { assetId?: string | null }) {
   );
 }
 
-function getProjectStatus(status: string, t: (key: string) => string) {
-  switch (status) {
-    case 'draft':
-      return { color: 'default', label: t('projects.statusDraft') };
-    case 'pending':
-      return { color: 'processing', label: t('projects.statusPending') };
-    case 'completed':
-      return { color: 'success', label: t('projects.statusCompleted') };
-    case 'partially_completed':
-      return { color: 'warning', label: t('projects.statusPartiallyCompleted') };
-    case 'failed':
-      return { color: 'error', label: t('projects.statusFailed') };
-    default:
-      return { color: 'default', label: status };
-  }
-}
-
 export function ProjectsPage() {
   const { t } = useTranslation();
-  const routeProjectId = useParams<{ projectId?: string }>().projectId;
   const { message } = AntApp.useApp();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const actionRef = useRef<ActionType | undefined>(undefined);
-  const [filterForm] = Form.useForm<ProjectFilterValues>();
   const [urlState, setUrlState] = useQueryStates(projectUrlParams, {
     history: 'replace',
   });
   const [createOpen, setCreateOpen] = useState(false);
-  const [detailProjectId, setDetailProjectId] = useState<string>();
-  const [evaluationProjectId, setEvaluationProjectId] = useState<string>();
+  const [reviewProjectId, setReviewProjectId] = useState<string>();
   const [listError, setListError] = useState<string>();
-  const countryId = Form.useWatch('countryId', filterForm);
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
+  const [gridData, setGridData] = useState<Project[]>([]);
+  const [totalCount, setTotalCount] = useState<number>(0);
+  const { token } = theme.useToken();
+
+  const [filterValues, setFilterValues] = useState<ProjectFilterValues>({
+    keyword: urlState.keyword ?? undefined,
+    countryId: urlState.countryId ?? undefined,
+    provinceId: urlState.provinceId ?? undefined,
+    categoryId: urlState.categoryId ?? undefined,
+    tagIds: urlState.tagIds?.length ? urlState.tagIds : undefined,
+  });
+
+  const [keywordInput, setKeywordInput] = useState(urlState.keyword ?? '');
+
   const projectsDelete = useDeleteProject();
-  const canEvaluate = useHasPermission('go.project.evaluate');
-  const folders = useFolders();
-  const categories = useCategories();
-  const countries = useCountries();
-  const tags = useTags();
-  const provinces = useProvinces({ page: 1, pageSize: 100, countryId }, Boolean(countryId));
-  const folderOptions = useMemo(
-    () => buildFolderCascaderOptions(folders.data ?? []),
-    [folders.data],
+
+  const activeFilterCount = useMemo(
+    () =>
+      [
+        filterValues.keyword?.trim(),
+        filterValues.folderId,
+        filterValues.countryId || filterValues.provinceId,
+        filterValues.categoryId,
+        filterValues.tagIds?.length,
+      ].filter(Boolean).length,
+    [filterValues],
   );
 
-  useEffect(() => {
-    if (routeProjectId) {
-      setDetailProjectId(routeProjectId);
-    }
-  }, [routeProjectId]);
-
-  useEffect(() => {
-    const selectedFolder = folders.data?.find((folder) => folder.id === urlState.folderId);
-    filterForm.setFieldsValue({
-      keyword: urlState.keyword ?? undefined,
-      folderPath: selectedFolder?.pathIds ?? (urlState.folderId ? [urlState.folderId] : undefined),
-      tagIds: urlState.tagIds,
-      countryId: urlState.countryId ?? undefined,
-      provinceId: urlState.provinceId ?? undefined,
-      categoryId: urlState.categoryId ?? undefined,
-    });
-  }, [filterForm, folders.data, urlState]);
-
-  const applyFilters = async (values: ProjectFilterValues) => {
+  const applyFilter = async (values: ProjectFilterValues) => {
     await setUrlState({
       keyword: values.keyword?.trim() || null,
-      folderId: values.folderPath?.at(-1) ?? null,
+      folderId: values.folderId ?? null,
       tagIds: values.tagIds?.length ? values.tagIds : null,
       countryId: values.countryId ?? null,
       provinceId: values.provinceId ?? null,
       categoryId: values.categoryId ?? null,
       page: 1,
     });
+    void actionRef.current?.reload();
+  };
+
+  const handleFilterChange = (values: ProjectFilterValues) => {
+    setFilterValues(values);
+    if (values.keyword !== undefined && values.keyword !== keywordInput) {
+      setKeywordInput(values.keyword);
+    }
+    void applyFilter(values);
+  };
+
+  const handleClearFilter = () => {
+    setFilterValues({});
+    setKeywordInput('');
+    void setUrlState({
+      keyword: null,
+      folderId: null,
+      // folderIds: null,
+      tagIds: null,
+      countryId: null,
+      provinceId: null,
+      categoryId: null,
+      page: 1,
+    });
+    void actionRef.current?.reload();
+  };
+
+  const handleKeywordSearch = () => {
+    const newValues = { ...filterValues, keyword: keywordInput.trim() || undefined };
+    setFilterValues(newValues);
+    void applyFilter(newValues);
   };
 
   const handleDelete = async (projectId: string) => {
@@ -214,6 +208,14 @@ export function ProjectsPage() {
 
   const columns: ProColumns<Project>[] = [
     {
+      title: t('projects.thumbnail'),
+      dataIndex: 'thumbnailAssetId',
+      key: 'thumbnail',
+      width: 100,
+      align: 'center',
+      render: (_, project) => <ProjectThumbnailCell assetId={project.thumbnailAssetId} />,
+    },
+    {
       title: t('projects.name'),
       dataIndex: 'name',
       key: 'name',
@@ -225,14 +227,6 @@ export function ProjectsPage() {
           {project.name}
         </Typography.Link>
       ),
-    },
-    {
-      title: t('projects.thumbnail'),
-      dataIndex: 'thumbnailAssetId',
-      key: 'thumbnail',
-      width: 100,
-      align: 'center',
-      render: (_, project) => <ProjectThumbnailCell assetId={project.thumbnailAssetId} />,
     },
     {
       title: t('projects.location'),
@@ -294,8 +288,8 @@ export function ProjectsPage() {
       key: 'evaluationStatus',
       width: 160,
       render: (_, project) => {
-        const status = getProjectStatus(project.evaluationStatus, t);
-        return <Tag color={status.color}>{status.label}</Tag>;
+        const status = getProjectStatus(project.evaluationStatus);
+        return <Tag color={status.color}>{t(status.label)}</Tag>;
       },
     },
     {
@@ -303,14 +297,14 @@ export function ProjectsPage() {
       dataIndex: 'createdAt',
       key: 'createdAt',
       width: 170,
-      render: (_, project) => formatDateTime(project.createdAt),
+      render: (_, project) => formatDate(project.createdAt),
     },
     {
       title: t('projects.updatedAt'),
       dataIndex: 'updatedAt',
       key: 'updatedAt',
       width: 170,
-      render: (_, project) => formatDateTime(project.updatedAt),
+      render: (_, project) => formatDate(project.updatedAt),
     },
     {
       title: t('projects.actions'),
@@ -320,30 +314,20 @@ export function ProjectsPage() {
       hideInSetting: true,
       render: (_, project) => (
         <Space size={0}>
-          <Tooltip title="Chi tiết project">
-            <Button
-              aria-label="Chi tiết project"
-              icon={<Eye size={16} />}
-              type="text"
-              onClick={() => setDetailProjectId(project.id)}
-            />
-          </Tooltip>
-          {canEvaluate.allowed ? (
           <Tooltip title={t('projects.review')}>
             <Button
               aria-label={t('projects.review')}
               icon={<ClipboardCheck size={16} />}
               type="text"
-              onClick={() => setEvaluationProjectId(project.id)}
+              onClick={() => setReviewProjectId(project.id)}
             />
           </Tooltip>
-          ) : null}
           <Tooltip title={t('projects.edit')}>
             <Button
               aria-label={t('projects.edit')}
               icon={<Pencil size={16} />}
               type="text"
-              onClick={() => navigate(`/projects/${project.id}/edit`)}
+              onClick={() => navigate(`/projects/${project.id}`)}
             />
           </Tooltip>
           <Popconfirm
@@ -372,6 +356,12 @@ export function ProjectsPage() {
     <>
       <PageContainer
         title={t('projects.title')}
+        style={{
+          background: token.colorBgContainer,
+          paddingBlock: 16,
+          paddingInline: 16,
+          borderRadius: 6,
+        }}
         extra={[
           <Button
             key="create"
@@ -383,110 +373,6 @@ export function ProjectsPage() {
           </Button>,
         ]}
       >
-        <Form<ProjectFilterValues>
-          form={filterForm}
-          layout="vertical"
-          onFinish={applyFilters}
-          style={{ marginBottom: 16 }}
-        >
-          <Row gutter={[12, 0]} align="bottom">
-            <Col xs={24} sm={12} lg={8} xxl={4}>
-              <Form.Item name="keyword" label={t('projects.keyword')}>
-                <Input allowClear placeholder={t('projects.keywordPlaceholder')} />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12} lg={8} xxl={4}>
-              <Form.Item name="folderPath" label={t('projects.folder')}>
-                <Cascader
-                  allowClear
-                  changeOnSelect
-                  options={folderOptions}
-                  placeholder={t('projects.folderFilterPlaceholder')}
-                  showSearch
-                />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12} lg={8} xxl={4}>
-              <Form.Item name="tagIds" label={t('projects.tags')}>
-                <Select
-                  allowClear
-                  mode="multiple"
-                  optionFilterProp="label"
-                  options={tags.data?.map((tag) => ({ value: tag.id, label: tag.name }))}
-                  placeholder={t('projects.tagsFilterPlaceholder')}
-                  showSearch
-                />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12} lg={8} xxl={4}>
-              <Form.Item name="countryId" label={t('projects.country')}>
-                <Select
-                  allowClear
-                  optionFilterProp="label"
-                  options={countries.data?.map((country) => ({
-                    value: country.id,
-                    label: country.name,
-                  }))}
-                  placeholder={t('projects.countryPlaceholder')}
-                  showSearch
-                  onChange={() => filterForm.setFieldValue('provinceId', undefined)}
-                />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12} lg={8} xxl={4}>
-              <Form.Item name="provinceId" label={t('projects.province')}>
-                <Select
-                  allowClear
-                  disabled={!countryId}
-                  loading={provinces.isPending}
-                  optionFilterProp="label"
-                  options={provinces.data?.items.map((province) => ({
-                    value: province.id,
-                    label: province.name,
-                  }))}
-                  placeholder={t('projects.provincePlaceholder')}
-                  showSearch
-                />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12} lg={8} xxl={4}>
-              <Form.Item name="categoryId" label={t('projects.category')}>
-                <Select
-                  allowClear
-                  optionFilterProp="label"
-                  options={categories.data?.map((category) => ({
-                    value: category.id,
-                    label: category.name,
-                  }))}
-                  placeholder={t('projects.categoryPlaceholder')}
-                  showSearch
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Space>
-            <Button htmlType="submit" icon={<Search size={16} />} type="primary">
-              {t('common.search')}
-            </Button>
-            <Button
-              onClick={() => {
-                filterForm.resetFields();
-                void setUrlState({
-                  keyword: null,
-                  folderId: null,
-                  tagIds: null,
-                  countryId: null,
-                  provinceId: null,
-                  categoryId: null,
-                  page: 1,
-                });
-              }}
-            >
-              {t('common.reset')}
-            </Button>
-          </Space>
-        </Form>
-
         {listError ? (
           <Alert
             closable
@@ -505,6 +391,26 @@ export function ProjectsPage() {
             persistenceKey: 'ag-go.projects.columns.v1',
             persistenceType: 'localStorage',
           }}
+          headerTitle={
+            <Space size={12}>
+              <ProjectFilterPopover
+                value={filterValues}
+                onChange={handleFilterChange}
+                onClear={handleClearFilter}
+                activeCount={activeFilterCount}
+              />
+              <Input.Search
+                allowClear
+                size="large"
+                placeholder={t('projects.keywordPlaceholder')}
+                value={keywordInput}
+                onChange={(e) => setKeywordInput(e.target.value)}
+                onSearch={handleKeywordSearch}
+                onPressEnter={handleKeywordSearch}
+                style={{ width: 350 }}
+              />
+            </Space>
+          }
           options={{ reload: true, density: false, setting: true, fullScreen: false }}
           pagination={{
             current: urlState.page,
@@ -523,7 +429,11 @@ export function ProjectsPage() {
           request={async ({ current, pageSize }) => {
             const params: ProjectListParams = {
               ...(urlState.keyword ? { keyword: urlState.keyword } : {}),
-              ...(urlState.folderId ? { folderId: urlState.folderId } : {}),
+              ...(urlState.folderIds?.length
+                ? { folderIds: urlState.folderIds }
+                : urlState.folderId
+                  ? { folderId: urlState.folderId }
+                  : {}),
               ...(urlState.tagIds.length ? { tagIds: urlState.tagIds } : {}),
               ...(urlState.countryId ? { countryId: urlState.countryId } : {}),
               ...(urlState.provinceId ? { provinceId: urlState.provinceId } : {}),
@@ -537,6 +447,8 @@ export function ProjectsPage() {
                 queryFn: () => getProjects(params),
               });
               setListError(undefined);
+              setGridData(result.items);
+              setTotalCount(result.total);
               return { data: result.items, success: true, total: result.total };
             } catch (error) {
               setListError(error instanceof Error ? error.message : t('projects.loadFailed'));
@@ -547,6 +459,101 @@ export function ProjectsPage() {
           search={false}
           scroll={{ x: 1680 }}
           sticky={{ offsetHeader: 56 }}
+          tableRender={(_props, _defaultDom, domList) => (
+            <>
+              {domList.toolbar}
+              {viewMode === 'grid' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <ProjectGridView
+                    items={gridData.map((p) => ({
+                      id: p.id,
+                      title: p.name,
+                      slug: p.id,
+                      visibility: 'public',
+                      evaluation_status: p.evaluationStatus,
+                      createdAt: p.createdAt,
+                      updatedAt: p.updatedAt,
+                      cover: null,
+                      stats: { views: 0, likes: 0, comments: 0 },
+                      folder: p.folderPath ? { id: p.folderId, name: p.folderPath } : undefined,
+                      province: p.provinceName
+                        ? { id: p.provinceId ?? '', name: p.provinceName }
+                        : undefined,
+                      country: p.countryName
+                        ? { id: p.countryId ?? '', name: p.countryName }
+                        : undefined,
+                      imageCount: p.imageCount,
+                      videoCount: p.videoCount,
+                    }))}
+                    isLoading={false}
+                    onView={(id) => navigate(`/projects/${id}`)}
+                    onEdit={(id) => navigate(`/projects/${id}`)}
+                    onDelete={(item) => void handleDelete(item.id)}
+                    onEvaluate={(item) => setReviewProjectId(item.id)}
+                    canEvaluate
+                  />
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'flex-end',
+                      marginTop: 12,
+                      paddingBottom: 16,
+                    }}
+                  >
+                    <Pagination
+                      current={urlState.page}
+                      pageSize={urlState.pageSize}
+                      total={totalCount}
+                      showSizeChanger
+                      pageSizeOptions={[10, 20, 50, 100]}
+                      showTotal={(total, range) =>
+                        t('common.paginationTotal', {
+                          start: range[0],
+                          end: range[1],
+                          total,
+                        })
+                      }
+                      onChange={(page, pageSize) => {
+                        void setUrlState({ page, pageSize });
+                      }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                domList.table
+              )}
+            </>
+          )}
+          toolBarRender={() => [
+            <Radio.Group
+              key="view-mode"
+              value={viewMode}
+              onChange={(e) => setViewMode(e.target.value)}
+              buttonStyle="solid"
+            >
+              <Radio.Button
+                value="list"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <BarsOutlined />
+              </Radio.Button>
+
+              <Radio.Button
+                value="grid"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <AppstoreOutlined />
+              </Radio.Button>
+            </Radio.Group>,
+          ]}
           onChange={(pagination) => {
             void setUrlState({
               page: pagination.current ?? 1,
@@ -563,20 +570,10 @@ export function ProjectsPage() {
           navigate(`/projects/${project.id}`);
         }}
       />
-      <ProjectDetailDrawer
-        open={Boolean(detailProjectId)}
-        projectId={detailProjectId}
-        onClose={() => {
-          setDetailProjectId(undefined);
-          if (routeProjectId) {
-            navigate('/projects', { replace: true });
-          }
-        }}
-      />
-      <ProjectEvaluationDrawer
-        open={Boolean(evaluationProjectId)}
-        projectId={evaluationProjectId}
-        onClose={() => setEvaluationProjectId(undefined)}
+      <ProjectReviewDrawer
+        open={Boolean(reviewProjectId)}
+        projectId={reviewProjectId}
+        onClose={() => setReviewProjectId(undefined)}
       />
     </>
   );
