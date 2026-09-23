@@ -4,6 +4,7 @@ import {
   createRenderBatch,
   getRenderBatch,
   getRenderProfiles,
+  updateRenderProfile,
 } from '../api/render';
 
 const keys = {
@@ -14,6 +15,17 @@ const keys = {
 
 export function useRenderProfiles() {
   return useQuery({ queryKey: keys.profiles(), queryFn: getRenderProfiles });
+}
+
+export function useUpdateRenderProfile() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: Parameters<typeof updateRenderProfile>[1] }) =>
+      updateRenderProfile(id, input),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: keys.profiles() });
+    },
+  });
 }
 
 export function useRenderBatch(id: string) {

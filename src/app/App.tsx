@@ -33,6 +33,7 @@ import {
 } from 'react-router-dom';
 import { useAccountApplications } from '../modules/account/hooks/use-account-applications';
 import { useCurrentAccount } from '../modules/account/hooks/use-current-account';
+import { usePublicSettings } from '../modules/settings/hooks/use-settings';
 import { isAdminUserType } from '../shared/auth/user-type';
 
 const CategoriesPage = lazy(() =>
@@ -115,6 +116,7 @@ export function App() {
   const { t } = useTranslation();
   const { user, logout } = useAuth0();
   const applications = useAccountApplications();
+  const webSettings = usePublicSettings();
   const currentAccount = useCurrentAccount();
   const hasPermission = (permission: string) =>
     currentAccount.isLoading
@@ -131,6 +133,32 @@ export function App() {
 
   const userEmail = user?.email ?? '';
   const userInitials = userEmail.slice(0, 2).toUpperCase();
+  useEffect(() => {
+    const settings = webSettings.data;
+    if (!settings) {
+      return;
+    }
+
+    const siteName = settings.siteName || 'AG Go';
+    const description = settings.siteDescription || 'AG Go internal media workspace';
+    document.title = siteName;
+    setMetaContent('description', description);
+    setMetaContent('og:title', siteName, 'property');
+    setMetaContent('og:description', description, 'property');
+    setMetaContent('og:image', settings.logoUrl ?? '', 'property');
+    setMetaContent('twitter:card', settings.logoUrl ? 'summary_large_image' : 'summary');
+
+    const faviconUrl = settings.faviconUrl || settings.logoUrl;
+    if (faviconUrl) {
+      let favicon = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+      if (!favicon) {
+        favicon = document.createElement('link');
+        favicon.rel = 'icon';
+        document.head.appendChild(favicon);
+      }
+      favicon.href = faviconUrl;
+    }
+  }, [webSettings.data]);
   const appList = useMemo<NonNullable<ProLayoutProps['appList']>>(
     () =>
       (applications.data ?? []).map((application) => ({
@@ -345,8 +373,18 @@ export function App() {
       siderWidth={220}
       className="app-shell"
       appList={appList}
-      title={t('app.title')}
-      logo={false}
+      title={webSettings.data?.siteName ?? t('app.title')}
+      logo={
+        webSettings.data?.logoUrl ? (
+          <img
+            src={webSettings.data.logoUrl}
+            alt={webSettings.data.siteName ?? t('app.title')}
+            style={{ maxHeight: 32, maxWidth: 120, objectFit: 'contain' }}
+          />
+        ) : (
+          false
+        )
+      }
       layout="mix"
       siderMenuType="group"
       fixSiderbar
@@ -453,6 +491,16 @@ export function App() {
       </Suspense>
     </ProLayout>
   );
+}
+
+function setMetaContent(name: string, content: string, attribute: 'name' | 'property' = 'name') {
+  let meta = document.querySelector<HTMLMetaElement>(`meta[${attribute}="${name}"]`);
+  if (!meta) {
+    meta = document.createElement('meta');
+    meta.setAttribute(attribute, name);
+    document.head.appendChild(meta);
+  }
+  meta.content = content;
 }
 
 function PermissionGate({ permissions, children }: { permissions: string[]; children: ReactNode }) {

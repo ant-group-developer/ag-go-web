@@ -9,7 +9,9 @@ export type RenderProfile = {
   maxWidth: number | null;
   maxHeight: number | null;
   imageQuality: number;
+  videoBitrateBps: string | null;
   watermarkEnabled: boolean;
+  watermarkConfig: Record<string, unknown>;
 };
 
 export type RenderBatch = {
@@ -26,6 +28,27 @@ export type RenderBatch = {
 
 export function getRenderProfiles() {
   return apiClient<RenderProfile[]>('/render-profiles');
+}
+
+export type UpdateRenderProfileInput = Partial<
+  Pick<
+    RenderProfile,
+    | 'name'
+    | 'outputFormat'
+    | 'maxWidth'
+    | 'maxHeight'
+    | 'imageQuality'
+    | 'videoBitrateBps'
+    | 'watermarkEnabled'
+    | 'watermarkConfig'
+  >
+>;
+
+export function updateRenderProfile(id: string, input: UpdateRenderProfileInput) {
+  return apiClient<RenderProfile>(`/render-profiles/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
 }
 
 export function createRenderBatch(input: {
