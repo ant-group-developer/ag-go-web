@@ -2,19 +2,6 @@ import { PageContainer, ProCard, StatisticCard } from '@ant-design/pro-component
 import { Alert, Col, DatePicker, Empty, Flex, Row, Segmented, Spin, theme } from 'antd';
 import dayjs, { Dayjs } from 'dayjs';
 import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Legend,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
-import {
   Ban,
   CheckCircle2,
   Clock3,
@@ -29,8 +16,21 @@ import {
 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useMemo, useState } from 'react';
-import { useRenderingStatistics, useStatisticsOverview } from '../hooks/use-statistics';
 import { useTranslation } from 'react-i18next';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import { useRenderingStatistics, useStatisticsOverview } from '../hooks/use-statistics';
 
 const PRESET_OPTIONS = [
   { label: 'Hôm nay', value: 'today' },
@@ -134,7 +134,7 @@ export function StatisticsPage() {
   const StatGrid = ({ items }: { items: StatBoxItem[] }) => (
     <Row gutter={[16, 16]}>
       {items.map((item) => (
-        <Col key={item.title} xs={24} sm={12} >
+        <Col key={item.title} xs={24} sm={12}>
           <StatBox {...item} />
         </Col>
       ))}
@@ -191,7 +191,11 @@ export function StatisticsPage() {
   ];
 
   const evaluationItems: StatBoxItem[] = [
-    { title: t('statistics.totalEvaluation'), value: evalTotal, icon: <MessageSquare size={18} color={EVAL_COLORS.pending} /> },
+    {
+      title: t('statistics.totalEvaluation'),
+      value: evalTotal,
+      icon: <MessageSquare size={18} color={EVAL_COLORS.pending} />,
+    },
     {
       title: t('statistics.pendingEvaluation'),
       value: evaluation.pending,
@@ -300,7 +304,12 @@ export function StatisticsPage() {
         </Col>
       </Row>
 
-      <ProCard title="Rendering" bordered headerBordered style={{ background: token.colorFillAlter, marginTop: 16 }}>
+      <ProCard
+        title="Rendering"
+        bordered
+        headerBordered
+        style={{ background: token.colorFillAlter, marginTop: 16 }}
+      >
         <Row gutter={[16, 16]}>
           <Col xs={24} lg={16}>
             <div style={{ width: '100%', height: 260 }}>

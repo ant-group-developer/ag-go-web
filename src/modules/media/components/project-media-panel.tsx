@@ -11,10 +11,22 @@ import {
 } from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { UploadFile, UploadProps } from 'antd';
-import { Alert, App as AntApp, Avatar, Button, Card, List, Progress, Space, Tag, Typography, Upload } from 'antd';
+import {
+  Alert,
+  App as AntApp,
+  Avatar,
+  Button,
+  Card,
+  List,
+  Progress,
+  Space,
+  Tag,
+  Typography,
+  Upload,
+} from 'antd';
+import type { ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { ReactNode } from 'react';
 import { projectQueryKeys } from '../../projects/queries/project-query-keys';
 import {
   abortUpload,
@@ -357,7 +369,15 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
                     shape="square"
                     size={48}
                     src={file.thumbUrl}
-                    icon={!file.thumbUrl ? (video ? <VideoCameraOutlined /> : <FileImageOutlined />) : undefined}
+                    icon={
+                      !file.thumbUrl ? (
+                        video ? (
+                          <VideoCameraOutlined />
+                        ) : (
+                          <FileImageOutlined />
+                        )
+                      ) : undefined
+                    }
                   />
                 }
                 title={
@@ -365,14 +385,22 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
                     <Typography.Text ellipsis style={{ maxWidth: 320, fontWeight: 400 }}>
                       {file.name}
                     </Typography.Text>
-                    <Tag icon={statusIcons[status]} color={statusColors[status]} style={{ margin: 0 }}>
+                    <Tag
+                      icon={statusIcons[status]}
+                      color={statusColors[status]}
+                      style={{ margin: 0 }}
+                    >
                       {statusLabels[status]}
                     </Tag>
                   </Space>
                 }
                 description={
                   status === 'uploading' ? (
-                    <Progress percent={Math.round(file.percent ?? 0)} size="small" style={{ maxWidth: 280 }} />
+                    <Progress
+                      percent={Math.round(file.percent ?? 0)}
+                      size="small"
+                      style={{ maxWidth: 280 }}
+                    />
                   ) : undefined
                 }
               />
