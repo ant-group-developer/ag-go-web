@@ -1,3 +1,4 @@
+import type { UserType } from '../../../shared/auth/user-type';
 import { apiClient } from '../../../shared/lib/api-client';
 
 export type AccountUser = {
@@ -16,6 +17,11 @@ export type AccountUser = {
   [key: string]: unknown;
 };
 
+export type AccountCurrentUser = AccountUser & {
+  user_type: UserType;
+  permissions: string[];
+};
+
 export type AccountApplication = {
   id: string;
   name: string;
@@ -27,9 +33,8 @@ export type AccountApplication = {
   is_active?: boolean;
 };
 
-export function getCurrentAccountUser(fields?: string): Promise<AccountUser> {
-  const query = fields ? `?fields=${encodeURIComponent(fields)}` : '';
-  return apiClient<AccountUser>(`/account/me${query}`);
+export function getCurrentAccountUser(): Promise<AccountCurrentUser> {
+  return apiClient<AccountCurrentUser>('/account/me');
 }
 
 export function getAccountApplications(): Promise<AccountApplication[]> {

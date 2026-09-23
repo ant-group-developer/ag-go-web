@@ -1,6 +1,7 @@
 import { LogoutOutlined } from '@ant-design/icons';
 import { ProLayout, type ProLayoutProps } from '@ant-design/pro-components';
 import { useAuth0 } from '@auth0/auth0-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { theme as antdTheme, Avatar, Dropdown, Flex, MenuProps, Spin, Typography } from 'antd';
 import {
   Activity,
@@ -15,11 +16,10 @@ import {
   MapPinned,
   ScrollText,
   Settings,
-  ShieldCheck,
   Tags,
   User,
 } from 'lucide-react';
-import { lazy, Suspense, useMemo } from 'react';
+import { lazy, Suspense, useEffect, useMemo, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Link,
@@ -29,8 +29,11 @@ import {
   useLocation,
   useNavigate,
   useParams,
+  useSearchParams,
 } from 'react-router-dom';
 import { useAccountApplications } from '../modules/account/hooks/use-account-applications';
+import { useCurrentAccount } from '../modules/account/hooks/use-current-account';
+import { isAdminUserType } from '../shared/auth/user-type';
 
 const CategoriesPage = lazy(() =>
   import('../modules/categories/pages/categories-page').then(({ CategoriesPage }) => ({
@@ -80,6 +83,31 @@ const FeaturePlaceholderPage = lazy(() =>
 const HomePage = lazy(() =>
   import('../modules/system/pages/home-page').then(({ HomePage }) => ({ default: HomePage })),
 );
+const StatisticsPage = lazy(() =>
+  import('../modules/statistics/pages/statistics-page').then(({ StatisticsPage }) => ({
+    default: StatisticsPage,
+  })),
+);
+const RenderPage = lazy(() =>
+  import('../modules/render/pages/render-page').then(({ RenderPage }) => ({
+    default: RenderPage,
+  })),
+);
+const AuditPage = lazy(() =>
+  import('../modules/audit/pages/audit-page').then(({ AuditPage }) => ({
+    default: AuditPage,
+  })),
+);
+const SettingsPage = lazy(() =>
+  import('../modules/settings/pages/settings-page').then(({ SettingsPage }) => ({
+    default: SettingsPage,
+  })),
+);
+const LogsPage = lazy(() =>
+  import('../modules/logs/pages/logs-page').then(({ LogsPage }) => ({
+    default: LogsPage,
+  })),
+);
 
 export function App() {
   const location = useLocation();
@@ -87,6 +115,13 @@ export function App() {
   const { t } = useTranslation();
   const { user, logout } = useAuth0();
   const applications = useAccountApplications();
+  const currentAccount = useCurrentAccount();
+  const hasPermission = (permission: string) =>
+    currentAccount.isLoading
+      ? true
+      : isAdminUserType(currentAccount.data?.user_type) ||
+        currentAccount.data?.permissions.includes(permission) ||
+        false;
 
   const { token } = antdTheme.useToken();
 
@@ -165,82 +200,122 @@ export function App() {
         name: t('menu.dashboard'),
         icon: <LayoutDashboard size={16} />,
       },
-      {
-        path: '/statistics',
-        name: t('menu.statistics'),
-        icon: <BarChart3 size={16} />,
-      },
+      ...(hasPermission('go.statistics.read')
+        ? [
+            {
+              path: '/statistics',
+              name: t('menu.statistics'),
+              icon: <BarChart3 size={16} />,
+            },
+          ]
+        : []),
+      ...(hasPermission('go.render.read')
+        ? [
+            {
+              path: '/render',
+              name: 'Render',
+              icon: <Activity size={16} />,
+            },
+          ]
+        : []),
       {
         path: '/content',
         name: t('menu.content'),
         routes: [
-          {
-            path: '/projects',
-            name: t('menu.projects'),
-            icon: <FolderOpen size={16} />,
-          },
-          {
-            path: '/project-evaluations',
-            name: t('menu.projectEvaluations'),
-            icon: <ClipboardCheck size={16} />,
-          },
-          {
-            path: '/my-projects',
-            name: t('menu.myProjects'),
-            icon: <User size={16} />,
-          },
+          ...(hasPermission('go.project.read')
+            ? [
+                {
+                  path: '/projects',
+                  name: t('menu.projects'),
+                  icon: <FolderOpen size={16} />,
+                },
+              ]
+            : []),
+          ...(hasPermission('go.project.evaluate')
+            ? [
+                {
+                  path: '/project-evaluations',
+                  name: t('menu.projectEvaluations'),
+                  icon: <ClipboardCheck size={16} />,
+                },
+              ]
+            : []),
+          ...(hasPermission('go.project.read')
+            ? [
+                {
+                  path: '/my-projects',
+                  name: t('menu.myProjects'),
+                  icon: <User size={16} />,
+                },
+              ]
+            : []),
         ],
       },
-      {
-        path: '/common-catalogs',
-        name: t('menu.commonCatalogs'),
-        routes: [
-          {
-            path: '/folders',
-            name: t('menu.folders'),
-            icon: <Folder size={16} />,
-          },
-          {
-            path: '/catalogs/categories',
-            name: t('menu.categories'),
-            icon: <List size={16} />,
-          },
-          {
-            path: '/catalogs/countries',
-            name: t('menu.countries'),
-            icon: <Globe size={16} />,
-          },
-          {
-            path: '/catalogs/provinces',
-            name: t('menu.provinces'),
-            icon: <MapPinned size={16} />,
-          },
-          {
-            path: '/catalogs/tags',
-            name: t('menu.tags'),
-            icon: <Tags size={16} />,
-          },
-        ],
-      },
+      ...(hasPermission('go.folder.manage') || hasPermission('go.catalog.manage')
+        ? [
+            {
+              path: '/common-catalogs',
+              name: t('menu.commonCatalogs'),
+              routes: [
+                ...(hasPermission('go.folder.manage')
+                  ? [
+                      {
+                        path: '/folders',
+                        name: t('menu.folders'),
+                        icon: <Folder size={16} />,
+                      },
+                    ]
+                  : []),
+                ...(hasPermission('go.catalog.manage')
+                  ? [
+                      {
+                        path: '/catalogs/categories',
+                        name: t('menu.categories'),
+                        icon: <List size={16} />,
+                      },
+                      {
+                        path: '/catalogs/countries',
+                        name: t('menu.countries'),
+                        icon: <Globe size={16} />,
+                      },
+                      {
+                        path: '/catalogs/provinces',
+                        name: t('menu.provinces'),
+                        icon: <MapPinned size={16} />,
+                      },
+                      {
+                        path: '/catalogs/tags',
+                        name: t('menu.tags'),
+                        icon: <Tags size={16} />,
+                      },
+                    ]
+                  : []),
+              ],
+            },
+          ]
+        : []),
       {
         path: '/system',
         name: t('menu.system'),
         routes: [
-          {
-            path: '/system/permissions',
-            name: t('menu.permissions'),
-            icon: <ShieldCheck size={16} />,
-          },
-          {
-            path: '/system/settings',
-            name: t('menu.settings'),
-            icon: <Settings size={16} />,
-          },
-          {
-            path: '/system/logs',
-            name: t('menu.logs'),
-            icon: <ScrollText size={16} />,
-          },
+          ...(hasPermission('go.settings.manage')
+            ? [
+                {
+                  path: '/system/settings',
+                  name: t('menu.settings'),
+                  icon: <Settings size={16} />,
+                },
+              ]
+            : []),
+          ...(hasPermission('go.logs.read')
+            ? [
+                {
+                  path: '/system/logs',
+                  name: t('menu.logs'),
+                  icon: <ScrollText size={16} />,
+                },
+              ]
+            : []),
           {
             path: '/health',
             name: t('menu.health'),
@@ -308,13 +383,23 @@ export function App() {
           <Route
             path="/statistics"
             element={
-              <FeaturePlaceholderPage
-                title={t('placeholder.statisticsTitle')}
-                description={t('placeholder.statisticsDescription')}
-              />
+              <PermissionGate permissions={['go.statistics.read']}>
+                <StatisticsPage />
+              </PermissionGate>
             }
           />
+          <Route
+            path="/render"
+            element={
+              <PermissionGate permissions={['go.render.read']}>
+                <RenderPage />
+              </PermissionGate>
+            }
+          />
+          <Route path="/google-drive/callback" element={<GoogleDriveCallbackRoute />} />
           <Route path="/health" element={<HealthPage />} />
+          <Route path="/downloads" element={<Navigate to="/projects" replace />} />
+          <Route path="/google-drive" element={<Navigate to="/projects" replace />} />
           <Route path="/folders" element={<FoldersPage />} />
           <Route path="/projects" element={<ProjectsPage />} />
           <Route
@@ -335,8 +420,10 @@ export function App() {
               />
             }
           />
-          <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
+          <Route path="/projects/:projectId" element={<ProjectsPage />} />
+          <Route path="/projects/:projectId/edit" element={<ProjectDetailPage />} />
           <Route path="/projects/:projectId/media" element={<LegacyProjectMediaRedirect />} />
+          <Route path="/projects/:projectId/audit" element={<AuditPage />} />
           <Route path="/catalogs" element={<Navigate to="/catalogs/categories" replace />} />
           <Route
             path="/catalogs/overview"
@@ -347,36 +434,58 @@ export function App() {
           <Route path="/catalogs/provinces" element={<ProvincesPage />} />
           <Route path="/catalogs/tags" element={<TagsPage />} />
           <Route
-            path="/system/permissions"
-            element={
-              <FeaturePlaceholderPage
-                title={t('placeholder.permissionsTitle')}
-                description={t('placeholder.permissionsDescription')}
-              />
-            }
-          />
-          <Route
             path="/system/settings"
             element={
-              <FeaturePlaceholderPage
-                title={t('placeholder.settingsTitle')}
-                description={t('placeholder.settingsDescription')}
-              />
+              <PermissionGate permissions={['go.settings.manage']}>
+                <SettingsPage />
+              </PermissionGate>
             }
           />
           <Route
             path="/system/logs"
             element={
-              <FeaturePlaceholderPage
-                title={t('placeholder.logsTitle')}
-                description={t('placeholder.logsDescription')}
-              />
+              <PermissionGate permissions={['go.logs.read']}>
+                <LogsPage />
+              </PermissionGate>
             }
           />
         </Routes>
       </Suspense>
     </ProLayout>
   );
+}
+
+function PermissionGate({ permissions, children }: { permissions: string[]; children: ReactNode }) {
+  const account = useCurrentAccount();
+  if (account.isLoading) {
+    return <Spin fullscreen />;
+  }
+  if (
+    !account.data ||
+    (!isAdminUserType(account.data.user_type) &&
+      !permissions.some((permission) => account.data.permissions.includes(permission)))
+  ) {
+    return <Navigate to="/" replace />;
+  }
+  return children;
+}
+
+function GoogleDriveCallbackRoute() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const queryClient = useQueryClient();
+  const projectId = searchParams.get('projectId');
+  const status = searchParams.get('status');
+
+  useEffect(() => {
+    void queryClient.invalidateQueries({ queryKey: ['google-drive', 'connection'] });
+    navigate(projectId ? `/projects/${projectId}/edit` : '/projects', {
+      replace: true,
+      state: { googleDriveStatus: status },
+    });
+  }, [navigate, projectId, queryClient, status]);
+
+  return <Spin fullscreen />;
 }
 
 function LegacyProjectMediaRedirect() {

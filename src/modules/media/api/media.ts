@@ -20,6 +20,9 @@ export type ProjectMedia = {
   evaluationStatus: 'pending' | 'approved' | 'rejected';
   createdAt: string;
   updatedAt: string;
+  previewUrl?: string | null;
+  previewVariantCode?: string | null;
+  watermarkVariant?: string | null;
   durationSeconds: number | null;
   width: number | null;
   height: number | null;
