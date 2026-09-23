@@ -105,6 +105,9 @@ const resources = {
         parent: 'Thư mục cha',
         parentPlaceholder: 'Chọn thư mục cha (không bắt buộc)',
       },
+      statistics: {
+        title: 'Thống kê',
+      },
       projects: {
         projectDetails: 'Thông tin dự án',
         updateDetails: 'Cập nhật thông tin dự án',
