@@ -1,25 +1,41 @@
-import { PageContainer, ProCard, StatisticCard } from '@ant-design/pro-components';
-import { Alert, Col, DatePicker, Empty, Flex, Row, Segmented, Spin, theme } from 'antd';
+import { PageContainer, ProCard } from '@ant-design/pro-components';
+import {
+  Col,
+  DatePicker,
+  Flex,
+  Progress,
+  Row,
+  Segmented,
+  Table,
+  Tag,
+  Timeline,
+  Tooltip as AntTooltip,
+  Typography,
+  theme,
+} from 'antd';
 import dayjs, { Dayjs } from 'dayjs';
 import {
-  Ban,
+  AlertTriangle,
+  ArrowDownRight,
+  ArrowUpRight,
   CheckCircle2,
   Clock3,
+  Eye,
+  FileText,
   Film,
   FolderKanban,
   HardDrive,
   Image as ImageIcon,
-  Loader2,
   MessageSquare,
-  Timer,
+  ShieldCheck,
+  User,
   XCircle,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import {
-  Bar,
-  BarChart,
+  Area,
+  AreaChart,
   CartesianGrid,
   Cell,
   Legend,
@@ -30,7 +46,9 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { useRenderingStatistics, useStatisticsOverview } from '../hooks/use-statistics';
+import statsData from '../data/project-media-statistics.json';
+
+const { Text } = Typography;
 
 const PRESET_OPTIONS = [
   { label: 'Hôm nay', value: 'today' },
@@ -40,199 +58,609 @@ const PRESET_OPTIONS = [
   { label: 'Tùy chọn', value: 'custom' },
 ];
 
-const EVAL_COLORS = { pending: '#e6a930d5', approved: '#52c41a', rejected: '#ff4d4f' };
-const EVAL_LABELS = { pending: 'Chờ duyệt', approved: 'Đã duyệt', rejected: 'Từ chối' };
-const RENDER_COLORS: Record<string, string> = {
-  Queued: '#8c8c8c',
-  Processing: '#1677ff',
-  Completed: '#52c41a',
-  Failed: '#ff4d4f',
-  Cancelled: '#d9d9d9',
-};
+const GREEN = '#22c55e';
+const RED = '#f87171';
+const AMBER = '#fbbf24';
 
-function formatBytes(value: number | string | undefined | null) {
-  const bytes = Number(value ?? 0);
-  if (!bytes || Number.isNaN(bytes)) return '0 B';
-  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
-  return `${(bytes / 1024 ** i).toFixed(2)} ${units[i]}`;
+function formatNumber(value: number | string | undefined | null) {
+  const n = Number(value ?? 0);
+  if (Number.isNaN(n)) return '0';
+  return n.toLocaleString('en-US');
 }
 
-type StatBoxItem = {
-  title: string;
-  value: ReactNode;
-  icon?: ReactNode;
+function formatUnitValue(value: number, unit: string) {
+  return `${value.toLocaleString('en-US', { maximumFractionDigits: 2 })} ${unit}`;
+}
+
+const HEALTH_STATUS_META: Record<string, { color: string; label: string }> = {
+  healthy: { color: GREEN, label: 'Healthy' },
+  warning: { color: AMBER, label: 'Warning' },
+  critical: { color: RED, label: 'Critical' },
+  down: { color: RED, label: 'Down' },
 };
 
-export function StatisticsPage() {
-  const [preset, setPreset] = useState('today');
-  const [customRange, setCustomRange] = useState<[Dayjs, Dayjs]>([
-    dayjs().subtract(6, 'day').startOf('day'),
-    dayjs(),
-  ]);
+/* ------------------------------------------------------------------ */
+/*  Top projects by metric config                                      */
+/* ------------------------------------------------------------------ */
+
+type TopMetricKey = 'view' | 'media' | 'size' | 'image' | 'video';
+
+const TOP_PROJECT_METRICS: {
+  key: TopMetricKey;
+  label: string;
+  icon: ReactNode;
+  color: string;
+}[] = [
+    { key: 'view', label: 'View', icon: <Eye size={13} />, color: '#0ea5e9' },
+    { key: 'media', label: 'Media', icon: <Film size={13} />, color: '#6366f1' },
+    { key: 'size', label: 'Size', icon: <HardDrive size={13} />, color: AMBER },
+    { key: 'image', label: 'Image', icon: <ImageIcon size={13} />, color: GREEN },
+    { key: 'video', label: 'Video', icon: <Film size={13} />, color: RED },
+  ];
+
+/* ------------------------------------------------------------------ */
+/*  Summary card                                                       */
+/* ------------------------------------------------------------------ */
+
+type SummaryCardProps = {
+  title: string;
+  value: number;
+  deltaPercent: number;
+  trend: 'up' | 'down';
+  icon: ReactNode;
+  color: string;
+};
+
+function SummaryCard({ title, value, deltaPercent, trend, icon, color }: SummaryCardProps) {
   const { token } = theme.useToken();
-  const { t } = useTranslation();
+  const isUp = trend === 'up';
+  const deltaColor = isUp ? GREEN : RED;
 
-  const range = useMemo(() => {
-    const now = dayjs();
-    switch (preset) {
-      case 'week':
-        return { from: now.startOf('week').toISOString(), to: now.toISOString() };
-      case 'month':
-        return { from: now.startOf('month').toISOString(), to: now.toISOString() };
-      case 'year':
-        return { from: now.startOf('year').toISOString(), to: now.toISOString() };
-      case 'custom':
-        return {
-          from: customRange[0].startOf('day').toISOString(),
-          to: customRange[1].endOf('day').toISOString(),
-        };
-      case 'today':
-      default:
-        return { from: now.startOf('day').toISOString(), to: now.toISOString() };
-    }
-  }, [preset, customRange]);
-
-  const overview = useStatisticsOverview(range);
-  const rendering = useRenderingStatistics(range);
-  const sectionCardStyle = { background: token.colorFillAlter, height: '100%' };
-
-  const StatBox = ({ title, value, icon }: StatBoxItem) => (
+  return (
     <Flex
-      align="center"
+      vertical
       gap={12}
       style={{
-        padding: 12,
-        borderRadius: 8,
-        border: `1px solid ${token.colorBorderSecondary}`,
-        background: token.colorBgContainer,
+        padding: 16,
         height: '100%',
+        borderRadius: 12,
+        background: token.colorBgContainer,
+        border: `1px solid ${token.colorBorderSecondary}`,
+        boxShadow: token.boxShadowTertiary,
       }}
     >
-      {icon && (
+      <Flex align="center" justify="space-between">
         <Flex
           align="center"
           justify="center"
           style={{
             width: 40,
             height: 40,
-            borderRadius: 8,
-            flexShrink: 0,
-            border: `1px solid ${token.colorBorderSecondary}`,
+            borderRadius: 10,
+            background: `${color}1a`,
+            color,
           }}
         >
           {icon}
         </Flex>
-      )}
-      <Flex vertical>
-        <span style={{ fontSize: 14 }}>{title}</span>
-        <span style={{ fontSize: 18, fontWeight: 600 }}>{value}</span>
+
+        <Flex
+          align="center"
+          gap={2}
+          style={{
+            padding: '2px 8px',
+            borderRadius: 999,
+            fontSize: 12,
+            fontWeight: 600,
+            color: deltaColor,
+            background: `${deltaColor}1a`,
+          }}
+        >
+          {isUp ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+          {deltaPercent}%
+        </Flex>
+      </Flex>
+
+      <Flex vertical gap={2}>
+        <span style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.2 }}>
+          {formatNumber(value)}
+        </span>
+        <Text type="secondary" style={{ fontSize: 13 }}>
+          {title}
+        </Text>
       </Flex>
     </Flex>
   );
+}
 
-  const StatGrid = ({ items }: { items: StatBoxItem[] }) => (
-    <Row gutter={[16, 16]}>
-      {items.map((item) => (
-        <Col key={item.title} xs={24} sm={12}>
-          <StatBox {...item} />
-        </Col>
+/* ------------------------------------------------------------------ */
+/*  Custom donut legend                                                */
+/* ------------------------------------------------------------------ */
+
+type Segment = { key: string; label: string; value: number; percent: number; color: string, size: string };
+
+function SegmentLegend({ segments, total }: { segments: Segment[]; total: number }) {
+  const { token } = theme.useToken();
+  return (
+    <Flex vertical gap={12} style={{ width: '100%' }}>
+      {segments.map((s) => (
+        <Flex key={s.key} align="center" justify="space-between" gap={12}>
+          <Flex align="center" gap={8} style={{ minWidth: 0 }}>
+            <span
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: 3,
+                background: s.color,
+                flexShrink: 0,
+              }}
+            />
+            <Text style={{ fontSize: 13 }} ellipsis>
+              {s.label}
+            </Text>
+          </Flex>
+          <Flex align="center" gap={8}>
+            <Text strong style={{ fontSize: 13 }}>
+              {formatNumber(s.value)}
+            </Text>
+            <Text type="secondary" style={{ fontSize: 12, minWidth: 44, textAlign: 'right' }}>
+              {((s.value / total) * 100).toFixed(1)}%
+            </Text>
+            <Text type="secondary" style={{ fontSize: 12, minWidth: 44, textAlign: 'right' }}>{s.size}</Text>
+          </Flex>
+        </Flex>
       ))}
-    </Row>
+    </Flex>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Donut                                                              */
+/* ------------------------------------------------------------------ */
+
+function DonutChart({
+  segments,
+  centerLabel,
+  height = 220,
+}: {
+  segments: Segment[];
+  centerLabel: string;
+  height?: number;
+}) {
+  const { token } = theme.useToken();
+  const total = segments.reduce((acc, s) => acc + s.value, 0);
+
+  return (
+    <div style={{ position: 'relative', width: '100%', height }}>
+      <ResponsiveContainer>
+        <PieChart>
+          <Pie
+            data={segments}
+            dataKey="value"
+            nameKey="label"
+            innerRadius="62%"
+            outerRadius="92%"
+            paddingAngle={3}
+            stroke="none"
+          >
+            {segments.map((s) => (
+              <Cell key={s.key} fill={s.color} />
+            ))}
+          </Pie>
+          <Tooltip
+            formatter={(value: any) => formatNumber(Number(value))}
+            contentStyle={{
+              borderRadius: 8,
+              border: `1px solid ${token.colorBorderSecondary}`,
+              fontSize: 12,
+            }}
+          />
+        </PieChart>
+      </ResponsiveContainer>
+
+      <Flex
+        vertical
+        align="center"
+        justify="center"
+        style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
+      >
+        <span style={{ fontSize: 22, fontWeight: 700, lineHeight: 1.1 }}>
+          {formatNumber(total)}
+        </span>
+        <Text type="secondary" style={{ fontSize: 12 }}>
+          {centerLabel}
+        </Text>
+      </Flex>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Activity meta                                                      */
+/* ------------------------------------------------------------------ */
+
+/* ------------------------------------------------------------------ */
+/*  Storage statistics card                                            */
+/* ------------------------------------------------------------------ */
+
+type StorageStats = {
+  total: { value: number; unit: string };
+  used: { value: number; unit: string };
+  available: { value: number; unit: string };
+  usedPercent: number;
+};
+
+function StorageStatsCard({ storage }: { storage: StorageStats }) {
+  const { token } = theme.useToken();
+  const barColor = storage.usedPercent >= 90 ? RED : storage.usedPercent >= 75 ? AMBER : '#6366f1';
+
+  return (
+    <Flex vertical gap={16}>
+      <Flex align="center" justify="space-between">
+        <Flex align="center" gap={8}>
+          <Flex
+            align="center"
+            justify="center"
+            style={{ width: 32, height: 32, borderRadius: 8, background: '#6366f11a', color: '#6366f1' }}
+          >
+            <HardDrive size={16} />
+          </Flex>
+          <Text style={{ fontSize: 13 }}>Storage used</Text>
+        </Flex>
+        <Text strong style={{ fontSize: 13 }}>
+          {storage.usedPercent}%
+        </Text>
+      </Flex>
+
+      <Progress
+        percent={storage.usedPercent}
+        showInfo={false}
+        strokeColor={barColor}
+        trailColor={token.colorFillSecondary}
+      />
+
+      <Row gutter={12}>
+        <Col span={8}>
+          <Flex vertical gap={2}>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              Total
+            </Text>
+            <Text strong style={{ fontSize: 15 }}>
+              {formatUnitValue(storage.total.value, storage.total.unit)}
+            </Text>
+          </Flex>
+        </Col>
+        <Col span={8}>
+          <Flex vertical gap={2}>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              Used
+            </Text>
+            <Text strong style={{ fontSize: 15, color: barColor }}>
+              {formatUnitValue(storage.used.value, storage.used.unit)}
+            </Text>
+          </Flex>
+        </Col>
+        <Col span={8}>
+          <Flex vertical gap={2}>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              Available
+            </Text>
+            <Text strong style={{ fontSize: 15, color: GREEN }}>
+              {formatUnitValue(storage.available.value, storage.available.unit)}
+            </Text>
+          </Flex>
+        </Col>
+      </Row>
+    </Flex>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  System health card                                                 */
+/* ------------------------------------------------------------------ */
+
+type SystemHealth = {
+  status: string;
+  statusLabel: string;
+  uptimePercent: number;
+  lastChecked: string;
+  services: { name: string; status: string; latencyMs: number }[];
+};
+
+function SystemHealthCard({ health }: { health: SystemHealth }) {
+  const { token } = theme.useToken();
+  const overall = HEALTH_STATUS_META[health.status] ?? HEALTH_STATUS_META.healthy;
+
+  return (
+    <Flex vertical gap={16}>
+      <Flex align="center" justify="space-between">
+        <Flex align="center" gap={8}>
+          <Flex
+            align="center"
+            justify="center"
+            style={{ width: 32, height: 32, borderRadius: 8, background: `${overall.color}1a`, color: overall.color }}
+          >
+            <ShieldCheck size={16} />
+          </Flex>
+          <Flex vertical gap={0}>
+            <Text style={{ fontSize: 13 }}>{health.statusLabel}</Text>
+            <Text type="secondary" style={{ fontSize: 11 }}>
+              Uptime {health.uptimePercent}% · checked {health.lastChecked}
+            </Text>
+          </Flex>
+        </Flex>
+        <Tag
+          bordered={false}
+          style={{ margin: 0, color: overall.color, background: `${overall.color}1a`, fontWeight: 600 }}
+        >
+          {overall.label}
+        </Tag>
+      </Flex>
+
+      <Flex vertical gap={10}>
+        {health.services.map((s) => {
+          const meta = HEALTH_STATUS_META[s.status] ?? HEALTH_STATUS_META.healthy;
+          return (
+            <Flex key={s.name} align="center" justify="space-between">
+              <Flex align="center" gap={8} style={{ minWidth: 0 }}>
+                <span
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    background: meta.color,
+                    flexShrink: 0,
+                  }}
+                />
+                <Text style={{ fontSize: 13 }} ellipsis>
+                  {s.name}
+                </Text>
+                {s.status !== 'healthy' && <AlertTriangle size={12} color={meta.color} />}
+              </Flex>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                {s.latencyMs} ms
+              </Text>
+            </Flex>
+          );
+        })}
+      </Flex>
+    </Flex>
+  );
+}
+
+const ACTIVITY_META: Record<string, { color: string; icon: ReactNode }> = {
+  approved: { color: GREEN, icon: <CheckCircle2 size={14} /> },
+  rejected: { color: RED, icon: <XCircle size={14} /> },
+  created: { color: '#6366f1', icon: <FolderKanban size={14} /> },
+  evaluated: { color: '#f59e0b', icon: <MessageSquare size={14} /> },
+  uploaded: { color: '#0ea5e9', icon: <ImageIcon size={14} /> },
+};
+
+/* ------------------------------------------------------------------ */
+/*  Page                                                               */
+/* ------------------------------------------------------------------ */
+
+export function StatisticsPage() {
+  const { token } = theme.useToken();
+  const [preset, setPreset] = useState('today');
+  const [customRange, setCustomRange] = useState<[Dayjs, Dayjs]>([
+    dayjs().subtract(6, 'day').startOf('day'),
+    dayjs(),
+  ]);
+
+  const {
+    summary,
+    projectOverview,
+    mediaEvaluationResults,
+    mediaTypeDistribution,
+    storageStatistics,
+    systemHealth,
+    topProjectsBy,
+  } = statsData;
+
+  const [topMetric, setTopMetric] = useState<TopMetricKey>('media');
+
+  const summaryCards = useMemo(
+    () => [
+      {
+        title: 'Total projects',
+        value: summary.totalProjects.value,
+        deltaPercent: summary.totalProjects.deltaPercent,
+        trend: summary.totalProjects.trend as 'up' | 'down',
+        color: '#6366f1',
+        icon: <FolderKanban size={20} />,
+      },
+      {
+        title: 'Total media files',
+        value: summary.totalMediaFiles.value,
+        deltaPercent: summary.totalMediaFiles.deltaPercent,
+        trend: summary.totalMediaFiles.trend as 'up' | 'down',
+        color: '#0ea5e9',
+        icon: <Film size={20} />,
+      },
+      {
+        title: 'Pending evaluation',
+        value: summary.pendingEvaluation.value,
+        deltaPercent: summary.pendingEvaluation.deltaPercent,
+        trend: summary.pendingEvaluation.trend as 'up' | 'down',
+        color: AMBER,
+        icon: <Clock3 size={20} />,
+      },
+      {
+        title: 'Approved media',
+        value: summary.approvedMedia.value,
+        deltaPercent: summary.approvedMedia.deltaPercent,
+        trend: summary.approvedMedia.trend as 'up' | 'down',
+        color: GREEN,
+        icon: <CheckCircle2 size={20} />,
+      },
+      {
+        title: 'Rejected media',
+        value: summary.rejectedMedia.value,
+        deltaPercent: summary.rejectedMedia.deltaPercent,
+        trend: summary.rejectedMedia.trend as 'up' | 'down',
+        color: RED,
+        icon: <XCircle size={20} />,
+      },
+      {
+        title: 'Total User',
+        value: summary.totalUserProjects.value,
+        deltaPercent: summary.totalUserProjects.deltaPercent,
+        trend: summary.totalUserProjects.trend as 'up' | 'down',
+        color: RED,
+        icon: <User size={20} />,
+      },
+    ],
+    [summary],
   );
 
-  if (overview.isLoading || rendering.isLoading) {
-    return (
-      <Flex justify="center" align="center" style={{ minHeight: 320 }}>
-        <Spin size="large" />
-      </Flex>
-    );
-  }
-  if (overview.isError || rendering.isError) {
-    return (
-      <PageContainer title={t('statistics.title')}>
-        <Alert type="error" showIcon message={t('statistics.errorLoading')} />
-      </PageContainer>
-    );
-  }
-  if (!overview.data || !rendering.data) {
-    return <Empty description={t('statistics.empty')} style={{ marginTop: 64 }} />;
-  }
+  const chartData = useMemo(
+    () =>
+      projectOverview.labels.map((label, index) => ({
+        label,
+        projects: projectOverview.projects[index] ?? 0,
+        mediaFiles: projectOverview.mediaFiles[index] ?? 0,
+      })),
+    [projectOverview],
+  );
 
-  const { evaluation } = overview.data;
-  const evalTotal = evaluation.pending + evaluation.approved + evaluation.rejected;
-  const evalData = (['pending', 'approved', 'rejected'] as const).map((key) => ({
-    key,
-    type: EVAL_LABELS[key],
-    value: evaluation[key],
-  }));
+  const evalSegments = mediaEvaluationResults.segments as Segment[];
+  const typeSegments = mediaTypeDistribution.segments as Segment[];
+  const sizeSegments = mediaTypeDistribution.segments as Segment[];
 
-  const overviewItems: StatBoxItem[] = [
+  const activeTopMetric = TOP_PROJECT_METRICS.find((m) => m.key === topMetric)!;
+  const topProjectsList = (topProjectsBy[topMetric] ?? []) as {
+    id: string;
+    name: string;
+    value: number;
+    unit?: string;
+  }[];
+  const maxTopValue = Math.max(...topProjectsList.map((p) => p.value), 1);
+
+  const cardStyle = {
+    background: token.colorBgContainer,
+    borderRadius: 12,
+    border: `1px solid ${token.colorBorderSecondary}`,
+    height: '100%',
+  };
+
+  /* ---------------------------- table ---------------------------- */
+
+  const columns = [
     {
-      title: 'Projects',
-      value: overview.data.projects,
-      icon: <FolderKanban size={20} color="#1677ff" />,
-    },
-    {
-      title: 'Assets',
-      value: overview.data.assets,
-      icon: <ImageIcon size={20} color="#722ed1" />,
+      title: 'Project',
+      dataIndex: 'name',
+      key: 'name',
+      fixed: 'left' as const,
+      width: 180,
+      render: (name: string) => (
+        <Flex align="center" gap={8}>
+          <Flex
+            align="center"
+            justify="center"
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: 8,
+              background: '#6366f11a',
+              color: '#6366f1',
+              flexShrink: 0,
+            }}
+          >
+            <FolderKanban size={14} />
+          </Flex>
+          <Text strong style={{ fontSize: 13 }}>
+            {name}
+          </Text>
+        </Flex>
+      ),
     },
     {
       title: 'Media',
-      value: overview.data.media,
-      icon: <Film size={20} color="#eb2f96" />,
+      dataIndex: 'mediaCount',
+      key: 'mediaCount',
+      width: 90,
+      align: 'right' as const,
+      render: (v: number) => <Text strong>{formatNumber(v)}</Text>,
     },
     {
-      title: t('statistics.originalSize'),
-      value: formatBytes(overview.data.originalBytes),
-      icon: <HardDrive size={20} color="#13c2c2" />,
+      title: 'Approved',
+      dataIndex: 'approvedPercent',
+      key: 'approved',
+      width: 160,
+      render: (percent: number, row: any) => (
+        <Flex vertical gap={4}>
+          <Flex justify="space-between">
+            <Text style={{ fontSize: 12 }}>{formatNumber(row.approved)}</Text>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              {percent}%
+            </Text>
+          </Flex>
+          <Progress percent={percent} showInfo={false} size="small" strokeColor={GREEN} />
+        </Flex>
+      ),
+    },
+    {
+      title: 'Rejected',
+      dataIndex: 'rejectedPercent',
+      key: 'rejected',
+      width: 160,
+      render: (percent: number, row: any) => (
+        <Flex vertical gap={4}>
+          <Flex justify="space-between">
+            <Text style={{ fontSize: 12 }}>{formatNumber(row.rejected)}</Text>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              {percent}%
+            </Text>
+          </Flex>
+          <Progress percent={percent} showInfo={false} size="small" strokeColor={RED} />
+        </Flex>
+      ),
+    },
+    {
+      title: 'Pending',
+      dataIndex: 'pendingPercent',
+      key: 'pending',
+      width: 140,
+      render: (percent: number, row: any) => (
+        <Flex vertical gap={4}>
+          <Flex justify="space-between">
+            <Text style={{ fontSize: 12 }}>{formatNumber(row.pending)}</Text>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              {percent}%
+            </Text>
+          </Flex>
+          <Progress percent={percent} showInfo={false} size="small" strokeColor={AMBER} />
+        </Flex>
+      ),
+    },
+
+    {
+      title: 'Last updated',
+      dataIndex: 'lastUpdated',
+      key: 'lastUpdated',
+      width: 130,
+      render: (v: string) => (
+        <Text type="secondary" style={{ fontSize: 12 }}>
+          {v}
+        </Text>
+      ),
     },
   ];
 
-  const evaluationItems: StatBoxItem[] = [
-    {
-      title: t('statistics.totalEvaluation'),
-      value: evalTotal,
-      icon: <MessageSquare size={18} color={EVAL_COLORS.pending} />,
-    },
-    {
-      title: t('statistics.pendingEvaluation'),
-      value: evaluation.pending,
-      icon: <Clock3 size={18} color={EVAL_COLORS.pending} />,
-    },
-    {
-      title: t('statistics.approvedEvaluation'),
-      value: evaluation.approved,
-      icon: <CheckCircle2 size={18} color={EVAL_COLORS.approved} />,
-    },
-    {
-      title: t('statistics.rejectedEvaluation'),
-      value: evaluation.rejected,
-      icon: <XCircle size={18} color={EVAL_COLORS.rejected} />,
-    },
-  ];
-
-  const renderData = [
-    { status: 'Queued', label: t('statistics.queued'), count: rendering.data.queued },
-    { status: 'Processing', label: t('statistics.processing'), count: rendering.data.processing },
-    { status: 'Completed', label: t('statistics.completed'), count: rendering.data.completed },
-    { status: 'Failed', label: t('statistics.failed'), count: rendering.data.failed },
-    { status: 'Cancelled', label: t('statistics.cancelled'), count: rendering.data.cancelled },
-  ];
+  /* ---------------------------- render ---------------------------- */
 
   return (
     <PageContainer
-      title={t('statistics.title')}
+      title="Thống kê"
+      subTitle="Tổng quan dự án & media"
       extra={[
         preset === 'custom' && (
           <DatePicker.RangePicker
             key="range"
             value={customRange}
             onChange={(values) => {
-              if (values?.[0] && values?.[1]) {
-                setCustomRange([values[0], values[1]]);
-              }
+              if (values?.[0] && values?.[1]) setCustomRange([values[0], values[1]]);
             }}
             allowClear={false}
             format="DD/MM/YYYY"
@@ -246,123 +674,282 @@ export function StatisticsPage() {
         />,
       ]}
       style={{
-        background: token.colorBgContainer,
+        background: token.colorBgLayout,
         paddingBlock: 16,
         paddingInline: 16,
-        borderRadius: 6,
       }}
     >
+      {/* ---------------- Summary ---------------- */}
       <Row gutter={[16, 16]}>
-        <Col xs={24} lg={8}>
-          <ProCard
-            title={t('statistics.overview')}
-            bordered
-            headerBordered
-            style={sectionCardStyle}
-            bodyStyle={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <StatGrid items={overviewItems} />
+        {summaryCards.map((item) => (
+          <Col key={item.title} xs={24} sm={12} md={8} xl={24 / 6}>
+            <SummaryCard {...item} />
+          </Col>
+        ))}
+      </Row>
+
+      {/* ---------------- Storage & System health ---------------- */}
+      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+        <Col xs={24} md={12}>
+          <ProCard title="Storage statistics" bordered headerBordered style={cardStyle}>
+            <StorageStatsCard storage={storageStatistics as StorageStats} />
           </ProCard>
         </Col>
-
-        <Col xs={24} lg={16}>
-          <ProCard title="Evaluation" bordered headerBordered style={sectionCardStyle}>
-            <Row gutter={[16, 16]}>
-              <Col xs={24} md={12}>
-                <div style={{ width: '100%', height: 240 }}>
-                  <ResponsiveContainer>
-                    <PieChart>
-                      <Pie
-                        data={evalData}
-                        dataKey="value"
-                        nameKey="type"
-                        innerRadius={60}
-                        outerRadius={90}
-                        paddingAngle={2}
-                        label={({ value }) => value}
-                      >
-                        {evalData.map((d) => (
-                          <Cell key={d.key} fill={EVAL_COLORS[d.key]} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                      <Legend verticalAlign="bottom" height={24} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              </Col>
-
-              <Col xs={24} md={12}>
-                <StatGrid items={evaluationItems} />
-              </Col>
-            </Row>
+        <Col xs={24} md={12}>
+          <ProCard title="System health" bordered headerBordered style={cardStyle}>
+            <SystemHealthCard health={systemHealth as SystemHealth} />
           </ProCard>
         </Col>
       </Row>
 
-      <ProCard
-        title="Rendering"
-        bordered
-        headerBordered
-        style={{ background: token.colorFillAlter, marginTop: 16 }}
-      >
-        <Row gutter={[16, 16]}>
-          <Col xs={24} lg={16}>
-            <div style={{ width: '100%', height: 260 }}>
+      {/* ---------------- Charts ---------------- */}
+      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+        <Col xs={24} lg={16}>
+          <ProCard
+            title="Projects & Media · last 30 days"
+            bordered
+            headerBordered
+            style={cardStyle}
+            bodyStyle={{ paddingTop: 8 }}
+          >
+            <div style={{ width: '100%', height: 320 }}>
               <ResponsiveContainer>
-                <BarChart data={renderData} margin={{ top: 16, right: 8, left: -16, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="label" tick={{ fontSize: 12 }} />
-                  <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                  <Tooltip />
-                  <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                    {renderData.map((d) => (
-                      <Cell key={d.status} fill={RENDER_COLORS[d.status]} />
-                    ))}
-                  </Bar>
-                </BarChart>
+                <AreaChart data={chartData} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="gradProjects" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.35} />
+                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="gradMedia" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.35} />
+                      <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={false}
+                    stroke={token.colorBorderSecondary}
+                  />
+                  <XAxis
+                    dataKey="label"
+                    tick={{ fontSize: 12 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    yAxisId="left"
+                    tick={{ fontSize: 12 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    yAxisId="right"
+                    orientation="right"
+                    tick={{ fontSize: 12 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    formatter={(value: any) => formatNumber(Number(value))}
+                    contentStyle={{
+                      borderRadius: 8,
+                      border: `1px solid ${token.colorBorderSecondary}`,
+                      fontSize: 12,
+                    }}
+                  />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
+                  <Area
+                    yAxisId="left"
+                    type="monotone"
+                    dataKey="projects"
+                    name="Projects"
+                    stroke="#6366f1"
+                    strokeWidth={2}
+                    fill="url(#gradProjects)"
+                  />
+                  <Area
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="mediaFiles"
+                    name="Media files"
+                    stroke="#f59e0b"
+                    strokeWidth={2}
+                    fill="url(#gradMedia)"
+                  />
+                </AreaChart>
               </ResponsiveContainer>
             </div>
-          </Col>
-          <Col xs={24} lg={8}>
-            <Row gutter={[16, 16]}>
-              <Col xs={24} sm={8} lg={24}>
-                <StatisticCard
-                  statistic={{
-                    title: t('statistics.processing'),
-                    value: rendering.data.processing,
-                    icon: <Loader2 size={20} color={RENDER_COLORS.Processing} />,
-                  }}
-                />
-              </Col>
-              <Col xs={24} sm={8} lg={24}>
-                <StatisticCard
-                  statistic={{
-                    title: t('statistics.cancelled'),
-                    value: rendering.data.cancelled,
-                    icon: <Ban size={20} color="#8c8c8c" />,
-                  }}
-                />
-              </Col>
-              <Col xs={24} sm={8} lg={24}>
-                <StatisticCard
-                  statistic={{
-                    title: t('statistics.averageRenderTime'),
-                    value: rendering.data.averageRenderSeconds,
-                    precision: 2,
-                    suffix: 's',
-                    icon: <Timer size={20} color="#fa8c16" />,
-                  }}
-                />
-              </Col>
-            </Row>
-          </Col>
-        </Row>
-      </ProCard>
+          </ProCard>
+        </Col>
+
+        <Col xs={24} lg={8}>
+
+          <ProCard
+            title="Media type distribution"
+            bordered
+            headerBordered
+            style={cardStyle}
+            bodyStyle={{ paddingTop: 8 }}
+          >
+            <DonutChart segments={typeSegments} centerLabel="Total files" height={220} />
+            <div style={{ marginTop: 16 }}>
+              <SegmentLegend segments={typeSegments} total={mediaTypeDistribution.total} />
+            </div>
+          </ProCard>
+
+
+        </Col>
+      </Row>
+
+      {/* ---------------- Row 3 ---------------- */}
+      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+        {/* Media type distribution */}
+        <Col xs={24} lg={8}>
+          <ProCard
+            title="Media evaluation results"
+            bordered
+            headerBordered
+            style={cardStyle}
+            bodyStyle={{ paddingTop: 8 }}
+          >
+            <DonutChart segments={evalSegments} centerLabel="Total media" height={220} />
+            <div style={{ marginTop: 16 }}>
+              <SegmentLegend segments={evalSegments} total={mediaEvaluationResults.total} />
+            </div>
+          </ProCard>
+        </Col>
+
+        {/* Top projects by */}
+        <Col xs={24} lg={8}>
+          <ProCard
+            title="Top projects by"
+            bordered
+            headerBordered
+            style={cardStyle}
+            extra={
+              <Segmented
+                size="small"
+                value={topMetric}
+                onChange={(value) => setTopMetric(value as TopMetricKey)}
+                options={TOP_PROJECT_METRICS.map((m) => ({
+                  label: (
+                    <Flex align="center" gap={4}>
+                      {m.icon}
+                      {m.label}
+                    </Flex>
+                  ),
+                  value: m.key,
+                }))}
+              />
+            }
+          >
+            <Flex vertical gap={18}>
+              {topProjectsList.map((p, index) => (
+                <Flex key={p.id} vertical gap={6}>
+                  <Flex align="center" justify="space-between" gap={8}>
+                    <Flex align="center" gap={8} style={{ minWidth: 0 }}>
+                      <Flex
+                        align="center"
+                        justify="center"
+                        style={{
+                          width: 22,
+                          height: 22,
+                          borderRadius: 6,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          flexShrink: 0,
+                          color: index < 3 ? '#fff' : token.colorTextSecondary,
+                          background: index < 3 ? activeTopMetric.color : token.colorFillSecondary,
+                        }}
+                      >
+                        {index + 1}
+                      </Flex>
+                      <Text style={{ fontSize: 13 }} ellipsis>
+                        {p.name}
+                      </Text>
+                    </Flex>
+                    <Text strong style={{ fontSize: 13 }}>
+                      {p.unit ? formatUnitValue(p.value, p.unit) : formatNumber(p.value)}
+                    </Text>
+                  </Flex>
+                  <Progress
+                    percent={(p.value / maxTopValue) * 100}
+                    showInfo={false}
+                    size="small"
+                    strokeColor={activeTopMetric.color}
+                  />
+                </Flex>
+              ))}
+            </Flex>
+          </ProCard>
+        </Col>
+
+        {/* Recent activities */}
+        <Col xs={24} lg={8}>
+          <ProCard title="Recent activities" bordered headerBordered style={cardStyle}>
+            <Timeline
+              items={statsData.recentActivities.map((a) => {
+                const meta = ACTIVITY_META[a.type] ?? ACTIVITY_META.created;
+                return {
+                  dot: (
+                    <Flex
+                      align="center"
+                      justify="center"
+                      style={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: '50%',
+                        background: `${meta.color}1a`,
+                        color: meta.color,
+                      }}
+                    >
+                      {meta.icon}
+                    </Flex>
+                  ),
+                  children: (
+                    <Flex vertical gap={2} style={{ paddingBottom: 4 }}>
+                      <Text style={{ fontSize: 13 }}>{a.text}</Text>
+                      <Flex align="center" gap={8}>
+                        <Tag
+                          bordered={false}
+                          style={{
+                            fontSize: 11,
+                            margin: 0,
+                            color: meta.color,
+                            background: `${meta.color}1a`,
+                          }}
+                        >
+                          {a.project}
+                        </Tag>
+                        <Text type="secondary" style={{ fontSize: 11 }}>
+                          {a.time}
+                        </Text>
+                      </Flex>
+                    </Flex>
+                  ),
+                };
+              })}
+            />
+          </ProCard>
+        </Col>
+      </Row>
+
+      {/* ---------------- Table ---------------- */}
+      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+        <Col span={24}>
+          <ProCard title="Recent projects" bordered headerBordered style={cardStyle}>
+            <Table
+              rowKey="id"
+              size="middle"
+              columns={columns}
+              dataSource={statsData.recentProjects}
+              pagination={false}
+              scroll={{ x: 900 }}
+            />
+          </ProCard>
+        </Col>
+      </Row>
     </PageContainer>
   );
 }
