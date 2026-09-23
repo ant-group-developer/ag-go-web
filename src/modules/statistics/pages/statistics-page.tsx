@@ -150,13 +150,13 @@ export function StatisticsPage() {
   }
   if (overview.isError || rendering.isError) {
     return (
-      <PageContainer title="Thống kê">
-        <Alert type="error" showIcon message="Không thể tải dữ liệu thống kê" />
+      <PageContainer title={t('statistics.title')}>
+        <Alert type="error" showIcon message={t('statistics.errorLoading')} />
       </PageContainer>
     );
   }
   if (!overview.data || !rendering.data) {
-    return <Empty description="Chưa có dữ liệu" style={{ marginTop: 64 }} />;
+    return <Empty description={t('statistics.empty')} style={{ marginTop: 64 }} />;
   }
 
   const { evaluation } = overview.data;
@@ -184,37 +184,37 @@ export function StatisticsPage() {
       icon: <Film size={20} color="#eb2f96" />,
     },
     {
-      title: 'Dung lượng gốc',
+      title: t('statistics.originalSize'),
       value: formatBytes(overview.data.originalBytes),
       icon: <HardDrive size={20} color="#13c2c2" />,
     },
   ];
 
   const evaluationItems: StatBoxItem[] = [
-    { title: 'Tổng đánh giá', value: evalTotal, icon: <MessageSquare size={18} color={EVAL_COLORS.pending} /> },
+    { title: t('statistics.totalEvaluation'), value: evalTotal, icon: <MessageSquare size={18} color={EVAL_COLORS.pending} /> },
     {
-      title: 'Chờ duyệt',
+      title: t('statistics.pendingEvaluation'),
       value: evaluation.pending,
       icon: <Clock3 size={18} color={EVAL_COLORS.pending} />,
     },
     {
-      title: 'Đã duyệt',
+      title: t('statistics.approvedEvaluation'),
       value: evaluation.approved,
       icon: <CheckCircle2 size={18} color={EVAL_COLORS.approved} />,
     },
     {
-      title: 'Từ chối',
+      title: t('statistics.rejectedEvaluation'),
       value: evaluation.rejected,
       icon: <XCircle size={18} color={EVAL_COLORS.rejected} />,
     },
   ];
 
   const renderData = [
-    { status: 'Queued', label: 'Đang chờ', count: rendering.data.queued },
-    { status: 'Processing', label: 'Đang xử lý', count: rendering.data.processing },
-    { status: 'Completed', label: 'Hoàn tất', count: rendering.data.completed },
-    { status: 'Failed', label: 'Thất bại', count: rendering.data.failed },
-    { status: 'Cancelled', label: 'Đã hủy', count: rendering.data.cancelled },
+    { status: 'Queued', label: t('statistics.queued'), count: rendering.data.queued },
+    { status: 'Processing', label: t('statistics.processing'), count: rendering.data.processing },
+    { status: 'Completed', label: t('statistics.completed'), count: rendering.data.completed },
+    { status: 'Failed', label: t('statistics.failed'), count: rendering.data.failed },
+    { status: 'Cancelled', label: t('statistics.cancelled'), count: rendering.data.cancelled },
   ];
 
   return (
@@ -251,7 +251,7 @@ export function StatisticsPage() {
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={8}>
           <ProCard
-            title="Tổng quan"
+            title={t('statistics.overview')}
             bordered
             headerBordered
             style={sectionCardStyle}
@@ -324,7 +324,7 @@ export function StatisticsPage() {
               <Col xs={24} sm={8} lg={24}>
                 <StatisticCard
                   statistic={{
-                    title: 'Đang xử lý',
+                    title: t('statistics.processing'),
                     value: rendering.data.processing,
                     icon: <Loader2 size={20} color={RENDER_COLORS.Processing} />,
                   }}
@@ -333,7 +333,7 @@ export function StatisticsPage() {
               <Col xs={24} sm={8} lg={24}>
                 <StatisticCard
                   statistic={{
-                    title: 'Đã hủy',
+                    title: t('statistics.cancelled'),
                     value: rendering.data.cancelled,
                     icon: <Ban size={20} color="#8c8c8c" />,
                   }}
@@ -342,7 +342,7 @@ export function StatisticsPage() {
               <Col xs={24} sm={8} lg={24}>
                 <StatisticCard
                   statistic={{
-                    title: 'Thời gian render TB',
+                    title: t('statistics.averageRenderTime'),
                     value: rendering.data.averageRenderSeconds,
                     precision: 2,
                     suffix: 's',
