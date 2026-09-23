@@ -21,6 +21,7 @@ import { useTags } from '../../tags/hooks/use-tags';
 export type ProjectFilterValues = {
   keyword?: string;
   folderId?: string;
+  folderIds?: string[];
   countryId?: string;
   provinceId?: string;
   categoryId?: string;
