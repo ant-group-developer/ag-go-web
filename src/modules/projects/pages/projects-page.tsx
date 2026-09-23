@@ -208,6 +208,14 @@ export function ProjectsPage() {
 
   const columns: ProColumns<Project>[] = [
     {
+      title: t('projects.thumbnail'),
+      dataIndex: 'thumbnailAssetId',
+      key: 'thumbnail',
+      width: 100,
+      align: 'center',
+      render: (_, project) => <ProjectThumbnailCell assetId={project.thumbnailAssetId} />,
+    },
+    {
       title: t('projects.name'),
       dataIndex: 'name',
       key: 'name',
@@ -219,14 +227,6 @@ export function ProjectsPage() {
           {project.name}
         </Typography.Link>
       ),
-    },
-    {
-      title: t('projects.thumbnail'),
-      dataIndex: 'thumbnailAssetId',
-      key: 'thumbnail',
-      width: 100,
-      align: 'center',
-      render: (_, project) => <ProjectThumbnailCell assetId={project.thumbnailAssetId} />,
     },
     {
       title: t('projects.location'),
