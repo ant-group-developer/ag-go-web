@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { apiBlob, apiClient, ApiError, apiUrl } from '../../../shared/lib/api-client';
+import { apiClient, ApiError, apiUrl } from '../../../shared/lib/api-client';
 
 export type Asset = {
   id: string;
@@ -20,6 +20,9 @@ export type ProjectMedia = {
   evaluationStatus: 'pending' | 'approved' | 'rejected';
   createdAt: string;
   updatedAt: string;
+  previewUrl?: string | null;
+  previewVariantCode?: string | null;
+  watermarkVariant?: string | null;
   durationSeconds: number | null;
   width: number | null;
   height: number | null;
@@ -129,7 +132,11 @@ export async function getAssetPreviewUrl(
   assetId: string,
   variantCode = 'thumbnail',
 ): Promise<string> {
-  return URL.createObjectURL(await apiBlob(`/assets/${assetId}/preview/${variantCode}`));
+  const query = new URLSearchParams({ variantCode });
+  const result = await apiClient<{ url: string }>(
+    `/assets/${assetId}/preview-url?${query.toString()}`,
+  );
+  return result.url;
 }
 
 export type UploadSession = {

@@ -35,7 +35,6 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
   const { t } = useTranslation();
   const { message } = AntApp.useApp();
   const queryClient = useQueryClient();
-  const previewUrlsRef = useRef<string[]>([]);
   const uploadQueueRef = useRef<UploadTask[]>([]);
   const activeUploadsRef = useRef(0);
   const taskStatusesRef = useRef<Record<string, UploadTaskStatus>>({});
@@ -68,8 +67,6 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
 
   useEffect(() => {
     let disposed = false;
-    previewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
-    previewUrlsRef.current = [];
     setPreviewUrls({});
 
     const readyImages = (items ?? []).filter(
@@ -87,10 +84,8 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
     ).then((entries) => {
       const urls = entries.filter((entry): entry is readonly [string, string] => Boolean(entry));
       if (disposed) {
-        urls.forEach(([, url]) => URL.revokeObjectURL(url));
         return;
       }
-      previewUrlsRef.current = urls.map(([, url]) => url);
       setPreviewUrls(Object.fromEntries(urls));
     });
 
@@ -98,8 +93,6 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
       disposed = true;
     };
   }, [items]);
-
-  useEffect(() => () => previewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url)), []);
 
   const invalidateProjectData = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: mediaQueryKeys.project(projectId) });

@@ -38,6 +38,7 @@ import { ProjectMediaPanel } from '../../media/components/project-media-panel';
 import { mediaQueryKeys } from '../../media/queries/media-query-keys';
 import { useProvinces } from '../../provinces/hooks/use-provinces';
 import { useTags } from '../../tags/hooks/use-tags';
+import { ProjectGoogleDriveImportPanel } from '../../google-drive/components/project-google-drive-import-panel';
 import { useProject, useUpdateProject } from '../hooks/use-projects';
 import { projectQueryKeys } from '../queries/project-query-keys';
 import type { ProjectDetailFormValues } from '../types/project-detail-form-values.type';
@@ -51,7 +52,6 @@ export function ProjectDetailPage() {
   const [form] = Form.useForm<ProjectDetailFormValues>();
   const initializedProjectId = useRef<string | undefined>(undefined);
   const initializedThumbnailProjectId = useRef<string | undefined>(undefined);
-  const thumbnailPreviewUrlRef = useRef<string | undefined>(undefined);
   const uploadedThumbnailRef = useRef<{ uid: string; projectMediaId: string } | undefined>(
     undefined,
   );
@@ -75,23 +75,10 @@ export function ProjectDetailPage() {
     Boolean(countryId),
   );
 
-  useEffect(
-    () => () => {
-      if (thumbnailPreviewUrlRef.current) {
-        URL.revokeObjectURL(thumbnailPreviewUrlRef.current);
-      }
-    },
-    [],
-  );
-
   useEffect(() => {
     initializedProjectId.current = undefined;
     initializedThumbnailProjectId.current = undefined;
     uploadedThumbnailRef.current = undefined;
-    if (thumbnailPreviewUrlRef.current) {
-      URL.revokeObjectURL(thumbnailPreviewUrlRef.current);
-      thumbnailPreviewUrlRef.current = undefined;
-    }
     form.resetFields();
   }, [form, projectId]);
 
@@ -147,10 +134,8 @@ export function ProjectDetailPage() {
     void getAssetPreviewUrl(thumbnailMedia.assetId)
       .then((url) => {
         if (disposed) {
-          URL.revokeObjectURL(url);
           return;
         }
-        thumbnailPreviewUrlRef.current = url;
         const currentFiles: UploadFile[] = form.getFieldValue('thumbnail') ?? [];
         if (currentFiles.some((file) => file.uid === thumbnailMedia.id)) {
           form.setFieldValue('thumbnail', [
@@ -417,6 +402,8 @@ export function ProjectDetailPage() {
             </Card>
           </Col>
           <Col xs={24} lg={14}>
+            <ProjectGoogleDriveImportPanel projectId={project.data.id} />
+            <div style={{ height: 16 }} />
             <ProjectMediaPanel projectId={project.data.id} />
           </Col>
         </Row>

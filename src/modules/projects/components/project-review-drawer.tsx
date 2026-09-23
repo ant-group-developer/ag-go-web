@@ -1,23 +1,22 @@
 import {
-  CheckCircleOutlined,
+  DownloadOutlined,
   FileImageOutlined,
   FileOutlined,
   ReloadOutlined,
-  StopOutlined,
 } from '@ant-design/icons';
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
 import {
   Alert,
   App as AntApp,
   Button,
   Card,
+  Checkbox,
   Col,
   Descriptions,
   Divider,
   Drawer,
   Empty,
   Image,
-  Input,
   List,
   Row,
   Space,
@@ -28,11 +27,16 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  createDownload,
+  getDownload,
+  type DownloadResult,
+} from '../../downloads/api/downloads';
+import { getProjectAudit, type AuditLog } from '../../audit/api/audit';
+import {
   getAssetPreviewUrl,
   getProjectMedia,
   getProjectMediaEvaluationHistory,
   retryAssetProcessing,
-  updateProjectMedia,
   type ProjectMedia,
   type ProjectMediaEvaluation,
 } from '../../media/api/media';
@@ -113,31 +117,29 @@ function MediaPreview({ media }: { media: ProjectMedia }) {
   const isReady = media.asset.processingStatus === 'ready';
 
   useEffect(() => {
+    if (media.previewUrl) {
+      setPreviewUrl(media.previewUrl);
+      return undefined;
+    }
     if (!isReady) {
       setPreviewUrl(undefined);
       return undefined;
     }
 
     let disposed = false;
-    let objectUrl: string | undefined;
     void getAssetPreviewUrl(media.assetId, 'preview')
       .then((url) => {
         if (disposed) {
-          URL.revokeObjectURL(url);
           return;
         }
-        objectUrl = url;
         setPreviewUrl(url);
       })
       .catch(() => setPreviewUrl(undefined));
 
     return () => {
       disposed = true;
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-      }
     };
-  }, [isReady, media.assetId]);
+  }, [isReady, media.assetId, media.previewUrl]);
 
   if (!previewUrl) {
     return (
@@ -194,23 +196,17 @@ function MediaThumbnail({ media }: { media: ProjectMedia }) {
     }
 
     let disposed = false;
-    let objectUrl: string | undefined;
     void getAssetPreviewUrl(media.assetId)
       .then((url) => {
         if (disposed) {
-          URL.revokeObjectURL(url);
           return;
         }
-        objectUrl = url;
         setPreviewUrl(url);
       })
       .catch(() => setPreviewUrl(undefined));
 
     return () => {
       disposed = true;
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-      }
     };
   }, [media.asset.processingStatus, media.assetId]);
 
@@ -307,29 +303,19 @@ function ProjectOverview({ project }: { project: Project }) {
 
 function MediaDetails({
   media,
-  evaluationLoading,
   retryLoading,
-  onEvaluate,
   onRetry,
 }: {
   media: ProjectMedia;
-  evaluationLoading: boolean;
   retryLoading: boolean;
-  onEvaluate: (status: ProjectMedia['evaluationStatus'], comment: string | null) => void;
   onRetry: () => void;
 }) {
   const { t } = useTranslation();
   const evaluation = getEvaluationStatus(media.evaluationStatus, t);
-  const [comment, setComment] = useState('');
   const history = useQuery({
     queryKey: mediaQueryKeys.evaluationHistory(media.id),
     queryFn: () => getProjectMediaEvaluationHistory(media.id),
   });
-  const latestEvaluation = history.data?.[0];
-
-  useEffect(() => {
-    setComment(latestEvaluation?.comment ?? '');
-  }, [latestEvaluation?.comment, media.id]);
 
   return (
     <Card title={t('projects.fileInformation')} size="small">
@@ -377,33 +363,6 @@ function MediaDetails({
       <div style={{ marginTop: 12 }}>
         <Tag color={evaluation.color}>{evaluation.label}</Tag>
       </div>
-      <Input.TextArea
-        autoSize={{ minRows: 3, maxRows: 6 }}
-        maxLength={2000}
-        placeholder={t('projects.evaluationCommentPlaceholder')}
-        showCount
-        value={comment}
-        onChange={(event) => setComment(event.target.value)}
-      />
-      <Space style={{ display: 'flex', marginTop: 16 }} wrap>
-        <Button
-          danger
-          icon={<StopOutlined />}
-          loading={evaluationLoading}
-          type={media.evaluationStatus === 'rejected' ? 'primary' : 'default'}
-          onClick={() => onEvaluate('rejected', comment.trim() || null)}
-        >
-          {t('projects.markRejected')}
-        </Button>
-        <Button
-          icon={<CheckCircleOutlined />}
-          loading={evaluationLoading}
-          type={media.evaluationStatus === 'approved' ? 'primary' : 'default'}
-          onClick={() => onEvaluate('approved', comment.trim() || null)}
-        >
-          {t('projects.markApproved')}
-        </Button>
-      </Space>
       <Divider />
       <Typography.Text strong>{t('projects.evaluationHistory')}</Typography.Text>
       <List
@@ -434,11 +393,12 @@ function MediaDetails({
   );
 }
 
-export function ProjectReviewDrawer({ open, projectId, onClose }: ProjectReviewDrawerProps) {
+export function ProjectDetailDrawer({ open, projectId, onClose }: ProjectReviewDrawerProps) {
   const { t } = useTranslation();
   const { message } = AntApp.useApp();
-  const queryClient = useQueryClient();
   const [selectedMediaId, setSelectedMediaId] = useState<string>();
+  const [selectedMediaIds, setSelectedMediaIds] = useState<string[]>([]);
+  const [downloadJobId, setDownloadJobId] = useState<string>();
   const project = useQuery({
     queryKey: projectQueryKeys.detail(projectId ?? ''),
     queryFn: () => getProject(projectId ?? ''),
@@ -460,29 +420,34 @@ export function ProjectReviewDrawer({ open, projectId, onClose }: ProjectReviewD
     [media.data],
   );
   const selectedMedia = mediaItems.find((item) => item.id === selectedMediaId) ?? mediaItems[0];
-  const evaluation = useMutation({
-    mutationFn: ({
-      status,
-      comment,
-    }: {
-      status: ProjectMedia['evaluationStatus'];
-      comment: string | null;
-    }) => updateProjectMedia(selectedMedia?.id ?? '', { evaluationStatus: status, comment }),
-    onSuccess: (_, variables) => {
-      void media.refetch();
-      void queryClient.invalidateQueries({
-        queryKey: mediaQueryKeys.evaluationHistory(selectedMedia?.id ?? ''),
-      });
-      void queryClient.invalidateQueries({ queryKey: projectQueryKeys.detail(projectId ?? '') });
-      void queryClient.invalidateQueries({ queryKey: projectQueryKeys.all() });
-      void message.success(
-        variables.status === 'approved'
-          ? t('projects.evaluationApprovedSuccess')
-          : t('projects.evaluationRejectedSuccess'),
-      );
+  const audit = useQuery({
+    queryKey: ['audit', 'project', projectId],
+    queryFn: () => getProjectAudit(projectId ?? ''),
+    enabled: open && Boolean(projectId),
+  });
+  const downloadJob = useQuery({
+    queryKey: ['download', downloadJobId],
+    queryFn: () => getDownload(downloadJobId ?? ''),
+    enabled: Boolean(downloadJobId),
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status && ['completed', 'failed', 'expired', 'cancelled'].includes(status)
+        ? false
+        : 3_000;
+    },
+  });
+  const download = useMutation({
+    mutationFn: createDownload,
+    onSuccess: (result: DownloadResult) => {
+      if (result.mode === 'single') {
+        window.open(result.url, '_blank', 'noopener,noreferrer');
+        return;
+      }
+      setDownloadJobId(result.downloadJobId);
+      void message.success('Đã tạo download job');
     },
     onError: (error) => {
-      void message.error(error instanceof Error ? error.message : t('projects.evaluationFailed'));
+      void message.error(error instanceof Error ? error.message : 'Không thể tạo download');
     },
   });
   const retry = useMutation({
@@ -507,7 +472,25 @@ export function ProjectReviewDrawer({ open, projectId, onClose }: ProjectReviewD
 
   const close = () => {
     setSelectedMediaId(undefined);
+    setSelectedMediaIds([]);
+    setDownloadJobId(undefined);
     onClose();
+  };
+
+  const requestDownload = (scope: 'multiple' | 'project') => {
+    if (!projectId) {
+      return;
+    }
+    if (scope === 'multiple' && selectedMediaIds.length === 0) {
+      void message.warning('Hãy chọn ít nhất một file');
+      return;
+    }
+    download.mutate({
+      scope,
+      projectId,
+      projectMediaIds: scope === 'multiple' ? selectedMediaIds : undefined,
+      downloadType: 'original',
+    });
   };
 
   return (
@@ -550,6 +533,23 @@ export function ProjectReviewDrawer({ open, projectId, onClose }: ProjectReviewD
                 extra={
                   <Space>
                     <Tag>{t('media.fileCount', { count: mediaItems.length })}</Tag>
+                    <Button
+                      icon={<DownloadOutlined />}
+                      loading={download.isPending}
+                      size="small"
+                      onClick={() => requestDownload('multiple')}
+                    >
+                      Tải file đã chọn
+                    </Button>
+                    <Button
+                      icon={<DownloadOutlined />}
+                      loading={download.isPending}
+                      size="small"
+                      type="primary"
+                      onClick={() => requestDownload('project')}
+                    >
+                      Tải toàn bộ
+                    </Button>
                     {media.hasNextPage ? (
                       <Button
                         loading={media.isFetchingNextPage}
@@ -608,9 +608,25 @@ export function ProjectReviewDrawer({ open, projectId, onClose }: ProjectReviewD
                               </Space>
                             }
                             title={
-                              <Typography.Text ellipsis style={{ display: 'block', maxWidth: 220 }}>
-                                {item.asset.originalFilename}
-                              </Typography.Text>
+                              <Space>
+                                <Checkbox
+                                  checked={selectedMediaIds.includes(item.id)}
+                                  onClick={(event) => event.stopPropagation()}
+                                  onChange={(event) => {
+                                    setSelectedMediaIds((current) =>
+                                      event.target.checked
+                                        ? [...new Set([...current, item.id])]
+                                        : current.filter((id) => id !== item.id),
+                                    );
+                                  }}
+                                />
+                                <Typography.Text
+                                  ellipsis
+                                  style={{ display: 'block', maxWidth: 180 }}
+                                >
+                                  {item.asset.originalFilename}
+                                </Typography.Text>
+                              </Space>
                             }
                           />
                         </List.Item>
@@ -635,10 +651,8 @@ export function ProjectReviewDrawer({ open, projectId, onClose }: ProjectReviewD
             <Col xs={24} lg={6} xl={6}>
               {selectedMedia ? (
                 <MediaDetails
-                  evaluationLoading={evaluation.isPending}
                   media={selectedMedia}
                   retryLoading={retry.isPending}
-                  onEvaluate={(status, comment) => evaluation.mutate({ status, comment })}
                   onRetry={() => retry.mutate()}
                 />
               ) : (
@@ -646,8 +660,41 @@ export function ProjectReviewDrawer({ open, projectId, onClose }: ProjectReviewD
               )}
             </Col>
           </Row>
+          <Card title="Audit log" style={{ marginTop: 16 }}>
+            {audit.isError ? <Alert type="error" message="Không thể tải audit log" /> : null}
+            <List
+              dataSource={audit.data?.items ?? []}
+              loading={audit.isPending}
+              locale={{ emptyText: 'Chưa có audit log' }}
+              renderItem={(item: AuditLog) => (
+                <List.Item>
+                  <List.Item.Meta
+                    title={<Tag>{item.action}</Tag>}
+                    description={`${item.actorUser?.name ?? item.actorUser?.email ?? item.actorUserId} · ${formatDateTime(item.createdAt)}`}
+                  />
+                </List.Item>
+              )}
+            />
+          </Card>
+          {downloadJobId ? (
+            <Alert
+              style={{ marginTop: 16 }}
+              type={downloadJob.data?.status === 'failed' ? 'error' : 'info'}
+              message={`Download: ${downloadJob.data?.status ?? 'queued'}`}
+              description={
+                downloadJob.data?.url ? (
+                  <Button type="link" href={downloadJob.data.url} target="_blank">
+                    Mở file ZIP
+                  </Button>
+                ) : undefined
+              }
+            />
+          ) : null}
         </>
       ) : null}
     </Drawer>
   );
 }
+
+/** @deprecated Use ProjectDetailDrawer. Evaluation actions live in ProjectEvaluationDrawer. */
+export const ProjectReviewDrawer = ProjectDetailDrawer;

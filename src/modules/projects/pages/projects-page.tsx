@@ -18,11 +18,11 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
-import { ClipboardCheck, Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { ClipboardCheck, Eye, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { parseAsArrayOf, parseAsInteger, parseAsString, useQueryStates } from 'nuqs';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useCategories } from '../../categories/hooks/use-categories';
 import { useCountries } from '../../countries/hooks/use-countries';
 import { useFolders } from '../../folders/hooks/use-folders';
@@ -32,8 +32,10 @@ import { useProvinces } from '../../provinces/hooks/use-provinces';
 import { useTags } from '../../tags/hooks/use-tags';
 import { getProjects } from '../api/projects';
 import { CreateProjectModal } from '../components/create-project-modal';
-import { ProjectReviewDrawer } from '../components/project-review-drawer';
+import { ProjectDetailDrawer } from '../components/project-review-drawer';
+import { ProjectEvaluationDrawer } from '../components/project-evaluation-drawer';
 import { useDeleteProject } from '../hooks/use-projects';
+import { useHasPermission } from '../../account/hooks/use-current-account';
 import { projectQueryKeys } from '../queries/project-query-keys';
 import type { ProjectListParams } from '../types/project-list-params.type';
 import type { Project } from '../types/project.type';
@@ -79,23 +81,17 @@ function ProjectThumbnailCell({ assetId }: { assetId?: string | null }) {
     }
 
     let disposed = false;
-    let createdUrl: string | undefined;
     void getAssetPreviewUrl(assetId)
       .then((url) => {
         if (disposed) {
-          URL.revokeObjectURL(url);
           return;
         }
-        createdUrl = url;
         setPreviewUrl(url);
       })
       .catch(() => setPreviewUrl(undefined));
 
     return () => {
       disposed = true;
-      if (createdUrl) {
-        URL.revokeObjectURL(createdUrl);
-      }
     };
   }, [assetId]);
 
@@ -150,6 +146,7 @@ function getProjectStatus(status: string, t: (key: string) => string) {
 
 export function ProjectsPage() {
   const { t } = useTranslation();
+  const routeProjectId = useParams<{ projectId?: string }>().projectId;
   const { message } = AntApp.useApp();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -159,10 +156,12 @@ export function ProjectsPage() {
     history: 'replace',
   });
   const [createOpen, setCreateOpen] = useState(false);
-  const [reviewProjectId, setReviewProjectId] = useState<string>();
+  const [detailProjectId, setDetailProjectId] = useState<string>();
+  const [evaluationProjectId, setEvaluationProjectId] = useState<string>();
   const [listError, setListError] = useState<string>();
   const countryId = Form.useWatch('countryId', filterForm);
   const projectsDelete = useDeleteProject();
+  const canEvaluate = useHasPermission('go.project.evaluate');
   const folders = useFolders();
   const categories = useCategories();
   const countries = useCountries();
@@ -172,6 +171,12 @@ export function ProjectsPage() {
     () => buildFolderCascaderOptions(folders.data ?? []),
     [folders.data],
   );
+
+  useEffect(() => {
+    if (routeProjectId) {
+      setDetailProjectId(routeProjectId);
+    }
+  }, [routeProjectId]);
 
   useEffect(() => {
     const selectedFolder = folders.data?.find((folder) => folder.id === urlState.folderId);
@@ -315,20 +320,30 @@ export function ProjectsPage() {
       hideInSetting: true,
       render: (_, project) => (
         <Space size={0}>
+          <Tooltip title="Chi tiết project">
+            <Button
+              aria-label="Chi tiết project"
+              icon={<Eye size={16} />}
+              type="text"
+              onClick={() => setDetailProjectId(project.id)}
+            />
+          </Tooltip>
+          {canEvaluate.allowed ? (
           <Tooltip title={t('projects.review')}>
             <Button
               aria-label={t('projects.review')}
               icon={<ClipboardCheck size={16} />}
               type="text"
-              onClick={() => setReviewProjectId(project.id)}
+              onClick={() => setEvaluationProjectId(project.id)}
             />
           </Tooltip>
+          ) : null}
           <Tooltip title={t('projects.edit')}>
             <Button
               aria-label={t('projects.edit')}
               icon={<Pencil size={16} />}
               type="text"
-              onClick={() => navigate(`/projects/${project.id}`)}
+              onClick={() => navigate(`/projects/${project.id}/edit`)}
             />
           </Tooltip>
           <Popconfirm
@@ -548,10 +563,20 @@ export function ProjectsPage() {
           navigate(`/projects/${project.id}`);
         }}
       />
-      <ProjectReviewDrawer
-        open={Boolean(reviewProjectId)}
-        projectId={reviewProjectId}
-        onClose={() => setReviewProjectId(undefined)}
+      <ProjectDetailDrawer
+        open={Boolean(detailProjectId)}
+        projectId={detailProjectId}
+        onClose={() => {
+          setDetailProjectId(undefined);
+          if (routeProjectId) {
+            navigate('/projects', { replace: true });
+          }
+        }}
+      />
+      <ProjectEvaluationDrawer
+        open={Boolean(evaluationProjectId)}
+        projectId={evaluationProjectId}
+        onClose={() => setEvaluationProjectId(undefined)}
       />
     </>
   );
