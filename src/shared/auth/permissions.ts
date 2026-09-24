@@ -6,6 +6,12 @@ export const GO_PERMISSIONS = {
   PROJECT_DOWNLOAD_RENDERED: 'go.project.download_rendered',
   FOLDER_MANAGE: 'go.folder.manage',
   CATALOG_MANAGE: 'go.catalog.manage',
+  CATEGORY_CREATE: 'go.category.create',
+  CATEGORY_EDIT: 'go.category.edit',
+  CATEGORY_DELETE: 'go.category.delete',
+  TAG_CREATE: 'go.tag.create',
+  TAG_EDIT: 'go.tag.edit',
+  TAG_DELETE: 'go.tag.delete',
   DRIVE_IMPORT: 'go.drive.import',
   RENDER_READ: 'go.render.read',
   RENDER_BATCH: 'go.render.batch',
@@ -14,5 +20,21 @@ export const GO_PERMISSIONS = {
   SETTINGS_MANAGE: 'go.settings.manage',
   LOGS_READ: 'go.logs.read',
 } as const;
+
+/** Any of these grants access to the Categories page; each action is checked separately. */
+export const CATEGORY_PAGE_PERMISSIONS: GoPermission[] = [
+  GO_PERMISSIONS.CATALOG_MANAGE,
+  GO_PERMISSIONS.CATEGORY_CREATE,
+  GO_PERMISSIONS.CATEGORY_EDIT,
+  GO_PERMISSIONS.CATEGORY_DELETE,
+];
+
+/** Any of these grants access to the Tags page; each action is checked separately. */
+export const TAG_PAGE_PERMISSIONS: GoPermission[] = [
+  GO_PERMISSIONS.CATALOG_MANAGE,
+  GO_PERMISSIONS.TAG_CREATE,
+  GO_PERMISSIONS.TAG_EDIT,
+  GO_PERMISSIONS.TAG_DELETE,
+];
 
 export type GoPermission = (typeof GO_PERMISSIONS)[keyof typeof GO_PERMISSIONS];

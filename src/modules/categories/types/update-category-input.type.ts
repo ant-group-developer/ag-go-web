@@ -1,6 +1,5 @@
-export type Category = {
-  id: string;
-  name: string;
+export type UpdateCategoryInput = {
+  name?: string;
   slug?: string;
   description?: string | null;
   sortOrder?: number;

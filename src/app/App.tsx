@@ -36,7 +36,11 @@ import { useAccountApplications } from '../modules/account/hooks/use-account-app
 import { usePermissions } from '../modules/account/hooks/use-current-account';
 import { usePublicSettings } from '../modules/settings/hooks/use-settings';
 import { PermissionGate } from '../shared/auth/permission-gate';
-import { GO_PERMISSIONS } from '../shared/auth/permissions';
+import {
+  CATEGORY_PAGE_PERMISSIONS,
+  GO_PERMISSIONS,
+  TAG_PAGE_PERMISSIONS,
+} from '../shared/auth/permissions';
 import { NotFoundResult } from '../shared/components/not-found-result';
 
 const CategoriesPage = lazy(() =>
@@ -126,7 +130,7 @@ export function App() {
   const applications = useAccountApplications();
   const webSettings = usePublicSettings();
   // `can` is false until permissions load, so permission-gated menu items never flash.
-  const { can, isLoading: isPermissionsLoading } = usePermissions();
+  const { can, canAny, isLoading: isPermissionsLoading } = usePermissions();
 
   const { token } = antdTheme.useToken();
 
@@ -278,7 +282,9 @@ export function App() {
             : []),
         ],
       },
-      ...(can(GO_PERMISSIONS.FOLDER_MANAGE) || can(GO_PERMISSIONS.CATALOG_MANAGE)
+      ...(can(GO_PERMISSIONS.FOLDER_MANAGE) ||
+      canAny(CATEGORY_PAGE_PERMISSIONS) ||
+      canAny(TAG_PAGE_PERMISSIONS)
         ? [
             {
               path: '/common-catalogs',
@@ -298,13 +304,17 @@ export function App() {
                       },
                     ]
                   : []),
-                ...(can(GO_PERMISSIONS.CATALOG_MANAGE)
+                ...(canAny(CATEGORY_PAGE_PERMISSIONS)
                   ? [
                       {
                         path: '/catalogs/categories',
                         name: t('menu.categories'),
                         icon: <List size={16} />,
                       },
+                    ]
+                  : []),
+                ...(can(GO_PERMISSIONS.CATALOG_MANAGE)
+                  ? [
                       {
                         path: '/catalogs/countries',
                         name: t('menu.countries'),
@@ -315,6 +325,10 @@ export function App() {
                         name: t('menu.provinces'),
                         icon: <MapPinned size={16} />,
                       },
+                    ]
+                  : []),
+                ...(canAny(TAG_PAGE_PERMISSIONS)
+                  ? [
                       {
                         path: '/catalogs/tags',
                         name: t('menu.tags'),
@@ -537,7 +551,7 @@ export function App() {
           <Route
             path="/catalogs/categories"
             element={
-              <PermissionGate permissions={[GO_PERMISSIONS.CATALOG_MANAGE]}>
+              <PermissionGate permissions={CATEGORY_PAGE_PERMISSIONS}>
                 <CategoriesPage />
               </PermissionGate>
             }
@@ -561,7 +575,7 @@ export function App() {
           <Route
             path="/catalogs/tags"
             element={
-              <PermissionGate permissions={[GO_PERMISSIONS.CATALOG_MANAGE]}>
+              <PermissionGate permissions={TAG_PAGE_PERMISSIONS}>
                 <TagsPage />
               </PermissionGate>
             }

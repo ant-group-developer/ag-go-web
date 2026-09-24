@@ -15,7 +15,12 @@ import {
   User,
   type LucideIcon,
 } from 'lucide-react';
-import { GO_PERMISSIONS, type GoPermission } from '../../../shared/auth/permissions';
+import {
+  CATEGORY_PAGE_PERMISSIONS,
+  GO_PERMISSIONS,
+  TAG_PAGE_PERMISSIONS,
+  type GoPermission,
+} from '../../../shared/auth/permissions';
 
 export type HomeFeatureGroup = 'content' | 'catalogs' | 'system';
 
@@ -25,8 +30,8 @@ export type HomeFeature = {
   path: string;
   icon: LucideIcon;
   group: HomeFeatureGroup;
-  /** Omit for features every signed-in user can open. */
-  permission?: GoPermission;
+  /** User needs at least one of these. Omit for features every signed-in user can open. */
+  permission?: GoPermission | GoPermission[];
 };
 
 export const HOME_FEATURE_GROUPS: { key: HomeFeatureGroup; color: string }[] = [
@@ -83,7 +88,7 @@ export const HOME_FEATURES: HomeFeature[] = [
     path: '/catalogs/categories',
     icon: List,
     group: 'catalogs',
-    permission: GO_PERMISSIONS.CATALOG_MANAGE,
+    permission: CATEGORY_PAGE_PERMISSIONS,
   },
   {
     key: 'countries',
@@ -104,7 +109,7 @@ export const HOME_FEATURES: HomeFeature[] = [
     path: '/catalogs/tags',
     icon: Tags,
     group: 'catalogs',
-    permission: GO_PERMISSIONS.CATALOG_MANAGE,
+    permission: TAG_PAGE_PERMISSIONS,
   },
   {
     key: 'settings',

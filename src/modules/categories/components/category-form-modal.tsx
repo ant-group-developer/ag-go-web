@@ -1,7 +1,7 @@
 import { Alert, App as AntApp, Form, Input, InputNumber, Modal } from 'antd';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useCreateCategory } from '../hooks/use-categories';
+import { useCreateCategory, useUpdateCategory } from '../hooks/use-categories';
 import type { Category } from '../types/category.type';
 import type { CreateCategoryInput } from '../types/create-category-input.type';
 
@@ -12,6 +12,8 @@ type CategoryFormModalProps = {
   onCreated?: (category: Category) => void;
   /** Prefills the name field when the modal opens. */
   defaultName?: string;
+  /** Category being edited; omit to create a new category. */
+  category?: Category | null;
 };
 
 export function CategoryFormModal({
@@ -19,27 +21,44 @@ export function CategoryFormModal({
   onClose,
   onCreated,
   defaultName,
+  category,
 }: CategoryFormModalProps) {
   const { t } = useTranslation();
   const { message } = AntApp.useApp();
   const [form] = Form.useForm<CreateCategoryInput>();
   const create = useCreateCategory();
+  const update = useUpdateCategory();
+  const isEdit = Boolean(category);
+  const mutation = isEdit ? update : create;
 
   useEffect(() => {
+    if (!open) {
+      return;
+    }
+    if (category) {
+      form.setFieldsValue({
+        name: category.name,
+        slug: category.slug ?? createSlug(category.name),
+        description: category.description ?? undefined,
+        sortOrder: category.sortOrder ?? 0,
+      });
+      return;
+    }
     const name = defaultName?.trim();
-    if (open && name) {
+    if (name) {
       form.setFieldsValue({ name, slug: createSlug(name) });
     }
-  }, [open, defaultName, form]);
+  }, [open, defaultName, category, form]);
 
   const resetAndClose = () => {
     form.resetFields();
     create.reset();
+    update.reset();
     onClose();
   };
 
   const close = () => {
-    if (!create.isPending) {
+    if (!mutation.isPending) {
       resetAndClose();
     }
   };
@@ -47,12 +66,12 @@ export function CategoryFormModal({
   return (
     <Modal
       open={open}
-      title={t('catalogs.addCategory')}
-      okText={t('common.create')}
+      title={isEdit ? t('catalogs.editCategory') : t('catalogs.addCategory')}
+      okText={isEdit ? t('common.save') : t('common.create')}
       cancelText={t('common.cancel')}
-      confirmLoading={create.isPending}
-      okButtonProps={{ disabled: create.isPending }}
-      cancelButtonProps={{ disabled: create.isPending }}
+      confirmLoading={mutation.isPending}
+      okButtonProps={{ disabled: mutation.isPending }}
+      cancelButtonProps={{ disabled: mutation.isPending }}
       onCancel={close}
       onOk={() => form.submit()}
     >
@@ -61,7 +80,27 @@ export function CategoryFormModal({
         layout="vertical"
         initialValues={{ sortOrder: 0 }}
         onFinish={(values) => {
-          if (create.isPending) {
+          if (mutation.isPending) {
+            return;
+          }
+          if (category) {
+            update.mutate(
+              {
+                id: category.id,
+                input: {
+                  name: values.name.trim(),
+                  slug: createSlug(values.name),
+                  description: values.description?.trim() || null,
+                  sortOrder: values.sortOrder,
+                },
+              },
+              {
+                onSuccess: () => {
+                  void message.success(t('catalogs.updateCategorySuccess'));
+                  resetAndClose();
+                },
+              },
+            );
             return;
           }
           create.mutate(
@@ -136,7 +175,7 @@ export function CategoryFormModal({
         >
           <InputNumber min={0} precision={0} style={{ width: '100%' }} />
         </Form.Item>
-        {create.isError ? <Alert type="error" showIcon message={create.error.message} /> : null}
+        {mutation.isError ? <Alert type="error" showIcon message={mutation.error.message} /> : null}
       </Form>
     </Modal>
   );
