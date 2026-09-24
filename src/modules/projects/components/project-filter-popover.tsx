@@ -139,12 +139,12 @@ const filterCategories: Array<{
   icon: React.ReactNode;
   label: string;
 }> = [
-    { key: 'keyword', icon: <Search size={16} />, label: 'Từ khóa' },
-    { key: 'folder', icon: <FolderIcon size={16} />, label: 'Thư mục' },
-    { key: 'category', icon: <Layers size={16} />, label: 'Danh mục' },
-    { key: 'tags', icon: <TagIcon size={16} />, label: 'Tags' },
-    { key: 'location', icon: <MapPin size={16} />, label: 'Địa điểm' },
-  ];
+  { key: 'keyword', icon: <Search size={16} />, label: 'Từ khóa' },
+  { key: 'folder', icon: <FolderIcon size={16} />, label: 'Thư mục' },
+  { key: 'category', icon: <Layers size={16} />, label: 'Danh mục' },
+  { key: 'tags', icon: <TagIcon size={16} />, label: 'Tags' },
+  { key: 'location', icon: <MapPin size={16} />, label: 'Địa điểm' },
+];
 
 function getCategoryFilterCount(key: FilterCategory, value: ProjectFilterValues): number {
   switch (key) {
