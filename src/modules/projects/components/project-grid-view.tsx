@@ -83,6 +83,7 @@ const GRID_BREAKPOINTS: { minWidth: number; span: number }[] = [
   { minWidth: 1900, span: 4 },
   { minWidth: 1600, span: 6 },
   { minWidth: 1200, span: 6 },
+  { minWidth: 1024, span: 8 },
   { minWidth: 768, span: 12 },
   { minWidth: 0, span: 24 },
 ];
