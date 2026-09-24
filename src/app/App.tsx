@@ -133,7 +133,7 @@ export function App() {
 
   const userEmail = user?.email ?? '';
   const userInitials = userEmail.slice(0, 2).toUpperCase();
-  const nickname = user?.nickname ?? '';
+  const nickname = user?.name ?? '';
   const avatarUrl = user?.picture ?? '';
 
   useEffect(() => {
