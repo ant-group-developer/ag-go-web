@@ -5,6 +5,7 @@ import type { UploadFile } from 'antd';
 import {
   Alert,
   App as AntApp,
+  Avatar,
   Button,
   Card,
   Cascader,
@@ -258,7 +259,7 @@ export function ProjectDetailPage() {
     >
       {project.data ? (
         <Row gutter={[16, 16]} align="top">
-          <Col xs={24} lg={10}>
+          <Col xs={24} lg={10} xl={8}>
             <Card title={t('projects.updateDetails')}>
               <Form<ProjectDetailFormValues>
                 form={form}
@@ -312,7 +313,14 @@ export function ProjectDetailPage() {
                     loading={countries.isPending}
                     options={countries.data?.map((country) => ({
                       value: country.id,
-                      label: country.name,
+                      label: (
+                        <Space size={8}>
+                          <Avatar size={20} shape="square" src={country.flagUrl ?? undefined}>
+                            {country.code?.slice(0, 2)}
+                          </Avatar>
+                          {country.name}
+                        </Space>
+                      ),
                     }))}
                     placeholder={t('projects.countryPlaceholder')}
                     onChange={() => form.setFieldValue('provinceId', undefined)}
@@ -403,7 +411,7 @@ export function ProjectDetailPage() {
               </Form>
             </Card>
           </Col>
-          <Col xs={24} lg={14}>
+          <Col xs={24} lg={14} xl={16}>
             <ProjectGoogleDriveImportPanel projectId={project.data.id} />
             <div style={{ height: 16 }} />
             <ProjectMediaPanel projectId={project.data.id} />

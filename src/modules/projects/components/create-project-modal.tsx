@@ -4,6 +4,7 @@ import type { UploadFile, UploadProps } from 'antd';
 import {
   Alert,
   App as AntApp,
+  Avatar,
   Button,
   Cascader,
   Drawer,
@@ -246,7 +247,14 @@ export function CreateProjectModal({ open, onClose, onComplete }: CreateProjectM
             loading={countries.isPending}
             options={countries.data?.map((country) => ({
               value: country.id,
-              label: country.name,
+              label: (
+                <Space size={8}>
+                  <Avatar size={20} shape="square" src={country.flagUrl ?? undefined}>
+                    {country.code?.slice(0, 2)}
+                  </Avatar>
+                  {country.name}
+                </Space>
+              ),
             }))}
             placeholder={t('projects.countryPlaceholder')}
             onChange={() => form.setFieldValue('provinceId', undefined)}

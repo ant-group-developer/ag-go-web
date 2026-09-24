@@ -17,10 +17,12 @@ import {
   Avatar,
   Button,
   Card,
+  Image,
   Progress,
   Space,
   Table,
   Tag,
+  Tooltip,
   Typography,
   Upload,
 } from 'antd';
@@ -372,90 +374,165 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
         style={{ marginTop: 24 }}
         size="small"
         rowKey="uid"
-        scroll={{ x: 980 }}
+        scroll={{ x: 1130, y: 400 }}
         pagination={false}
         locale={{ emptyText: t('media.empty') }}
         dataSource={fileList}
         columns={[
           {
+            key: 'file',
             title: t('common.file'),
             dataIndex: 'name',
+            width: 280,
+            fixed: 'left',
             render: (name: string, file) => {
-              const status = statusForFile(file);
               const video = isVideoFile(file);
+              const filename = displayFilename(
+                name,
+                file.response?.asset.mimeType ?? file.type ?? undefined,
+              );
               return (
-                <Space>
-                  <Avatar
-                    shape="square"
-                    size={40}
-                    src={file.thumbUrl}
-                    icon={
-                      !file.thumbUrl ? (
-                        video ? (
-                          <VideoCameraOutlined />
-                        ) : (
-                          <FileImageOutlined />
-                        )
-                      ) : undefined
-                    }
-                  />
-                  <Space direction="vertical" size={2}>
-                    <Space size={8} wrap>
-                      <Typography.Text>
-                        {displayFilename(
-                          name,
-                          file.response?.asset.mimeType ?? file.type ?? undefined,
-                        )}
-                      </Typography.Text>
-                      <Tag icon={statusIcons[status]} color={statusColors[status]}>
-                        {statusLabels[status]}
-                      </Tag>
-                    </Space>
-                    {status === 'uploading' ? (
-                      <Progress percent={Math.round(file.percent ?? 0)} size="small" />
-                    ) : null}
-                  </Space>
+                <Space align="center" size={12}>
+                  {file.thumbUrl ? (
+                    <Image
+                      src={file.thumbUrl}
+                      alt={filename}
+                      width={40}
+                      height={40}
+                      style={{ objectFit: 'cover', borderRadius: 6 }}
+                      preview={{ mask: null }}
+                    />
+                  ) : (
+                    <Avatar
+                      shape="square"
+                      size={40}
+                      icon={video ? <VideoCameraOutlined /> : <FileImageOutlined />}
+                      style={{
+                        backgroundColor: video ? '#722ed1' : '#1677ff',
+                        borderRadius: 6,
+                        flexShrink: 0,
+                      }}
+                    />
+                  )}
+                  <Tooltip title={filename} placement="topLeft">
+                    <Typography.Text ellipsis style={{ maxWidth: 200, fontWeight: 500 }}>
+                      {filename}
+                    </Typography.Text>
+                  </Tooltip>
                 </Space>
               );
             },
           },
           {
-            title: t('media.size'),
-            render: (_, file) => formatFileSize(file.response?.asset.fileSizeBytes ?? file.size),
-          },
-          {
-            title: t('media.resolution'),
-            render: (_, file) => formatDimensions(file.response?.width, file.response?.height),
-          },
-          {
-            title: t('media.duration'),
-            render: (_, file) => formatDuration(file.response?.durationSeconds),
-          },
-          {
-            title: t('common.author'),
-            render: (_, file) =>
-              file.response?.creatorName ||
-              file.response?.createdByUser?.name ||
-              file.response?.createdByUser?.email ||
-              '-',
-          },
-          {
-            title: t('projects.updatedAt'),
-            render: (_, file) => formatDate(file.response?.modifiedAt ?? file.response?.updatedAt),
-          },
-          {
-            title: t('common.actions'),
+            key: 'status',
+            title: t('common.status'),
+            width: 140,
             render: (_, file) => {
               const status = statusForFile(file);
               return (
-                <Button
-                  type="text"
-                  danger
-                  aria-label={t('common.delete')}
-                  icon={<DeleteOutlined />}
-                  disabled={status === 'uploading'}
-                  onClick={() => void removeFile(file)}
-                />
+                <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                  <Tag icon={statusIcons[status]} color={statusColors[status]} style={{ margin: 0 }}>
+                    {statusLabels[status]}
+                  </Tag>
+                  {status === 'uploading' ? (
+                    <Progress
+                      percent={Math.round(file.percent ?? 0)}
+                      size="small"
+                      style={{ margin: 0, width: 100 }}
+                    />
+                  ) : null}
+                </Space>
+              );
+            },
+          },
+          {
+            key: 'size',
+            title: t('media.size'),
+            width: 100,
+            render: (_, file) => (
+              <Typography.Text type="secondary">
+                {formatFileSize(file.response?.asset.fileSizeBytes ?? file.size)}
+              </Typography.Text>
+            ),
+          },
+          {
+            key: 'resolution',
+            title: t('media.resolution'),
+            width: 120,
+            align: 'center',
+            render: (_, file) => {
+              const dimensions = formatDimensions(file.response?.width, file.response?.height);
+              return (
+                <Typography.Text type={dimensions === '-' ? 'secondary' : undefined}>
+                  {dimensions}
+                </Typography.Text>
+              );
+            },
+          },
+          {
+            key: 'duration',
+            title: t('media.duration'),
+            width: 100,
+            align: 'center',
+            render: (_, file) => {
+              const duration = formatDuration(file.response?.durationSeconds);
+              return (
+                <Typography.Text type={duration === '-' ? 'secondary' : undefined}>
+                  {duration}
+                </Typography.Text>
+              );
+            },
+          },
+          {
+            key: 'author',
+            title: t('common.author'),
+            width: 150,
+            ellipsis: true,
+            render: (_, file) => {
+              const author =
+                file.response?.creatorName ||
+                file.response?.createdByUser?.name ||
+                file.response?.createdByUser?.email ||
+                '-';
+              return (
+                <Tooltip title={author} placement="topLeft">
+                  <Typography.Text ellipsis style={{ maxWidth: 130 }}>
+                    {author}
+                  </Typography.Text>
+                </Tooltip>
+              );
+            },
+          },
+          {
+            key: 'updatedAt',
+            title: t('projects.updatedAt'),
+            width: 160,
+            render: (_, file) => (
+              <Typography.Text type="secondary">
+                {formatDate(file.response?.modifiedAt ?? file.response?.updatedAt)}
+              </Typography.Text>
+            ),
+          },
+          {
+            key: 'actions',
+            title: t('common.actions'),
+            width: 80,
+            align: 'center',
+            fixed: 'right',
+            render: (_, file) => {
+              const status = statusForFile(file);
+              return (
+                <Tooltip title={t('common.delete')}>
+                  <Button
+                    type="text"
+                    danger
+                    size="small"
+                    aria-label={t('common.delete')}
+                    icon={<DeleteOutlined />}
+                    disabled={status === 'uploading'}
+                    onClick={() => void removeFile(file)}
+                  />
+                </Tooltip>
               );
             },
           },

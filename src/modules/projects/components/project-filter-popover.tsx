@@ -1,4 +1,4 @@
-import { Button, Empty, Input, Popover, Select, Spin, Tree, Typography } from 'antd';
+import { Avatar, Button, Empty, Input, Popover, Select, Space, Spin, Tree, Typography } from 'antd';
 import type { DataNode } from 'antd/es/tree';
 import { t } from 'i18next';
 import {
@@ -434,7 +434,17 @@ function FilterContent({
                 allowClear
                 size="large"
                 optionFilterProp="label"
-                options={countries.data?.map((c) => ({ value: c.id, label: c.name }))}
+                options={countries.data?.map((c) => ({
+                  value: c.id,
+                  label: (
+                    <Space size={8}>
+                      <Avatar size={20} shape="square" src={c.flagUrl ?? undefined}>
+                        {c.code?.slice(0, 2)}
+                      </Avatar>
+                      {c.name}
+                    </Space>
+                  ),
+                }))}
                 placeholder={t('projects.countryPlaceholder')}
                 showSearch
                 value={value.countryId}
