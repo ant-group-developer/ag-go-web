@@ -1,7 +1,7 @@
-import { PageContainer } from '@ant-design/pro-components';
+import { PageContainer, ProTable } from '@ant-design/pro-components';
 import { useQuery } from '@tanstack/react-query';
 import type { TablePaginationConfig } from 'antd';
-import { Alert, DatePicker, Descriptions, Drawer, Input, Select, Space, Table, Tag } from 'antd';
+import { Alert, DatePicker, Descriptions, Drawer, Input, Select, Space, Tag } from 'antd';
 import { useState } from 'react';
 import { getLogs, type SystemLog } from '../api/logs';
 
@@ -79,8 +79,10 @@ export function LogsPage() {
           }}
         />
       </Space>
-      <Table<SystemLog>
+      <ProTable<SystemLog>
         rowKey="id"
+        sticky={{ offsetHeader: 64 }}
+        search={false}
         loading={query.isLoading}
         dataSource={query.data?.items ?? []}
         pagination={{
@@ -88,29 +90,31 @@ export function LogsPage() {
           pageSize: query.data?.pageSize ?? 25,
           total: query.data?.total ?? 0,
         }}
+        bordered
         onChange={onTableChange}
         onRow={(record) => ({ onClick: () => setSelected(record), style: { cursor: 'pointer' } })}
         columns={[
           {
             title: 'Thời gian',
             dataIndex: 'createdAt',
-            render: (value: string) => new Date(value).toLocaleString('vi-VN'),
+            render: (_, record) =>
+              record.createdAt ? new Date(record.createdAt).toLocaleString('vi-VN') : '—',
           },
           { title: 'Category', dataIndex: 'category' },
           { title: 'Action', dataIndex: 'action' },
           {
             title: 'Mức',
             dataIndex: 'level',
-            render: (value: SystemLog['level']) => (
-              <Tag color={value === 'error' ? 'red' : value === 'warn' ? 'orange' : 'blue'}>
-                {value}
+            render: (_, record) => (
+              <Tag color={record.level === 'error' ? 'red' : record.level === 'warn' ? 'orange' : 'blue'}>
+                {record.level}
               </Tag>
             ),
           },
           {
             title: 'Actor',
             dataIndex: 'actorUser',
-            render: (_: unknown, record) =>
+            render: (_, record) =>
               record.actorUser?.name ?? record.actorUser?.email ?? record.userId ?? '—',
           },
           { title: 'Message', dataIndex: 'message', ellipsis: true },
