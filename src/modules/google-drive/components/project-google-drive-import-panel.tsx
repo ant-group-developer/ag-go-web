@@ -1,12 +1,13 @@
 import { DeleteOutlined } from '@ant-design/icons';
 import { DrivePicker, DrivePickerDocsView } from '@googleworkspace/drive-picker-react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Alert, Button, Card, List, Progress, Space, Table, Tag, Typography } from 'antd';
+import { Alert, Button, Card, List, Progress, Radio, Space, Table, Tag, Typography } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatFileSize } from '../../../shared/lib/format-file-size';
 import { mediaQueryKeys } from '../../media/queries/media-query-keys';
 import { projectQueryKeys } from '../../projects/queries/project-query-keys';
+import type { DuplicatePolicy } from '../api/google-drive';
 import {
   useCancelDriveImport,
   useCreateDriveImport,
@@ -56,25 +57,36 @@ function displayFilename(name: string, mimeType?: string | null): string {
 }
 
 function importStatusLabel(status: string, t: (key: string) => string): string {
+  const normalized = status.toLowerCase();
   return (
     {
       queued: t('googleDrive.status.queued'),
       importing: t('googleDrive.status.importing'),
+      processing: t('googleDrive.status.processing'),
       completed: t('googleDrive.status.completed'),
+      partial: t('googleDrive.status.partial'),
+      partially_completed: t('googleDrive.status.partial'),
       failed: t('googleDrive.status.failed'),
       cancelled: t('googleDrive.status.cancelled'),
-    }[status] ?? status
+    }[normalized] ?? status
   );
 }
 
 function importStatusColor(status: string): string {
-  return status === 'completed'
-    ? 'success'
-    : status === 'failed'
-      ? 'error'
-      : status === 'cancelled'
-        ? 'default'
-        : 'processing';
+  const normalized = status.toLowerCase();
+  switch (normalized) {
+    case 'completed':
+      return 'success';
+    case 'failed':
+      return 'error';
+    case 'cancelled':
+      return 'default';
+    case 'partial':
+    case 'partially_completed':
+      return 'warning';
+    default:
+      return 'processing';
+  }
 }
 
 function formatDimensions(width: number | null, height: number | null): string {
@@ -98,6 +110,7 @@ export function ProjectGoogleDriveImportPanel({ projectId }: { projectId: string
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState<PickedSource[]>([]);
+  const [duplicatePolicy, setDuplicatePolicy] = useState<DuplicatePolicy>('reuse_existing');
   const connection = useGoogleDriveConnection();
   const pickerToken = useGoogleDrivePickerToken(
     connection.data?.status === 'active' &&
@@ -164,9 +177,13 @@ export function ProjectGoogleDriveImportPanel({ projectId }: { projectId: string
     const nextSources = selected.filter((source) => source.fileId !== fileId);
     setSelected(nextSources);
     if (nextSources.length > 0) {
-      summarizeSources.mutate(
-        nextSources.map((source) => ({ fileId: source.fileId, driveId: source.driveId })),
-      );
+      summarizeSources.mutate({
+        projectId,
+        sources: nextSources.map((source) => ({
+          fileId: source.fileId,
+          driveId: source.driveId,
+        })),
+      });
     }
   };
 
@@ -258,9 +275,13 @@ export function ProjectGoogleDriveImportPanel({ projectId }: { projectId: string
                   setPickerError(t('googleDrive.invalidMediaWarning'));
                 }
                 setSelected(sources);
-                summarizeSources.mutate(
-                  sources.map((source) => ({ fileId: source.fileId, driveId: source.driveId })),
-                );
+                summarizeSources.mutate({
+                  projectId,
+                  sources: sources.map((source) => ({
+                    fileId: source.fileId,
+                    driveId: source.driveId,
+                  })),
+                });
               }}
             >
               {pickerMode === 'files' ? (
@@ -322,38 +343,63 @@ export function ProjectGoogleDriveImportPanel({ projectId }: { projectId: string
                   description={summarizeSources.error.message}
                 />
               ) : summarizeSources.data ? (
-                <Alert
-                  type="info"
-                  showIcon
-                  message={t('googleDrive.totalValidFiles', {
-                    count: summarizeSources.data.fileCount,
-                  })}
-                  description={
-                    <Space wrap>
-                      <Tag color="blue">
-                        {t('googleDrive.imageCount', { count: summarizeSources.data.imageCount })}
-                      </Tag>
-                      <Tag color="purple">
-                        {t('googleDrive.videoCount', { count: summarizeSources.data.videoCount })}
-                      </Tag>
-                      <Tag>{formatFileSize(summarizeSources.data.totalBytes)}</Tag>
-                      {summarizeSources.data.folderCount > 0 ? (
-                        <Tag>
-                          {t('googleDrive.folderCount', {
-                            count: summarizeSources.data.folderCount,
-                          })}
+                <>
+                  <Alert
+                    type="info"
+                    showIcon
+                    message={t('googleDrive.totalValidFiles', {
+                      count: summarizeSources.data.fileCount,
+                    })}
+                    description={
+                      <Space wrap>
+                        <Tag color="blue">
+                          {t('googleDrive.imageCount', { count: summarizeSources.data.imageCount })}
                         </Tag>
-                      ) : null}
-                      {summarizeSources.data.unsupportedCount > 0 ? (
-                        <Typography.Text type="secondary">
-                          {t('googleDrive.unsupportedIgnored', {
-                            count: summarizeSources.data.unsupportedCount,
-                          })}
-                        </Typography.Text>
-                      ) : null}
-                    </Space>
-                  }
-                />
+                        <Tag color="purple">
+                          {t('googleDrive.videoCount', { count: summarizeSources.data.videoCount })}
+                        </Tag>
+                        <Tag>{formatFileSize(summarizeSources.data.totalBytes)}</Tag>
+                        {summarizeSources.data.folderCount > 0 ? (
+                          <Tag>
+                            {t('googleDrive.folderCount', {
+                              count: summarizeSources.data.folderCount,
+                            })}
+                          </Tag>
+                        ) : null}
+                        {summarizeSources.data.unsupportedCount > 0 ? (
+                          <Typography.Text type="secondary">
+                            {t('googleDrive.unsupportedIgnored', {
+                              count: summarizeSources.data.unsupportedCount,
+                            })}
+                          </Typography.Text>
+                        ) : null}
+                      </Space>
+                    }
+                  />
+                  {summarizeSources.data.duplicateCount > 0 ? (
+                    <Alert
+                      type="warning"
+                      showIcon
+                      message={t('googleDrive.duplicatesFound', {
+                        count: summarizeSources.data.duplicateCount,
+                      })}
+                      description={
+                        <Radio.Group
+                          value={duplicatePolicy}
+                          onChange={(event) => setDuplicatePolicy(event.target.value)}
+                        >
+                          <Space direction="vertical">
+                            <Radio value="create_new">{t('googleDrive.createNew')}</Radio>
+                            <Radio value="reuse_existing">{t('googleDrive.reuseExisting')}</Radio>
+                            <Radio value="overwrite_existing">
+                              {t('googleDrive.overwriteExisting')}
+                            </Radio>
+                          </Space>
+                        </Radio.Group>
+                      }
+                    />
+                  ) : null}
+                </>
               ) : (
                 <Space wrap>
                   <Tag color="blue">
@@ -407,6 +453,7 @@ export function ProjectGoogleDriveImportPanel({ projectId }: { projectId: string
                     .mutateAsync({
                       projectId,
                       sources: selected,
+                      duplicatePolicy,
                       idempotencyKey: crypto.randomUUID(),
                     })
                     .then((created) => setBatchId(created.id))
@@ -454,9 +501,12 @@ export function ProjectGoogleDriveImportPanel({ projectId }: { projectId: string
               <Table
                 size="small"
                 rowKey="id"
-                scroll={{ x: 980 }}
+                scroll={{ x: 860 }}
                 pagination={false}
-                dataSource={batch.data?.items ?? []}
+                dataSource={(batch.data?.items ?? []).filter((item) => {
+                  const mime = item.sourceMimeType?.toLowerCase();
+                  return mime !== 'application/vnd.google-apps.folder' && !mime?.includes('folder');
+                })}
                 columns={[
                   {
                     title: t('common.file'),
@@ -481,11 +531,7 @@ export function ProjectGoogleDriveImportPanel({ projectId }: { projectId: string
                     dataIndex: 'sourceDurationSeconds',
                     render: (value: string | null) => formatDuration(value),
                   },
-                  {
-                    title: t('common.author'),
-                    dataIndex: 'sourceCreator',
-                    render: (value: string | null) => value || '-',
-                  },
+                  // Tạm ẩn cột người tạo
                   {
                     title: t('projects.updatedAt'),
                     dataIndex: 'sourceModifiedAt',
@@ -499,12 +545,18 @@ export function ProjectGoogleDriveImportPanel({ projectId }: { projectId: string
                     ),
                   },
                   {
+                    title: t('googleDrive.resolution'),
+                    dataIndex: 'resolution',
+                    render: (value: string | null) =>
+                      value ? <Tag>{t(`googleDrive.resolutions.${value}`)}</Tag> : '-',
+                  },
+                  {
                     title: t('common.actions'),
                     render: (_, item) =>
                       item.status === 'failed' ? (
                         <Button
                           size="small"
-                          loading={retryItem.isPending}
+                          loading={retryItem.isPending && retryItem.variables?.itemId === item.id}
                           onClick={() => retryItem.mutate({ batchId, itemId: item.id })}
                         >
                           {t('common.retry')}
