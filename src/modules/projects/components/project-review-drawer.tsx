@@ -17,6 +17,7 @@ import {
   Divider,
   Drawer,
   Empty,
+  Flex,
   Image,
   List,
   Row,
@@ -24,6 +25,7 @@ import {
   Spin,
   Tag,
   Typography,
+  theme
 } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -398,6 +400,7 @@ function MediaDetails({
 
 export function ProjectDetailDrawer({ open, projectId, onClose }: ProjectReviewDrawerProps) {
   const { t } = useTranslation();
+  const { token } = theme.useToken();
   const { message } = AntApp.useApp();
   const [selectedMediaId, setSelectedMediaId] = useState<string>();
   const [selectedMediaIds, setSelectedMediaIds] = useState<string[]>([]);
@@ -517,7 +520,7 @@ export function ProjectDetailDrawer({ open, projectId, onClose }: ProjectReviewD
           {t('common.refresh')}
         </Button>
       }
-      styles={{ body: { overflow: 'auto', padding: 20 } }}
+      styles={{ body: { overflow: 'auto', padding: 20, backgroundColor: token.colorBgLayout } }}
     >
       {project.isError ? <Alert type="error" showIcon message={project.error.message} /> : null}
       {project.isPending ? (
@@ -591,27 +594,47 @@ export function ProjectDetailDrawer({ open, projectId, onClose }: ProjectReviewD
                             cursor: 'pointer',
                             marginBottom: 4,
                             padding: 8,
+                            width: '100%',
+                            boxSizing: 'border-box',
                           }}
                           onClick={() => setSelectedMediaId(item.id)}
                         >
-                          <List.Item.Meta
-                            avatar={<MediaThumbnail media={item} />}
-                            description={
-                              <Space size={4} wrap>
-                                <Typography.Text type="secondary">
-                                  {formatDuration(item.durationSeconds)}
-                                </Typography.Text>
-                                <Typography.Text type="secondary">
-                                  {formatResolution(item)}
-                                </Typography.Text>
-                                <Typography.Text type="secondary">
-                                  {formatDateTime(item.createdAt)}
-                                </Typography.Text>
-                                <Tag color={status.color}>{status.label}</Tag>
-                              </Space>
-                            }
-                            title={
-                              <Space>
+                          <Flex
+                            gap={8}
+                            align="start"
+                            style={{
+                              width: '100%',
+                              minWidth: 0,
+                            }}
+                          >
+                            {/* Thumbnail */}
+                            <div
+                              style={{
+                                flexShrink: 0,
+                              }}
+                            >
+                              <MediaThumbnail media={item} />
+                            </div>
+
+                            {/* Content */}
+                            <Flex
+                              vertical
+                              gap={4}
+                              style={{
+                                flex: 1,
+                                minWidth: 0,
+                                width: 0,
+                              }}
+                            >
+                              {/* Filename */}
+                              <Flex
+                                align="center"
+                                gap={8}
+                                style={{
+                                  width: '100%',
+                                  minWidth: 0,
+                                }}
+                              >
                                 <Checkbox
                                   checked={selectedMediaIds.includes(item.id)}
                                   onClick={(event) => event.stopPropagation()}
@@ -623,15 +646,38 @@ export function ProjectDetailDrawer({ open, projectId, onClose }: ProjectReviewD
                                     );
                                   }}
                                 />
+
                                 <Typography.Text
-                                  ellipsis
-                                  style={{ display: 'block', maxWidth: 180 }}
+                                  ellipsis={{ tooltip: item.asset.originalFilename }}
+                                  style={{
+                                    flex: 1,
+                                    minWidth: 0,
+                                    overflow: 'hidden',
+                                    fontWeight: 700
+                                  }}
                                 >
                                   {item.asset.originalFilename}
                                 </Typography.Text>
+                              </Flex>
+
+                              {/* Metadata */}
+                              <Space size={4} wrap>
+                                <Typography.Text type="secondary">
+                                  {formatDuration(item.durationSeconds)}
+                                </Typography.Text>
+
+                                <Typography.Text type="secondary">
+                                  {formatResolution(item)}
+                                </Typography.Text>
+
+                                <Typography.Text type="secondary">
+                                  {formatDateTime(item.createdAt)}
+                                </Typography.Text>
+
+                                <Tag color={status.color}>{status.label}</Tag>
                               </Space>
-                            }
-                          />
+                            </Flex>
+                          </Flex>
                         </List.Item>
                       );
                     }}
