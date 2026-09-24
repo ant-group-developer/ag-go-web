@@ -38,6 +38,7 @@ import {
 import { ProjectMediaPanel } from '../../media/components/project-media-panel';
 import { mediaQueryKeys } from '../../media/queries/media-query-keys';
 import { useProvinces } from '../../provinces/hooks/use-provinces';
+import { ProjectProcessingHistoryPanel } from '../../render/components/project-processing-history-panel';
 import { useTags } from '../../tags/hooks/use-tags';
 import { useProject, useUpdateProject } from '../hooks/use-projects';
 import { projectQueryKeys } from '../queries/project-query-keys';
@@ -195,6 +196,7 @@ export function ProjectDetailPage() {
                   originalFilename: file.name,
                   mimeType: file.type || 'application/octet-stream',
                   fileSizeBytes: file.size,
+                  targetProjectId: projectId,
                 },
                 globalThis.crypto.randomUUID(),
               );
@@ -405,6 +407,7 @@ export function ProjectDetailPage() {
             <ProjectGoogleDriveImportPanel projectId={project.data.id} />
             <div style={{ height: 16 }} />
             <ProjectMediaPanel projectId={project.data.id} />
+            <ProjectProcessingHistoryPanel projectId={project.data.id} />
           </Col>
         </Row>
       ) : null}
