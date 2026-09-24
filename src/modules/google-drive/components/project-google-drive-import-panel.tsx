@@ -113,7 +113,7 @@ export function ProjectGoogleDriveImportPanel({ projectId }: { projectId: string
   const summarizeSources = useSummarizeGoogleDriveSources();
   const [batchId, setBatchId] = useState<string>();
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [pickerMode, setPickerMode] = useState<PickerMode>('files');
+  const [pickerMode, setPickerMode] = useState<PickerMode>('folders');
   const [pickerError, setPickerError] = useState<string>();
   const batch = useDriveImport(batchId ?? '');
   const batchStatus = batch.data?.status;
@@ -209,23 +209,14 @@ export function ProjectGoogleDriveImportPanel({ projectId }: { projectId: string
           ) : null}
           {pickerError ? <Alert type="error" showIcon message={pickerError} /> : null}
           <Typography.Text type="secondary">{t('googleDrive.selectPrompt')}</Typography.Text>
-          <Space.Compact block>
-            <Button
-              type="primary"
-              disabled={!pickerToken.data?.accessToken}
-              loading={pickerToken.isLoading}
-              onClick={() => openPicker('files')}
-            >
-              {t('googleDrive.selectFiles')}
-            </Button>
-            <Button
-              disabled={!pickerToken.data?.accessToken}
-              loading={pickerToken.isLoading}
-              onClick={() => openPicker('folders')}
-            >
-              {t('googleDrive.selectFolders')}
-            </Button>
-          </Space.Compact>
+          <Button
+            type="primary"
+            disabled={!pickerToken.data?.accessToken}
+            loading={pickerToken.isLoading}
+            onClick={() => openPicker('folders')}
+          >
+            {t('googleDrive.selectFolders')}
+          </Button>
           {pickerOpen ? (
             <DrivePicker
               {...({
