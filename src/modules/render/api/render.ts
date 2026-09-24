@@ -1,8 +1,5 @@
 import { apiClient } from '../../../shared/lib/api-client';
-import {
-  uploadAssetContent,
-  type UploadSession,
-} from '../../media/api/media';
+import { uploadAssetContent, type UploadSession } from '../../media/api/media';
 
 export const WATERMARK_POSITIONS = [
   'top-left',
@@ -55,6 +52,21 @@ export type RenderBatch = {
   failedJobs: number;
   progressPercent: number;
   createdAt: string;
+  renderProfileId: string;
+};
+
+export type RenderJob = {
+  id: string;
+  assetId: string;
+  renderBatchId: string | null;
+  status: string;
+  progressPercent: number;
+  progressMessage: string | null;
+  attemptCount: number;
+  errorCode: string | null;
+  errorMessage: string | null;
+  createdAt: string;
+  finishedAt: string | null;
 };
 
 export function getRenderProfiles() {
@@ -156,11 +168,28 @@ export function createRenderBatch(input: {
   projectId?: string;
   folderId?: string;
   projectMediaIds?: string[];
+  renderProfileId?: string;
 }) {
   return apiClient<RenderBatch>('/render-batches', {
     method: 'POST',
     body: JSON.stringify(input),
   });
+}
+
+export function getProjectRenderBatches(projectId: string) {
+  return apiClient<RenderBatch[]>(`/projects/${projectId}/render-batches`);
+}
+
+export function getAllRenderBatches() {
+  return apiClient<RenderBatch[]>('/render-batches');
+}
+
+export function getRenderBatchJobs(batchId: string) {
+  return apiClient<RenderJob[]>(`/render-batches/${batchId}/jobs`);
+}
+
+export function retryRenderJob(jobId: string) {
+  return apiClient<RenderJob>(`/render-jobs/${jobId}/retry`, { method: 'POST' });
 }
 
 export function getRenderBatch(id: string) {

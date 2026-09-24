@@ -24,6 +24,7 @@ import { parseAsArrayOf, parseAsInteger, parseAsString, useQueryStates } from 'n
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
+import { CountryFlag } from '../../countries/components';
 import { getAssetPreviewUrl } from '../../media/api/media';
 import { getProjects } from '../api/projects';
 import { CreateProjectModal } from '../components/create-project-modal';
@@ -96,7 +97,7 @@ function ProjectThumbnailCell({ assetId }: { assetId?: string | null }) {
           width: 64,
         }}
       >
-        <span>—</span>
+        <span>-</span>
       </div>
     );
   }
@@ -248,18 +249,13 @@ export function ProjectsPage() {
       width: 200,
       render: (_, project) => (
         <Space direction="vertical" size={0}>
-          <Space size={6}>
-            {project.countryFlagUrl ? (
-              <Image
-                alt=""
-                height={14}
-                src={project.countryFlagUrl}
-                style={{ objectFit: 'cover' }}
-                width={20}
-                preview={false}
-              />
-            ) : null}
-            <Typography.Text>{project.countryName || '—'}</Typography.Text>
+          <Space size={6} align="center">
+            <CountryFlag
+              flagUrl={project.countryFlagUrl || undefined}
+              name={project.countryName || undefined}
+              height={14}
+            />
+            <Typography.Text>{project.countryName || '-'}</Typography.Text>
           </Space>
           {project.provinceName ? (
             <Typography.Text type="secondary">{project.provinceName}</Typography.Text>
@@ -275,7 +271,7 @@ export function ProjectsPage() {
       ellipsis: true,
       render: (_, project) => (
         <Tooltip title={project.folderPath || t('projects.folderUnavailable')}>
-          <Typography.Text ellipsis>{project.folderPath || '—'}</Typography.Text>
+          <Typography.Text ellipsis>{project.folderPath || '-'}</Typography.Text>
         </Tooltip>
       ),
     },
@@ -588,6 +584,7 @@ export function ProjectsPage() {
         onClose={() => setCreateOpen(false)}
         onComplete={(project) => {
           setCreateOpen(false);
+          void message.success(t('projects.createSuccess'));
           navigate(`/projects/${project.id}/edit`);
         }}
       />

@@ -7,6 +7,7 @@ export function useFolders(enabled = true) {
     queryKey: folderQueryKeys.tree(),
     queryFn: getFolders,
     enabled,
+    refetchOnWindowFocus: true,
   });
 }
 

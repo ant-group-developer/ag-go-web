@@ -1,10 +1,12 @@
 import { PageContainer } from '@ant-design/pro-components';
 import { useQuery } from '@tanstack/react-query';
 import { Alert, Empty, List, Spin, Tag, Typography } from 'antd';
+import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { getProjectAudit } from '../api/audit';
 
 export function AuditPage() {
+  const { t } = useTranslation();
   const { projectId = '' } = useParams();
   const query = useQuery({
     queryKey: ['audit', 'project', projectId],
@@ -13,9 +15,9 @@ export function AuditPage() {
   });
 
   return (
-    <PageContainer title="Project audit">
+    <PageContainer title={t('audit.title')}>
       {query.isLoading ? <Spin /> : null}
-      {query.isError ? <Alert type="error" message="Không thể tải audit log" /> : null}
+      {query.isError ? <Alert type="error" message={t('audit.loadFailed')} /> : null}
       {query.data?.items.length ? (
         <List
           bordered
@@ -30,10 +32,10 @@ export function AuditPage() {
           )}
         />
       ) : !query.isLoading && !query.isError ? (
-        <Empty description="Chưa có audit log" />
+        <Empty description={t('audit.empty')} />
       ) : null}
       <Typography.Text type="secondary">
-        Audit chỉ hiển thị trong scope folder mà tài khoản hiện tại được phép xem.
+        {t('audit.scopeNote')}
       </Typography.Text>
     </PageContainer>
   );

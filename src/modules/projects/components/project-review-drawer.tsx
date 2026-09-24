@@ -50,7 +50,7 @@ type ProjectReviewDrawerProps = {
 
 function formatDateTime(value: string | undefined): string {
   if (!value) {
-    return '—';
+    return '-';
   }
   return new Intl.DateTimeFormat('vi-VN', {
     dateStyle: 'medium',
@@ -61,7 +61,7 @@ function formatDateTime(value: string | undefined): string {
 function formatFileSize(value: string | undefined): string {
   const bytes = Number(value ?? 0);
   if (!bytes) {
-    return '—';
+    return '-';
   }
   const units = ['B', 'KB', 'MB', 'GB'];
   const unitIndex = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
@@ -70,7 +70,7 @@ function formatFileSize(value: string | undefined): string {
 
 function formatDuration(value: number | null | undefined): string {
   if (value === null || value === undefined || !Number.isFinite(value)) {
-    return '—';
+    return '-';
   }
   const totalSeconds = Math.max(0, Math.round(value));
   const hours = Math.floor(totalSeconds / 3600);
@@ -82,7 +82,7 @@ function formatDuration(value: number | null | undefined): string {
 }
 
 function formatResolution(media: ProjectMedia): string {
-  return media.width && media.height ? `${media.width} × ${media.height}` : '—';
+  return media.width && media.height ? `${media.width} × ${media.height}` : '-';
 }
 
 function getProjectStatus(status: string, t: (key: string) => string) {
@@ -248,10 +248,10 @@ function ProjectOverview({ project }: { project: Project }) {
           {project.folderPath || project.folderId}
         </Descriptions.Item>
         <Descriptions.Item label={t('projects.location')}>
-          {[project.countryName, project.provinceName].filter(Boolean).join(' / ') || '—'}
+          {[project.countryName, project.provinceName].filter(Boolean).join(' / ') || '-'}
         </Descriptions.Item>
         <Descriptions.Item label={t('projects.category')}>
-          {project.categoryName || '—'}
+          {project.categoryName || '-'}
         </Descriptions.Item>
         <Descriptions.Item label={t('projects.fileCounts')}>
           <Space wrap>
@@ -269,7 +269,7 @@ function ProjectOverview({ project }: { project: Project }) {
         {project.tags?.length ? (
           project.tags.map((tag) => <Tag key={tag}>{tag}</Tag>)
         ) : (
-          <Typography.Text type="secondary">—</Typography.Text>
+          <Typography.Text type="secondary">-</Typography.Text>
         )}
         <Space size={4}>
           <Avatar size={18} src={project.ownerUser?.avatar}>
@@ -298,7 +298,7 @@ function ProjectOverview({ project }: { project: Project }) {
         style={{ margin: '8px 0 0' }}
       >
         <Typography.Text type="secondary">{t('projects.description')}: </Typography.Text>
-        {project.description || '—'}
+        {project.description || '-'}
       </Typography.Paragraph>
     </Card>
   );
@@ -359,7 +359,7 @@ function MediaDetails({
             </Button>
           </Descriptions.Item>
         ) : null}
-        <Descriptions.Item label={t('media.caption')}>{media.caption || '—'}</Descriptions.Item>
+        <Descriptions.Item label={t('media.caption')}>{media.caption || '-'}</Descriptions.Item>
       </Descriptions>
       <Divider />
       <Typography.Text strong>{t('projects.fileEvaluation')}</Typography.Text>
@@ -379,7 +379,7 @@ function MediaDetails({
               <List.Item.Meta
                 description={
                   <Space direction="vertical" size={2}>
-                    <Typography.Text>{item.comment || '—'}</Typography.Text>
+                    <Typography.Text>{item.comment || '-'}</Typography.Text>
                     <Typography.Text type="secondary">
                       {item.evaluatedBy} · {formatDateTime(item.createdAt)}
                     </Typography.Text>
@@ -447,10 +447,10 @@ export function ProjectDetailDrawer({ open, projectId, onClose }: ProjectReviewD
         return;
       }
       setDownloadJobId(result.downloadJobId);
-      void message.success('Đã tạo download job');
+      void message.success(t('projects.downloadJobCreated'));
     },
     onError: (error) => {
-      void message.error(error instanceof Error ? error.message : 'Không thể tạo download');
+      void message.error(error instanceof Error ? error.message : t('projects.downloadFailed'));
     },
   });
   const retry = useMutation({
@@ -485,7 +485,7 @@ export function ProjectDetailDrawer({ open, projectId, onClose }: ProjectReviewD
       return;
     }
     if (scope === 'multiple' && selectedMediaIds.length === 0) {
-      void message.warning('Hãy chọn ít nhất một file');
+      void message.warning(t('projects.selectAtLeastOneFile'));
       return;
     }
     download.mutate({
@@ -542,7 +542,7 @@ export function ProjectDetailDrawer({ open, projectId, onClose }: ProjectReviewD
                       size="small"
                       onClick={() => requestDownload('multiple')}
                     >
-                      Tải file đã chọn
+                      {t('projects.downloadSelected')}
                     </Button>
                     <Button
                       icon={<DownloadOutlined />}
@@ -551,7 +551,7 @@ export function ProjectDetailDrawer({ open, projectId, onClose }: ProjectReviewD
                       type="primary"
                       onClick={() => requestDownload('project')}
                     >
-                      Tải toàn bộ
+                      {t('projects.downloadAll')}
                     </Button>
                     {media.hasNextPage ? (
                       <Button
@@ -663,12 +663,12 @@ export function ProjectDetailDrawer({ open, projectId, onClose }: ProjectReviewD
               )}
             </Col>
           </Row>
-          <Card title="Audit log" style={{ marginTop: 16 }}>
-            {audit.isError ? <Alert type="error" message="Không thể tải audit log" /> : null}
+          <Card title={t('projects.auditLog')} style={{ marginTop: 16 }}>
+            {audit.isError ? <Alert type="error" message={t('projects.auditLogError')} /> : null}
             <List
               dataSource={audit.data?.items ?? []}
               loading={audit.isPending}
-              locale={{ emptyText: 'Chưa có audit log' }}
+              locale={{ emptyText: t('projects.auditLogEmpty') }}
               renderItem={(item: AuditLog) => (
                 <List.Item>
                   <List.Item.Meta
@@ -683,11 +683,11 @@ export function ProjectDetailDrawer({ open, projectId, onClose }: ProjectReviewD
             <Alert
               style={{ marginTop: 16 }}
               type={downloadJob.data?.status === 'failed' ? 'error' : 'info'}
-              message={`Download: ${downloadJob.data?.status ?? 'queued'}`}
+              message={t('projects.downloadStatus', { status: downloadJob.data?.status ?? 'queued' })}
               description={
                 downloadJob.data?.url ? (
                   <Button type="link" href={downloadJob.data.url} target="_blank">
-                    Mở file ZIP
+                    {t('projects.openZipFile')}
                   </Button>
                 ) : undefined
               }

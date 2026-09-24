@@ -2,8 +2,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   cancelRenderBatch,
   createRenderBatch,
+  getAllRenderBatches,
+  getProjectRenderBatches,
   getRenderBatch,
+  getRenderBatchJobs,
   getRenderProfiles,
+  retryRenderJob,
   updateRenderProfile,
 } from '../api/render';
 
@@ -11,6 +15,9 @@ const keys = {
   all: ['render'] as const,
   profiles: () => [...keys.all, 'profiles'] as const,
   batch: (id: string) => [...keys.all, 'batch', id] as const,
+  projectBatches: (id: string) => [...keys.all, 'project-batches', id] as const,
+  allBatches: () => [...keys.all, 'all-batches'] as const,
+  jobs: (id: string) => [...keys.all, 'jobs', id] as const,
 };
 
 export function useRenderProfiles() {
@@ -40,12 +47,49 @@ export function useRenderBatch(id: string) {
   });
 }
 
+export function useProjectRenderBatches(projectId: string) {
+  return useQuery({
+    queryKey: keys.projectBatches(projectId),
+    queryFn: () => getProjectRenderBatches(projectId),
+    enabled: Boolean(projectId),
+  });
+}
+
+export function useAllRenderBatches() {
+  return useQuery({
+    queryKey: keys.allBatches(),
+    queryFn: getAllRenderBatches,
+  });
+}
+
+export function useRenderBatchJobs(batchId: string) {
+  return useQuery({
+    queryKey: keys.jobs(batchId),
+    queryFn: () => getRenderBatchJobs(batchId),
+    enabled: Boolean(batchId),
+  });
+}
+
+export function useRetryRenderJob() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: retryRenderJob,
+    onSuccess: (job) => {
+      if (job.renderBatchId) {
+        void client.invalidateQueries({ queryKey: keys.jobs(job.renderBatchId) });
+        void client.invalidateQueries({ queryKey: keys.batch(job.renderBatchId) });
+      }
+    },
+  });
+}
+
 export function useCreateRenderBatch() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: createRenderBatch,
     onSuccess: (batch) => {
       void client.invalidateQueries({ queryKey: keys.batch(batch.id) });
+      void client.invalidateQueries({ queryKey: keys.projectBatches(batch.projectId ?? '') });
     },
   });
 }
