@@ -121,13 +121,8 @@ export function LogsPage() {
           {
             title: t('logs.actor'),
             dataIndex: 'actorUser',
-<<<<<<< HEAD
-            render: (_, record) =>
-              record.actorUser?.name ?? record.actorUser?.email ?? record.userId ?? '—',
-=======
             render: (_: unknown, record) =>
               record.actorUser?.name ?? record.actorUser?.email ?? record.userId ?? '-',
->>>>>>> 5118aeb71e2c8946b8b53ede6f286830d1a9f93d
           },
           { title: t('logs.message'), dataIndex: 'message', ellipsis: true },
         ]}

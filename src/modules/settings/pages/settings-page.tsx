@@ -189,10 +189,6 @@ function WatermarkPreview({ sampleUrl, logoUrl, config, enabled }: PreviewProps)
 
       context.save();
       context.globalAlpha = config.opacity;
-<<<<<<< HEAD
-      // let textX = position.x;
-=======
->>>>>>> 5118aeb71e2c8946b8b53ede6f286830d1a9f93d
       if (logo?.complete && logo.naturalWidth > 0) {
         context.drawImage(
           logo,
@@ -201,10 +197,6 @@ function WatermarkPreview({ sampleUrl, logoUrl, config, enabled }: PreviewProps)
           logoSize,
           logoSize,
         );
-<<<<<<< HEAD
-        // textX += logoSize * 1.3;
-=======
->>>>>>> 5118aeb71e2c8946b8b53ede6f286830d1a9f93d
       }
       if (config.text) {
         context.fillStyle = config.color;
@@ -342,14 +334,13 @@ function RenderProfileEditor({
         <Row gutter={[24, 24]} align="top">
           <Col xs={24} lg={14}>
             <Row gutter={16}>
-<<<<<<< HEAD
               <Col xs={24} md={12}>
-                <Form.Item name="name" label="Tên profile" rules={[{ required: true }]}>
+                <Form.Item name="name" label={t('settings.profileName')} rules={[{ required: true }]}>
                   <Input maxLength={100} />
                 </Form.Item>
               </Col>
               <Col xs={24} md={12}>
-                <Form.Item name="outputFormat" label="Output format">
+                <Form.Item name="outputFormat" label={t('settings.outputFormat')}>
                   <Select
                     options={['webp', 'jpeg', 'jpg', 'png', 'mp4', 'webm'].map((value) => ({
                       label: value,
@@ -359,109 +350,65 @@ function RenderProfileEditor({
                 </Form.Item>
               </Col>
               <Col xs={12} md={6}>
-                <Form.Item name="maxWidth" label="Max width">
+                <Form.Item name="maxWidth" label={t('settings.maxWidth')}>
                   <InputNumber min={1} max={10000} style={{ width: '100%' }} />
                 </Form.Item>
               </Col>
               <Col xs={12} md={6}>
-                <Form.Item name="maxHeight" label="Max height">
+                <Form.Item name="maxHeight" label={t('settings.maxHeight')}>
                   <InputNumber min={1} max={10000} style={{ width: '100%' }} />
                 </Form.Item>
               </Col>
               <Col xs={12} md={6}>
-                <Form.Item name="imageQuality" label="Image quality">
+                <Form.Item name="imageQuality" label={t('settings.imageQuality')}>
                   <InputNumber min={1} max={100} style={{ width: '100%' }} />
                 </Form.Item>
               </Col>
               <Col xs={12} md={6}>
-                <Form.Item name="videoBitrateBps" label="Video bitrate (bps)">
+                <Form.Item name="videoBitrateBps" label={t('settings.videoBitrate')}>
                   <Input />
                 </Form.Item>
               </Col>
-=======
-          <Col xs={24} md={12}>
-            <Form.Item name="name" label={t('settings.profileName')} rules={[{ required: true }]}>
-              <Input maxLength={100} />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={12}>
-            <Form.Item name="outputFormat" label={t('settings.outputFormat')}>
-              <Select
-                options={['webp', 'jpeg', 'jpg', 'png', 'mp4', 'webm'].map((value) => ({
-                  label: value,
-                  value,
-                }))}
-              />
-            </Form.Item>
-          </Col>
-          <Col xs={12} md={6}>
-            <Form.Item name="maxWidth" label={t('settings.maxWidth')}>
-              <InputNumber min={1} max={10000} style={{ width: '100%' }} />
-            </Form.Item>
-          </Col>
-          <Col xs={12} md={6}>
-            <Form.Item name="maxHeight" label={t('settings.maxHeight')}>
-              <InputNumber min={1} max={10000} style={{ width: '100%' }} />
-            </Form.Item>
-          </Col>
-          <Col xs={12} md={6}>
-            <Form.Item name="imageQuality" label={t('settings.imageQuality')}>
-              <InputNumber min={1} max={100} style={{ width: '100%' }} />
-            </Form.Item>
-          </Col>
-          <Col xs={12} md={6}>
-            <Form.Item name="videoBitrateBps" label={t('settings.videoBitrate')}>
-              <Input />
-            </Form.Item>
-          </Col>
->>>>>>> 5118aeb71e2c8946b8b53ede6f286830d1a9f93d
-            </Row>
+            </Row >
 
             <Card size="small" title={t('settings.watermark')} style={{ marginBottom: 16 }}>
               <Row gutter={16}>
-<<<<<<< HEAD
                 <Col xs={24} md={6}>
-                  <Form.Item name="watermarkEnabled" label="Bật watermark" valuePropName="checked">
+                  <Form.Item name="watermarkEnabled" label={t('settings.watermarkEnabled')} valuePropName="checked">
                     <Switch />
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={18}>
-                  <Form.Item name={['watermarkConfig', 'text']} label="Text">
+                  <Form.Item name={['watermarkConfig', 'text']} label={t('settings.text')}>
                     <Input maxLength={200} placeholder="AG Go Preview" />
                   </Form.Item>
                 </Col>
                 <Col xs={12} md={6}>
-                  <Form.Item name={['watermarkConfig', 'color']} label="Màu chữ">
+                  <Form.Item name={['watermarkConfig', 'color']} label={t('settings.textColor')}>
                     <Input type="color" />
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={8}>
-                  <Form.Item name={['watermarkConfig', 'fontFamily']} label="Font">
+                  <Form.Item name={['watermarkConfig', 'fontFamily']} label={t('settings.font')}>
                     <Select
-                      options={[
-                        'Arial',
-                        'Times New Roman',
-                        'Courier New',
-                        'Verdana',
-                        'Georgia',
-                        'Impact',
-                        'Tahoma',
-                      ].map((value) => ({ value, label: value }))}
+                      options={['Arial', 'Times New Roman', 'Courier New', 'Verdana', 'Georgia', 'Impact', 'Tahoma'].map(
+                        (value) => ({ value, label: value }),
+                      )}
                     />
                   </Form.Item>
                 </Col>
                 <Col xs={12} md={8}>
-                  <Form.Item name={['watermarkConfig', 'fontSize']} label="Font size">
+                  <Form.Item name={['watermarkConfig', 'fontSize']} label={t('settings.fontSize')}>
                     <InputNumber min={8} max={240} style={{ width: '100%' }} />
                   </Form.Item>
                 </Col>
                 <Col xs={12} md={8}>
-                  <Form.Item name={['watermarkConfig', 'rotate']} label="Rotate">
+                  <Form.Item name={['watermarkConfig', 'rotate']} label={t('settings.rotate')}>
                     <InputNumber min={-360} max={360} style={{ width: '100%' }} />
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={12}>
-                  <Form.Item label="Logo">
+                  <Form.Item label={t('settings.logo')}>
                     <Upload
                       accept="image/*"
                       maxCount={1}
@@ -472,17 +419,12 @@ function RenderProfileEditor({
                       }}
                     >
                       <Button icon={<UploadCloud size={16} />} loading={logoUploading}>
-                        Upload logo
+                        {t('settings.uploadLogo')}
                       </Button>
                     </Upload>
                     {logoUrl ? (
                       <div style={{ marginTop: 8 }}>
-                        <Image
-                          src={logoUrl}
-                          width={96}
-                          height={48}
-                          style={{ objectFit: 'contain' }}
-                        />
+                        <Image src={logoUrl} width={96} height={48} style={{ objectFit: 'contain' }} />
                         <Button
                           type="link"
                           danger
@@ -492,7 +434,7 @@ function RenderProfileEditor({
                             setLogoUrl(undefined);
                           }}
                         >
-                          Xóa logo
+                          {t('settings.deleteLogo')}
                         </Button>
                       </div>
                     ) : null}
@@ -502,174 +444,55 @@ function RenderProfileEditor({
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={12}>
-                  <Form.Item name={['watermarkConfig', 'position']} label="Vị trí">
+                  <Form.Item name={['watermarkConfig', 'position']} label={t('settings.position')}>
                     <Select
                       options={WATERMARK_POSITIONS.map((value) => ({ value, label: value }))}
                     />
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={6}>
-                  <Form.Item
-                    name={['watermarkConfig', 'repeat']}
-                    label="Lặp watermark"
-                    valuePropName="checked"
-                  >
+                  <Form.Item name={['watermarkConfig', 'repeat']} label={t('settings.repeatWatermark')} valuePropName="checked">
                     <Switch />
                   </Form.Item>
                 </Col>
                 <Col xs={12} md={6}>
-                  <Form.Item name={['watermarkConfig', 'maxWidth']} label="Max width">
+                  <Form.Item name={['watermarkConfig', 'maxWidth']} label={t('settings.maxWidth')}>
                     <InputNumber min={1} max={10000} style={{ width: '100%' }} />
                   </Form.Item>
                 </Col>
                 <Col xs={12} md={6}>
-                  <Form.Item name={['watermarkConfig', 'gapX']} label="Gap X">
+                  <Form.Item name={['watermarkConfig', 'gapX']} label={t('settings.gapX')}>
                     <InputNumber min={40} max={2000} style={{ width: '100%' }} />
                   </Form.Item>
                 </Col>
                 <Col xs={12} md={6}>
-                  <Form.Item name={['watermarkConfig', 'gapY']} label="Gap Y">
+                  <Form.Item name={['watermarkConfig', 'gapY']} label={t('settings.gapY')}>
                     <InputNumber min={40} max={2000} style={{ width: '100%' }} />
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={8}>
-                  <Form.Item name={['watermarkConfig', 'opacity']} label="Opacity">
+                  <Form.Item name={['watermarkConfig', 'opacity']} label={t('settings.opacity')}>
                     <Slider min={0} max={1} step={0.05} />
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={8}>
-                  <Form.Item name={['watermarkConfig', 'scale']} label="Scale">
+                  <Form.Item name={['watermarkConfig', 'scale']} label={t('settings.scale')}>
                     <Slider min={0.05} max={1} step={0.01} />
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={8}>
-                  <Form.Item name={['watermarkConfig', 'margin']} label="Margin">
+                  <Form.Item name={['watermarkConfig', 'margin']} label={t('settings.margin')}>
                     <InputNumber min={0} max={500} style={{ width: '100%' }} />
                   </Form.Item>
                 </Col>
-=======
-            <Col xs={24} md={6}>
-              <Form.Item name="watermarkEnabled" label={t('settings.watermarkEnabled')} valuePropName="checked">
-                <Switch />
-              </Form.Item>
-            </Col>
-            <Col xs={24} md={18}>
-              <Form.Item name={['watermarkConfig', 'text']} label={t('settings.text')}>
-                <Input maxLength={200} placeholder="AG Go Preview" />
-              </Form.Item>
-            </Col>
-            <Col xs={12} md={6}>
-              <Form.Item name={['watermarkConfig', 'color']} label={t('settings.textColor')}>
-                <Input type="color" />
-              </Form.Item>
-            </Col>
-            <Col xs={24} md={8}>
-              <Form.Item name={['watermarkConfig', 'fontFamily']} label={t('settings.font')}>
-                <Select
-                  options={['Arial', 'Times New Roman', 'Courier New', 'Verdana', 'Georgia', 'Impact', 'Tahoma'].map(
-                    (value) => ({ value, label: value }),
-                  )}
-                />
-              </Form.Item>
-            </Col>
-            <Col xs={12} md={8}>
-              <Form.Item name={['watermarkConfig', 'fontSize']} label={t('settings.fontSize')}>
-                <InputNumber min={8} max={240} style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-            <Col xs={12} md={8}>
-              <Form.Item name={['watermarkConfig', 'rotate']} label={t('settings.rotate')}>
-                <InputNumber min={-360} max={360} style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-            <Col xs={24} md={12}>
-              <Form.Item label={t('settings.logo')}>
-                <Upload
-                  accept="image/*"
-                  maxCount={1}
-                  showUploadList={false}
-                  beforeUpload={(file) => {
-                    void handleLogoUpload(file);
-                    return false;
-                  }}
-                >
-                  <Button icon={<UploadCloud size={16} />} loading={logoUploading}>
-                    {t('settings.uploadLogo')}
-                  </Button>
-                </Upload>
-                {logoUrl ? (
-                  <div style={{ marginTop: 8 }}>
-                    <Image src={logoUrl} width={96} height={48} style={{ objectFit: 'contain' }} />
-                    <Button
-                      type="link"
-                      danger
-                      icon={<RotateCcw size={14} />}
-                      onClick={() => {
-                        form.setFieldValue(['watermarkConfig', 'logoAssetId'], null);
-                        setLogoUrl(undefined);
-                      }}
-                    >
-                      {t('settings.deleteLogo')}
-                    </Button>
-                  </div>
-                ) : null}
-              </Form.Item>
-              <Form.Item name={['watermarkConfig', 'logoAssetId']} hidden>
-                <Input />
-              </Form.Item>
-            </Col>
-            <Col xs={24} md={12}>
-              <Form.Item name={['watermarkConfig', 'position']} label={t('settings.position')}>
-                <Select
-                  options={WATERMARK_POSITIONS.map((value) => ({ value, label: value }))}
-                />
-              </Form.Item>
-            </Col>
-            <Col xs={24} md={6}>
-              <Form.Item name={['watermarkConfig', 'repeat']} label={t('settings.repeatWatermark')} valuePropName="checked">
-                <Switch />
-              </Form.Item>
-            </Col>
-            <Col xs={12} md={6}>
-              <Form.Item name={['watermarkConfig', 'maxWidth']} label={t('settings.maxWidth')}>
-                <InputNumber min={1} max={10000} style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-            <Col xs={12} md={6}>
-              <Form.Item name={['watermarkConfig', 'gapX']} label={t('settings.gapX')}>
-                <InputNumber min={40} max={2000} style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-            <Col xs={12} md={6}>
-              <Form.Item name={['watermarkConfig', 'gapY']} label={t('settings.gapY')}>
-                <InputNumber min={40} max={2000} style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-            <Col xs={24} md={8}>
-              <Form.Item name={['watermarkConfig', 'opacity']} label={t('settings.opacity')}>
-                <Slider min={0} max={1} step={0.05} />
-              </Form.Item>
-            </Col>
-            <Col xs={24} md={8}>
-              <Form.Item name={['watermarkConfig', 'scale']} label={t('settings.scale')}>
-                <Slider min={0.05} max={1} step={0.01} />
-              </Form.Item>
-            </Col>
-            <Col xs={24} md={8}>
-              <Form.Item name={['watermarkConfig', 'margin']} label={t('settings.margin')}>
-                <InputNumber min={0} max={500} style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
->>>>>>> 5118aeb71e2c8946b8b53ede6f286830d1a9f93d
-              </Row>
-            </Card>
-          </Col>
+              </Row >
+            </Card >
+          </Col >
           <Col xs={24} lg={10}>
-<<<<<<< HEAD
             <Card size="small" title="Preview watermark" style={{ position: 'sticky', top: 16 }}>
               <Flex vertical gap={16}>
                 <Flex align="center" justify="flex-start" gap={16}>
-                  <Typography.Text type="secondary">Ảnh mẫu preview</Typography.Text>
+                  <Typography.Text type="secondary">{t('settings.previewSample')}</Typography.Text>
 
                   <Upload
                     accept="image/*"
@@ -684,7 +507,9 @@ function RenderProfileEditor({
                       return false;
                     }}
                   >
-                    <Button icon={<ImagePlus size={16} />}>Chọn ảnh mẫu</Button>
+                    <Button icon={<ImagePlus size={16} />} style={{ margin: '8px 0 12px' }}>
+                      {t('settings.selectSample')}
+                    </Button>
                   </Upload>
                 </Flex>
 
@@ -695,45 +520,16 @@ function RenderProfileEditor({
                   enabled={watermarkEnabled}
                 />
               </Flex>
-=======
-            <Card
-              size="small"
-              title={t('settings.previewWatermark')}
-              style={{ position: 'sticky', top: 16 }}
-            >
-              <Typography.Text type="secondary">{t('settings.previewSample')}</Typography.Text>
-              <Upload
-                accept="image/*"
-                maxCount={1}
-                showUploadList={false}
-                beforeUpload={(file) => {
-                  if (sampleUrl?.startsWith('blob:')) {
-                    URL.revokeObjectURL(sampleUrl);
-                  }
-                  setSampleUrl(URL.createObjectURL(file));
-                  return false;
-                }}
-              >
-                <Button icon={<ImagePlus size={16} />} style={{ margin: '8px 0 12px' }}>
-                  {t('settings.selectSample')}
-                </Button>
-              </Upload>
-              <WatermarkPreview
-                sampleUrl={sampleUrl}
-                logoUrl={logoUrl}
-                config={config}
-                enabled={watermarkEnabled}
-              />
->>>>>>> 5118aeb71e2c8946b8b53ede6f286830d1a9f93d
+
             </Card>
           </Col>
-        </Row>
+        </Row >
 
         <Button type="primary" htmlType="submit" loading={updateProfile.isPending}>
           {t('settings.saveProfile')}
         </Button>
-      </Form>
-    </Card>
+      </Form >
+    </Card >
   );
 }
 

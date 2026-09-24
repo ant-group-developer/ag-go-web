@@ -91,29 +91,6 @@ function ProjectThumbnailCell({ assetId }: { assetId?: string | null }) {
     };
   }, [assetId]);
 
-<<<<<<< HEAD
-=======
-  if (!previewUrl) {
-    return (
-      <div
-        aria-label={t('projects.noThumbnail')}
-        style={{
-          alignItems: 'center',
-          background: '#f5f5f5',
-          borderRadius: 6,
-          color: '#bfbfbf',
-          display: 'flex',
-          height: 48,
-          justifyContent: 'center',
-          width: 64,
-        }}
-      >
-        <span>-</span>
-      </div>
-    );
-  }
-
->>>>>>> 5118aeb71e2c8946b8b53ede6f286830d1a9f93d
   return (
     <Image
       alt={previewUrl ? '' : t('projects.noThumbnail')}
@@ -560,11 +537,11 @@ export function ProjectsPage() {
                         videoCount: p.videoCount,
                         author: p.ownerUser
                           ? {
-                              id: p.ownerUser.id,
-                              name: p.ownerUser.name ?? p.ownerUser.email ?? t('common.unknown'),
-                              email: p.ownerUser.email,
-                              avatar: p.ownerUser.avatar,
-                            }
+                            id: p.ownerUser.id,
+                            name: p.ownerUser.name ?? p.ownerUser.email ?? t('common.unknown'),
+                            email: p.ownerUser.email,
+                            avatar: p.ownerUser.avatar,
+                          }
                           : null,
                       }))}
                       isLoading={isLoading || isFetching}

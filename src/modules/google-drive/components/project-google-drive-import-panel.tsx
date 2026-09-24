@@ -114,9 +114,9 @@ export function ProjectGoogleDriveImportPanel({ projectId }: { projectId: string
   const connection = useGoogleDriveConnection();
   const pickerToken = useGoogleDrivePickerToken(
     connection.data?.status === 'active' &&
-      connection.data.scopes.some((scope) =>
-        scope.includes('https://www.googleapis.com/auth/drive.readonly'),
-      ),
+    connection.data.scopes.some((scope) =>
+      scope.includes('https://www.googleapis.com/auth/drive.readonly'),
+    ),
   );
   const start = useStartGoogleDriveConnection();
   const disconnect = useDisconnectGoogleDrive();
@@ -251,11 +251,7 @@ export function ProjectGoogleDriveImportPanel({ projectId }: { projectId: string
               onCanceled={() => setPickerOpen(false)}
               onOauthError={() => {
                 setPickerOpen(false);
-<<<<<<< HEAD
-                setPickerError('Google Picker không thể xác thực quyền truy cập Google Drive.');
-=======
                 setPickerError(t('googleDrive.oauthError'));
->>>>>>> 5118aeb71e2c8946b8b53ede6f286830d1a9f93d
               }}
               onOauthResponse={() => setPickerError(undefined)}
               onPicked={(event: PickerEvent) => {
@@ -273,16 +269,6 @@ export function ProjectGoogleDriveImportPanel({ projectId }: { projectId: string
                     driveId: doc.driveId,
                     name: doc.name,
                     mimeType: doc.mimeType,
-<<<<<<< HEAD
-                  }));
-                if (sources.length < pickedDocs.length) {
-                  setPickerError('Chỉ có thể import file ảnh, video hoặc thư mục.');
-                }
-                setSelected(sources);
-                summarizeSources.mutate(
-                  sources.map((source) => ({ fileId: source.fileId, driveId: source.driveId })),
-                );
-=======
                     sizeBytes: doc.sizeBytes ?? doc.size,
                   }));
                 if (sources.length < pickedDocs.length) {
@@ -296,7 +282,6 @@ export function ProjectGoogleDriveImportPanel({ projectId }: { projectId: string
                     driveId: source.driveId,
                   })),
                 });
->>>>>>> 5118aeb71e2c8946b8b53ede6f286830d1a9f93d
               }}
             >
               {pickerMode === 'files' ? (
