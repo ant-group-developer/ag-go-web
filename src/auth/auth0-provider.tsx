@@ -45,7 +45,7 @@ function AuthenticatedApp({ children }: PropsWithChildren) {
         style={{
           position: 'fixed',
           inset: 0,
-          backgroundImage: 'url(/background-login-16x9.jpg)',
+          backgroundImage: 'url(/images/background-login-16x9.jpg)',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
         }}

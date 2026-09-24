@@ -1,17 +1,20 @@
 import { AppstoreOutlined, BarsOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { PageContainer, ProTable } from '@ant-design/pro-components';
-import { useQueryClient } from '@tanstack/react-query';
+import { useIsFetching, useQueryClient } from '@tanstack/react-query';
 import {
   Alert,
   App as AntApp,
   Avatar,
   Button,
+  Col,
   Image,
   Input,
   Pagination,
   Popconfirm,
   Radio,
+  Row,
+  Skeleton,
   Space,
   Tag,
   Tooltip,
@@ -21,7 +24,7 @@ import {
 import { ClipboardCheck, Pencil, Plus, Trash2 } from 'lucide-react';
 
 import { parseAsArrayOf, parseAsInteger, parseAsString, useQueryStates } from 'nuqs';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getAssetPreviewUrl } from '../../media/api/media';
@@ -29,7 +32,7 @@ import { getProjects } from '../api/projects';
 import { CreateProjectModal } from '../components/create-project-modal';
 import type { ProjectFilterValues } from '../components/project-filter-popover';
 import { ProjectFilterPopover } from '../components/project-filter-popover';
-import { ProjectGridView } from '../components/project-grid-view';
+
 import { ProjectReviewDrawer } from '../components/project-review-drawer';
 import { useDeleteProject } from '../hooks/use-projects';
 import { projectQueryKeys } from '../queries/project-query-keys';
@@ -37,6 +40,10 @@ import type { ProjectListParams } from '../types/project-list-params.type';
 import type { Project } from '../types/project.type';
 import { formatDate } from '../utils/date.util';
 import { getProjectStatus } from '../utils/project-status.util';
+
+const ProjectGridView = lazy(() =>
+  import('../components/project-grid-view').then((m) => ({ default: m.ProjectGridView })),
+);
 
 const projectUrlParams = {
   keyword: parseAsString,
@@ -49,6 +56,8 @@ const projectUrlParams = {
   page: parseAsInteger.withDefault(1),
   pageSize: parseAsInteger.withDefault(20),
 };
+
+const PROJECTS_VIEW_MODE_STORAGE_KEY = 'ag-go.projects.viewMode';
 
 function ProjectThumbnailCell({ assetId }: { assetId?: string | null }) {
   const { t } = useTranslation();
@@ -81,34 +90,15 @@ function ProjectThumbnailCell({ assetId }: { assetId?: string | null }) {
     };
   }, [assetId]);
 
-  if (!previewUrl) {
-    return (
-      <div
-        aria-label={t('projects.noThumbnail')}
-        style={{
-          alignItems: 'center',
-          background: '#f5f5f5',
-          borderRadius: 6,
-          color: '#bfbfbf',
-          display: 'flex',
-          height: 48,
-          justifyContent: 'center',
-          width: 64,
-        }}
-      >
-        <span>—</span>
-      </div>
-    );
-  }
-
   return (
     <Image
-      alt=""
+      alt={previewUrl ? '' : t('projects.noThumbnail')}
+      fallback="/images/error-image.png"
       height={48}
-      src={previewUrl}
+      preview={Boolean(previewUrl)}
+      src={previewUrl || '/images/error-image.png'}
       style={{ borderRadius: 6, objectFit: 'cover' }}
       width={64}
-      preview
     />
   );
 }
@@ -119,6 +109,8 @@ export function ProjectsPage() {
   const { message } = AntApp.useApp();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const isFetching = useIsFetching({ queryKey: projectQueryKeys.all() }) > 0;
+  const [isLoading, setIsLoading] = useState(true);
   const actionRef = useRef<ActionType | undefined>(undefined);
   const [urlState, setUrlState] = useQueryStates(projectUrlParams, {
     history: 'replace',
@@ -132,7 +124,26 @@ export function ProjectsPage() {
     }
   }, [routeProjectId]);
   const [listError, setListError] = useState<string>();
-  const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>(() => {
+    try {
+      const saved = localStorage.getItem(PROJECTS_VIEW_MODE_STORAGE_KEY);
+      if (saved === 'list' || saved === 'grid') {
+        return saved;
+      }
+    } catch {
+      // ignore storage access errors
+    }
+    return 'list';
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(PROJECTS_VIEW_MODE_STORAGE_KEY, viewMode);
+    } catch {
+      // ignore storage access errors
+    }
+  }, [viewMode]);
+
   const [gridData, setGridData] = useState<Project[]>([]);
   const [totalCount, setTotalCount] = useState<number>(0);
   const { token } = theme.useToken();
@@ -405,7 +416,7 @@ export function ProjectsPage() {
             persistenceType: 'localStorage',
           }}
           headerTitle={
-            <Space size={12}>
+            <Space size={16}>
               <ProjectFilterPopover
                 value={filterValues}
                 onChange={handleFilterChange}
@@ -440,6 +451,7 @@ export function ProjectsPage() {
           }}
           params={urlState}
           request={async ({ current, pageSize }) => {
+            setIsLoading(true);
             const params: ProjectListParams = {
               ...(urlState.keyword ? { keyword: urlState.keyword } : {}),
               ...(urlState.folderIds?.length
@@ -466,6 +478,8 @@ export function ProjectsPage() {
             } catch (error) {
               setListError(error instanceof Error ? error.message : t('projects.loadFailed'));
               return { data: [], success: false, total: 0 };
+            } finally {
+              setIsLoading(false);
             }
           }}
           rowKey="id"
@@ -477,42 +491,67 @@ export function ProjectsPage() {
               {domList.toolbar}
               {viewMode === 'grid' ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  <ProjectGridView
-                    items={gridData.map((p) => ({
-                      id: p.id,
-                      title: p.name,
-                      slug: p.id,
-                      visibility: 'public',
-                      evaluation_status: p.evaluationStatus,
-                      createdAt: p.createdAt,
-                      updatedAt: p.updatedAt,
-                      cover: null,
-                      stats: { views: 0, likes: 0, comments: 0 },
-                      folder: p.folderPath ? { id: p.folderId, name: p.folderPath } : undefined,
-                      province: p.provinceName
-                        ? { id: p.provinceId ?? '', name: p.provinceName }
-                        : undefined,
-                      country: p.countryName
-                        ? { id: p.countryId ?? '', name: p.countryName }
-                        : undefined,
-                      imageCount: p.imageCount,
-                      videoCount: p.videoCount,
-                      author: p.ownerUser
-                        ? {
-                            id: p.ownerUser.id,
-                            name: p.ownerUser.name ?? p.ownerUser.email ?? t('common.unknown'),
-                            email: p.ownerUser.email,
-                            avatar: p.ownerUser.avatar,
-                          }
-                        : null,
-                    }))}
-                    isLoading={false}
-                    onView={(id) => setReviewProjectId(id)}
-                    onEdit={(id) => navigate(`/projects/${id}/edit`)}
-                    onDelete={(item) => void handleDelete(item.id)}
-                    onEvaluate={(item) => setReviewProjectId(item.id)}
-                    canEvaluate
-                  />
+                  <Suspense
+                    fallback={
+                      <Row gutter={[24, 24]}>
+                        {Array.from({ length: 8 }).map((_, i) => (
+                          <Col xs={24} sm={12} md={8} lg={6} xl={4} key={`lazy-grid-skeleton-${i}`}>
+                            <div
+                              style={{
+                                aspectRatio: '1 / 1',
+                                borderRadius: 16,
+                                border: `1px solid ${token.colorBorderSecondary}`,
+                                padding: 12,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                justifyContent: 'space-between',
+                              }}
+                            >
+                              <Skeleton.Button active size="small" style={{ width: 80, borderRadius: 100 }} />
+                              <Skeleton active paragraph={{ rows: 2 }} />
+                            </div>
+                          </Col>
+                        ))}
+                      </Row>
+                    }
+                  >
+                    <ProjectGridView
+                      items={gridData.map((p) => ({
+                        id: p.id,
+                        title: p.name,
+                        slug: p.id,
+                        visibility: 'public',
+                        evaluation_status: p.evaluationStatus,
+                        createdAt: p.createdAt,
+                        updatedAt: p.updatedAt,
+                        cover: null,
+                        stats: { views: 0, likes: 0, comments: 0 },
+                        folder: p.folderPath ? { id: p.folderId, name: p.folderPath } : undefined,
+                        province: p.provinceName
+                          ? { id: p.provinceId ?? '', name: p.provinceName }
+                          : undefined,
+                        country: p.countryName
+                          ? { id: p.countryId ?? '', name: p.countryName }
+                          : undefined,
+                        imageCount: p.imageCount,
+                        videoCount: p.videoCount,
+                        author: p.ownerUser
+                          ? {
+                              id: p.ownerUser.id,
+                              name: p.ownerUser.name ?? p.ownerUser.email ?? t('common.unknown'),
+                              email: p.ownerUser.email,
+                              avatar: p.ownerUser.avatar,
+                            }
+                          : null,
+                      }))}
+                      isLoading={isLoading || isFetching}
+                      onView={(id) => setReviewProjectId(id)}
+                      onEdit={(id) => navigate(`/projects/${id}/edit`)}
+                      onDelete={(item) => void handleDelete(item.id)}
+                      onEvaluate={(item) => setReviewProjectId(item.id)}
+                      canEvaluate
+                    />
+                  </Suspense>
                   <div
                     style={{
                       display: 'flex',

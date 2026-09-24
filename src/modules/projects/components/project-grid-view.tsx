@@ -78,10 +78,11 @@ export interface ProjectGridItem {
 }
 
 const GRID_BREAKPOINTS: { minWidth: number; span: number }[] = [
+  { minWidth: 2600, span: 3 },
   { minWidth: 2200, span: 4 },
   { minWidth: 1900, span: 4 },
   { minWidth: 1600, span: 6 },
-  { minWidth: 1200, span: 8 },
+  { minWidth: 1200, span: 6 },
   { minWidth: 768, span: 12 },
   { minWidth: 0, span: 24 },
 ];
