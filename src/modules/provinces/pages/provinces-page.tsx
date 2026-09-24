@@ -4,12 +4,12 @@ import {
   type ActionType,
   type ProColumns,
 } from '@ant-design/pro-components';
-import { Alert, Button, Image, Input, Select, Space } from 'antd';
+import { Alert, Button, Input, Space } from 'antd';
 import { FileUp } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CatalogImportModal } from '../../../shared/components/catalog-import-modal';
-import { useCountries } from '../../countries/hooks/use-countries';
+import { CountryFlag, CountrySelect } from '../../countries/components';
 import { getProvinces } from '../api/provinces';
 import { useImportProvinces } from '../hooks/use-provinces';
 import type { Province } from '../types/province.type';
@@ -28,7 +28,6 @@ export function ProvincesPage() {
     pageSize: DEFAULT_PAGE_SIZE,
   });
   const [requestError, setRequestError] = useState<Error>();
-  const countries = useCountries();
   const importProvinces = useImportProvinces();
 
   const applySearch = (value: string) => {
@@ -62,16 +61,12 @@ export function ProvincesPage() {
         width: 280,
         render: (_, province) => (
           <Space>
-            {province.country.flagUrl ? (
-              <Image
-                src={province.country.flagUrl}
-                alt={province.country.name}
-                width={28}
-                height={18}
-                preview={false}
-                style={{ objectFit: 'cover' }}
-              />
-            ) : null}
+            <CountryFlag
+              flagUrl={province.country.flagUrl}
+              code={province.country.code}
+              name={province.country.name}
+              height={18}
+            />
             <span>{province.country.name}</span>
           </Space>
         ),
@@ -100,18 +95,10 @@ export function ProvincesPage() {
             placeholder={t('catalogs.provinceSearch')}
             style={{ width: 320 }}
           />
-          <Select
-            allowClear
-            showSearch
-            optionFilterProp="label"
-            loading={countries.isPending}
+          <CountrySelect
             value={countryId}
             onChange={applyCountry}
             placeholder={t('catalogs.countryFilter')}
-            options={countries.data?.map((country) => ({
-              value: country.id,
-              label: country.name,
-            }))}
             style={{ width: 240 }}
           />
           <Button onClick={resetFilters}>{t('common.reset')}</Button>

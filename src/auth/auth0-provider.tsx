@@ -2,6 +2,7 @@ import { Auth0Provider, useAuth0 } from '@auth0/auth0-react';
 import { Alert, Button, Flex, Spin, Typography } from 'antd';
 import type { PropsWithChildren } from 'react';
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { clearAccessTokenGetter, setAccessTokenGetter } from './auth-client';
 
 const { Title, Text } = Typography;
@@ -31,10 +32,11 @@ function TokenBridge({ children }: PropsWithChildren) {
 }
 
 function AuthenticatedApp({ children }: PropsWithChildren) {
+  const { t } = useTranslation();
   const { isLoading, isAuthenticated, loginWithRedirect } = useAuth0();
 
   if (isLoading) {
-    return <Spin fullscreen tip="Đang xác thực..." />;
+    return <Spin fullscreen tip={t('auth.authenticating')} />;
   }
 
   if (!isAuthenticated) {
@@ -88,7 +90,7 @@ function AuthenticatedApp({ children }: PropsWithChildren) {
               textAlign: 'center',
             }}
           >
-            Vui lòng đăng nhập bằng tài khoản Auth0 để tiếp tục.
+            {t('auth.loginPrompt')}
           </Text>
 
           <Button
@@ -107,7 +109,7 @@ function AuthenticatedApp({ children }: PropsWithChildren) {
               letterSpacing: '0.3px',
             }}
           >
-            Đăng nhập
+            {t('auth.login')}
           </Button>
         </Flex>
       </Flex>
@@ -118,13 +120,15 @@ function AuthenticatedApp({ children }: PropsWithChildren) {
 }
 
 export function Auth0AppProvider({ children }: PropsWithChildren) {
+  const { t } = useTranslation();
+
   if (!domain || !clientId || !audience) {
     return (
       <Alert
         type="error"
         showIcon
-        message="Thiếu cấu hình Auth0"
-        description="Cần thiết lập VITE_AUTH0_DOMAIN, VITE_AUTH0_CLIENT_ID và VITE_AUTH0_AUDIENCE."
+        message={t('auth.missingConfig')}
+        description={t('auth.missingConfigDesc')}
         style={{
           maxWidth: 640,
           margin: '15vh auto',

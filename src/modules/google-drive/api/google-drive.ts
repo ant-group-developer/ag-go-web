@@ -18,14 +18,27 @@ export type ImportBatch = {
   completedItems: number;
   failedItems: number;
   progressPercent: number;
+  duplicatePolicy: DuplicatePolicy;
   createdAt: string;
 };
+
+export type DuplicatePolicy = 'create_new' | 'reuse_existing' | 'overwrite_existing';
+
+export type ImportHistoryItem = ImportBatch;
 
 export type ImportItem = {
   id: string;
   batchId: string;
+  sourceFileId: string | null;
   sourceName: string;
   sourceMimeType: string | null;
+  sourceSizeBytes: string | null;
+  sourceWidth: number | null;
+  sourceHeight: number | null;
+  sourceDurationSeconds: string | null;
+  sourceCreator: string | null;
+  sourceModifiedAt: string | null;
+  resolution: 'created' | 'reused' | 'overwritten' | null;
   status: string;
   errorMessage: string | null;
 };
@@ -36,6 +49,15 @@ export type DriveSourceSummary = {
   fileCount: number;
   folderCount: number;
   unsupportedCount: number;
+  totalBytes: string;
+  duplicateCount: number;
+  duplicates: Array<{
+    fileId: string;
+    name: string;
+    existingAssetId: string;
+    existingProjectMediaId: string;
+    createdAt: string;
+  }>;
 };
 
 export function getGoogleDriveConnection() {
@@ -61,10 +83,13 @@ export function getGoogleDrivePickerToken() {
   return apiClient<{ accessToken: string; expiresAt: string }>('/google-drive/picker-token');
 }
 
-export function summarizeGoogleDriveSources(sources: Array<{ fileId: string; driveId?: string }>) {
+export function summarizeGoogleDriveSources(input: {
+  projectId: string;
+  sources: Array<{ fileId: string; driveId?: string }>;
+}) {
   return apiClient<DriveSourceSummary>('/google-drive/sources/summary', {
     method: 'POST',
-    body: JSON.stringify({ sources }),
+    body: JSON.stringify(input),
   });
 }
 
@@ -80,6 +105,7 @@ export function createDriveImport(input: {
     name?: string;
     mimeType?: string;
   }>;
+  duplicatePolicy?: DuplicatePolicy;
   idempotencyKey?: string;
 }) {
   return apiClient<ImportBatch>('/google-drive/imports', {
@@ -90,6 +116,12 @@ export function createDriveImport(input: {
 
 export function getDriveImport(id: string) {
   return apiClient<ImportBatch & { items: ImportItem[] }>(`/google-drive/imports/${id}`);
+}
+
+export function getProjectImports(projectId: string) {
+  return apiClient<ImportHistoryItem[]>(
+    `/google-drive/imports?projectId=${encodeURIComponent(projectId)}`,
+  );
 }
 
 export function cancelDriveImport(id: string) {

@@ -301,11 +301,11 @@ export function ProjectGridView({
                           className={styles.infoValue}
                           title={
                             [item.province?.name, item.country?.name].filter(Boolean).join(', ') ||
-                            '—'
+                            '-'
                           }
                         >
                           {[item.province?.name, item.country?.name].filter(Boolean).join(', ') ||
-                            '—'}
+                            '-'}
                         </div>
                       </div>
                     </div>
@@ -339,9 +339,9 @@ export function ProjectGridView({
                         <div className={styles.infoLabel}>{t('projects.folder')}</div>
                         <div
                           className={styles.infoValue}
-                          title={item.folder?.path || item.folder?.name || '—'}
+                          title={item.folder?.path || item.folder?.name || '-'}
                         >
-                          {item.folder?.name || '—'}
+                          {item.folder?.name || '-'}
                         </div>
                       </div>
                     </div>

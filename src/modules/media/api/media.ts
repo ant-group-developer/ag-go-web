@@ -26,6 +26,9 @@ export type ProjectMedia = {
   durationSeconds: number | null;
   width: number | null;
   height: number | null;
+  creatorName?: string | null;
+  modifiedAt?: string | null;
+  createdByUser?: { id: string; name?: string; email?: string } | null;
   asset: Asset;
 };
 
@@ -152,6 +155,7 @@ export type CreateUploadSessionInput = {
   originalFilename: string;
   mimeType: string;
   fileSizeBytes: number;
+  targetProjectId: string;
 };
 
 export function createUploadSession(
@@ -168,7 +172,7 @@ export function createUploadSession(
 export function uploadAssetContent(
   session: UploadSession,
   file: File,
-  onProgress: (progress: number) => void,
+  onProgress: (progress: number) => void = () => undefined,
 ): Promise<void> {
   return axios
     .put(apiUrl(session.uploadUrl), file, {

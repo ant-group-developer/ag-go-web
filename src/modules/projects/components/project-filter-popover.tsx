@@ -12,7 +12,7 @@ import {
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useCategories } from '../../categories/hooks/use-categories';
-import { useCountries } from '../../countries/hooks/use-countries';
+import { CountrySelect } from '../../countries/components/country-select';
 import { useFolders } from '../../folders/hooks/use-folders';
 import type { Folder as FolderType } from '../../folders/types/folder.type';
 import { useProvinces } from '../../provinces/hooks/use-provinces';
@@ -134,17 +134,6 @@ function buildFolderTree(
 }
 
 // ─── Sidebar Category Definitions ────────────────────────────────────────────
-const filterCategories: Array<{
-  key: FilterCategory;
-  icon: React.ReactNode;
-  label: string;
-}> = [
-  { key: 'keyword', icon: <Search size={16} />, label: 'Từ khóa' },
-  { key: 'folder', icon: <FolderIcon size={16} />, label: 'Thư mục' },
-  { key: 'category', icon: <Layers size={16} />, label: 'Danh mục' },
-  { key: 'tags', icon: <TagIcon size={16} />, label: 'Tags' },
-  { key: 'location', icon: <MapPin size={16} />, label: 'Địa điểm' },
-];
 
 function getCategoryFilterCount(key: FilterCategory, value: ProjectFilterValues): number {
   switch (key) {
@@ -185,7 +174,6 @@ function FilterContent({
   const [autoExpandParent, setAutoExpandParent] = useState(true);
 
   const folders = useFolders();
-  const countries = useCountries();
   const tags = useTags();
   const countryId = value.countryId;
   const provinces = useProvinces({ page: 1, pageSize: 100, countryId }, Boolean(countryId));
@@ -218,6 +206,19 @@ function FilterContent({
     [value],
   );
 
+  const filterCategories = useMemo<
+    Array<{ key: FilterCategory; icon: React.ReactNode; label: string }>
+  >(
+    () => [
+      { key: 'keyword', icon: <Search size={16} />, label: t('projects.keyword') },
+      { key: 'folder', icon: <FolderIcon size={16} />, label: t('projects.folder') },
+      { key: 'category', icon: <Layers size={16} />, label: t('projects.category') },
+      { key: 'tags', icon: <TagIcon size={16} />, label: t('projects.tags') },
+      { key: 'location', icon: <MapPin size={16} />, label: t('projects.location') },
+    ],
+    [t],
+  );
+
   const visibleCategories = filterCategories.filter((c) =>
     c.label.toLowerCase().includes(sidebarSearch.trim().toLowerCase()),
   );
@@ -235,8 +236,8 @@ function FilterContent({
             </div>
             <Input
               allowClear
-              size="middle"
-              placeholder="Nhập từ khóa tìm kiếm..."
+              size="large"
+              placeholder={t('projects.keywordPlaceholderSearch')}
               prefix={<Search size={16} style={{ color: '#9ca3af' }} />}
               value={value.keyword ?? ''}
               onChange={(e) => onChange({ ...value, keyword: e.target.value || undefined })}
@@ -355,8 +356,8 @@ function FilterContent({
             {/* <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography.Text type="secondary" style={{ fontSize: 12.5 }}>
                 {(value.folderIds?.length ?? 0) > 0
-                  ? `Đã chọn ${value.folderIds!.length} thư mục`
-                  : 'Chọn các thư mục để lọc dự án'}
+                  ? t('projects.selectedFoldersCount', { count: value.folderIds!.length })
+                  : t('projects.selectFoldersToFilter')}
               </Typography.Text>
             </div> */}
           </div>
@@ -428,13 +429,8 @@ function FilterContent({
               <Typography.Text style={{ fontSize: 13.5, fontWeight: 500, color: '#374151' }}>
                 {t('projects.country')}
               </Typography.Text>
-              <Select
-                allowClear
-                size="middle"
-                optionFilterProp="label"
-                options={countries.data?.map((c) => ({ value: c.id, label: c.name }))}
-                placeholder={t('projects.countryPlaceholder')}
-                showSearch
+              <CountrySelect
+                size="large"
                 value={value.countryId}
                 onChange={(v) => onChange({ ...value, countryId: v, provinceId: undefined })}
                 style={{ width: '100%' }}

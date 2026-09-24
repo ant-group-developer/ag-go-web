@@ -7,6 +7,7 @@ export function useCountries(enabled = true) {
     queryKey: countryQueryKeys.list(),
     queryFn: getCountries,
     enabled,
+    refetchOnWindowFocus: true,
   });
 }
 

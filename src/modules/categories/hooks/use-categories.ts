@@ -7,6 +7,7 @@ export function useCategories(enabled = true) {
     queryKey: categoryQueryKeys.list(),
     queryFn: getCategories,
     enabled,
+    refetchOnWindowFocus: true,
   });
 }
 

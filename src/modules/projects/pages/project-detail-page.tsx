@@ -21,7 +21,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useCategories } from '../../categories/hooks/use-categories';
-import { useCountries } from '../../countries/hooks/use-countries';
+import { CountrySelect } from '../../countries/components/country-select';
 import { useFolders } from '../../folders/hooks/use-folders';
 import { buildFolderCascaderOptions } from '../../folders/utils/build-folder-cascader-options';
 import { ProjectGoogleDriveImportPanel } from '../../google-drive/components/project-google-drive-import-panel';
@@ -38,6 +38,7 @@ import {
 import { ProjectMediaPanel } from '../../media/components/project-media-panel';
 import { mediaQueryKeys } from '../../media/queries/media-query-keys';
 import { useProvinces } from '../../provinces/hooks/use-provinces';
+import { ProjectProcessingHistoryPanel } from '../../render/components/project-processing-history-panel';
 import { useTags } from '../../tags/hooks/use-tags';
 import { useProject, useUpdateProject } from '../hooks/use-projects';
 import { projectQueryKeys } from '../queries/project-query-keys';
@@ -66,7 +67,6 @@ export function ProjectDetailPage() {
   });
   const folders = useFolders();
   const categories = useCategories();
-  const countries = useCountries();
   const tags = useTags();
   const folderOptions = buildFolderCascaderOptions(folders.data ?? []);
   const countryId = Form.useWatch('countryId', form);
@@ -195,6 +195,7 @@ export function ProjectDetailPage() {
                   originalFilename: file.name,
                   mimeType: file.type || 'application/octet-stream',
                   fileSizeBytes: file.size,
+                  targetProjectId: projectId,
                 },
                 globalThis.crypto.randomUUID(),
               );
@@ -256,7 +257,7 @@ export function ProjectDetailPage() {
     >
       {project.data ? (
         <Row gutter={[16, 16]} align="top">
-          <Col xs={24} lg={10}>
+          <Col xs={24} lg={10} xl={8}>
             <Card title={t('projects.updateDetails')}>
               <Form<ProjectDetailFormValues>
                 form={form}
@@ -303,16 +304,7 @@ export function ProjectDetailPage() {
                 </Form.Item>
 
                 <Form.Item name="countryId" label={t('projects.country')}>
-                  <Select
-                    allowClear
-                    showSearch
-                    optionFilterProp="label"
-                    loading={countries.isPending}
-                    options={countries.data?.map((country) => ({
-                      value: country.id,
-                      label: country.name,
-                    }))}
-                    placeholder={t('projects.countryPlaceholder')}
+                  <CountrySelect
                     onChange={() => form.setFieldValue('provinceId', undefined)}
                   />
                 </Form.Item>
@@ -401,10 +393,11 @@ export function ProjectDetailPage() {
               </Form>
             </Card>
           </Col>
-          <Col xs={24} lg={14}>
+          <Col xs={24} lg={14} xl={16}>
             <ProjectGoogleDriveImportPanel projectId={project.data.id} />
             <div style={{ height: 16 }} />
             <ProjectMediaPanel projectId={project.data.id} />
+            <ProjectProcessingHistoryPanel projectId={project.data.id} />
           </Col>
         </Row>
       ) : null}
