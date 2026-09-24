@@ -20,7 +20,7 @@ import {
   Tags,
   User,
 } from 'lucide-react';
-import { lazy, Suspense, useEffect, useMemo, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Link,
@@ -33,9 +33,11 @@ import {
   useSearchParams,
 } from 'react-router-dom';
 import { useAccountApplications } from '../modules/account/hooks/use-account-applications';
-import { useCurrentAccount } from '../modules/account/hooks/use-current-account';
+import { usePermissions } from '../modules/account/hooks/use-current-account';
 import { usePublicSettings } from '../modules/settings/hooks/use-settings';
-import { isAdminUserType } from '../shared/auth/user-type';
+import { PermissionGate } from '../shared/auth/permission-gate';
+import { GO_PERMISSIONS } from '../shared/auth/permissions';
+import { NotFoundResult } from '../shared/components/not-found-result';
 
 const CategoriesPage = lazy(() =>
   import('../modules/categories/pages/categories-page').then(({ CategoriesPage }) => ({
@@ -123,13 +125,8 @@ export function App() {
   const { user, logout } = useAuth0();
   const applications = useAccountApplications();
   const webSettings = usePublicSettings();
-  const currentAccount = useCurrentAccount();
-  const hasPermission = (permission: string) =>
-    currentAccount.isLoading
-      ? true
-      : isAdminUserType(currentAccount.data?.user_type) ||
-        currentAccount.data?.permissions.includes(permission) ||
-        false;
+  // `can` is false until permissions load, so permission-gated menu items never flash.
+  const { can, isLoading: isPermissionsLoading } = usePermissions();
 
   const { token } = antdTheme.useToken();
 
@@ -233,13 +230,13 @@ export function App() {
 
   const route: ProLayoutProps['route'] = {
     path: '/',
-    routes: [
+    routes: removeEmptyMenuGroups([
       {
         path: '/',
         name: t('menu.dashboard'),
         icon: <LayoutDashboard size={16} />,
       },
-      ...(hasPermission('go.statistics.read')
+      ...(can(GO_PERMISSIONS.STATISTICS_READ)
         ? [
             {
               path: '/statistics',
@@ -252,7 +249,7 @@ export function App() {
         path: '/content',
         name: t('menu.content'),
         routes: [
-          ...(hasPermission('go.project.read')
+          ...(can(GO_PERMISSIONS.PROJECT_READ)
             ? [
                 {
                   path: '/projects',
@@ -261,7 +258,7 @@ export function App() {
                 },
               ]
             : []),
-          ...(hasPermission('go.project.evaluate')
+          ...(can(GO_PERMISSIONS.PROJECT_EVALUATE)
             ? [
                 {
                   path: '/project-evaluations',
@@ -270,7 +267,7 @@ export function App() {
                 },
               ]
             : []),
-          ...(hasPermission('go.project.read')
+          ...(can(GO_PERMISSIONS.PROJECT_READ)
             ? [
                 {
                   path: '/my-projects',
@@ -281,13 +278,13 @@ export function App() {
             : []),
         ],
       },
-      ...(hasPermission('go.folder.manage') || hasPermission('go.catalog.manage')
+      ...(can(GO_PERMISSIONS.FOLDER_MANAGE) || can(GO_PERMISSIONS.CATALOG_MANAGE)
         ? [
             {
               path: '/common-catalogs',
               name: t('menu.commonCatalogs'),
               routes: [
-                ...(hasPermission('go.folder.manage')
+                ...(can(GO_PERMISSIONS.FOLDER_MANAGE)
                   ? [
                       {
                         path: '/folders',
@@ -301,7 +298,7 @@ export function App() {
                       },
                     ]
                   : []),
-                ...(hasPermission('go.catalog.manage')
+                ...(can(GO_PERMISSIONS.CATALOG_MANAGE)
                   ? [
                       {
                         path: '/catalogs/categories',
@@ -333,7 +330,7 @@ export function App() {
         path: '/system',
         name: t('menu.system'),
         routes: [
-          ...(hasPermission('go.settings.manage')
+          ...(can(GO_PERMISSIONS.SETTINGS_MANAGE)
             ? [
                 {
                   path: '/system/settings',
@@ -342,7 +339,7 @@ export function App() {
                 },
               ]
             : []),
-          ...(hasPermission('go.logs.read')
+          ...(can(GO_PERMISSIONS.LOGS_READ)
             ? [
                 {
                   path: '/system/logs',
@@ -351,7 +348,7 @@ export function App() {
                 },
               ]
             : []),
-          ...(hasPermission('go.render.read')
+          ...(can(GO_PERMISSIONS.RENDER_READ)
             ? [
                 {
                   path: '/render',
@@ -367,7 +364,7 @@ export function App() {
           },
         ],
       },
-    ],
+    ]),
   };
 
   return (
@@ -407,7 +404,7 @@ export function App() {
       fixedHeader
       location={{ pathname: location.pathname }}
       route={route}
-      menu={{ locale: false }}
+      menu={{ locale: false, loading: isPermissionsLoading }}
       menuItemRender={(item, dom) => (item.path ? <Link to={item.path}>{dom}</Link> : dom)}
       onMenuHeaderClick={() => navigate('/')}
       contentStyle={{ padding: 24 }}
@@ -437,7 +434,7 @@ export function App() {
           <Route
             path="/statistics"
             element={
-              <PermissionGate permissions={['go.statistics.read']}>
+              <PermissionGate permissions={[GO_PERMISSIONS.STATISTICS_READ]}>
                 <StatisticsPage />
               </PermissionGate>
             }
@@ -445,7 +442,7 @@ export function App() {
           <Route
             path="/render"
             element={
-              <PermissionGate permissions={['go.render.read']}>
+              <PermissionGate permissions={[GO_PERMISSIONS.RENDER_READ]}>
                 <RenderPage />
               </PermissionGate>
             }
@@ -454,51 +451,125 @@ export function App() {
           <Route path="/health" element={<HealthPage />} />
           <Route path="/downloads" element={<Navigate to="/projects" replace />} />
           <Route path="/google-drive" element={<Navigate to="/projects" replace />} />
-          <Route path="/folders" element={<FoldersPage />} />
+          <Route
+            path="/folders"
+            element={
+              <PermissionGate permissions={[GO_PERMISSIONS.FOLDER_MANAGE]}>
+                <FoldersPage />
+              </PermissionGate>
+            }
+          />
           <Route
             path="/folder-access"
             element={
-              <PermissionGate permissions={['go.folder.manage']}>
+              <PermissionGate permissions={[GO_PERMISSIONS.FOLDER_MANAGE]}>
                 <UserAccessPage />
               </PermissionGate>
             }
           />
-          <Route path="/projects" element={<ProjectsPage />} />
+          <Route
+            path="/projects"
+            element={
+              <PermissionGate permissions={[GO_PERMISSIONS.PROJECT_READ]}>
+                <ProjectsPage />
+              </PermissionGate>
+            }
+          />
           <Route
             path="/project-evaluations"
             element={
-              <FeaturePlaceholderPage
-                title={t('placeholder.projectEvaluationsTitle')}
-                description={t('placeholder.projectEvaluationsDescription')}
-              />
+              <PermissionGate permissions={[GO_PERMISSIONS.PROJECT_EVALUATE]}>
+                <FeaturePlaceholderPage
+                  title={t('placeholder.projectEvaluationsTitle')}
+                  description={t('placeholder.projectEvaluationsDescription')}
+                />
+              </PermissionGate>
             }
           />
           <Route
             path="/my-projects"
             element={
-              <FeaturePlaceholderPage
-                title={t('placeholder.myProjectsTitle')}
-                description={t('placeholder.myProjectsDescription')}
-              />
+              <PermissionGate permissions={[GO_PERMISSIONS.PROJECT_READ]}>
+                <FeaturePlaceholderPage
+                  title={t('placeholder.myProjectsTitle')}
+                  description={t('placeholder.myProjectsDescription')}
+                />
+              </PermissionGate>
             }
           />
-          <Route path="/projects/:projectId" element={<ProjectsPage />} />
-          <Route path="/projects/:projectId/edit" element={<ProjectDetailPage />} />
-          <Route path="/projects/:projectId/media" element={<LegacyProjectMediaRedirect />} />
-          <Route path="/projects/:projectId/audit" element={<AuditPage />} />
+          <Route
+            path="/projects/:projectId"
+            element={
+              <PermissionGate permissions={[GO_PERMISSIONS.PROJECT_READ]}>
+                <ProjectsPage />
+              </PermissionGate>
+            }
+          />
+          <Route
+            path="/projects/:projectId/edit"
+            element={
+              <PermissionGate permissions={[GO_PERMISSIONS.PROJECT_EDIT]}>
+                <ProjectDetailPage />
+              </PermissionGate>
+            }
+          />
+          <Route
+            path="/projects/:projectId/media"
+            element={
+              <PermissionGate permissions={[GO_PERMISSIONS.PROJECT_READ]}>
+                <LegacyProjectMediaRedirect />
+              </PermissionGate>
+            }
+          />
+          <Route
+            path="/projects/:projectId/audit"
+            element={
+              <PermissionGate permissions={[GO_PERMISSIONS.AUDIT_READ]}>
+                <AuditPage />
+              </PermissionGate>
+            }
+          />
           <Route path="/catalogs" element={<Navigate to="/catalogs/categories" replace />} />
           <Route
             path="/catalogs/overview"
             element={<Navigate to="/catalogs/categories" replace />}
           />
-          <Route path="/catalogs/categories" element={<CategoriesPage />} />
-          <Route path="/catalogs/countries" element={<CountriesPage />} />
-          <Route path="/catalogs/provinces" element={<ProvincesPage />} />
-          <Route path="/catalogs/tags" element={<TagsPage />} />
+          <Route
+            path="/catalogs/categories"
+            element={
+              <PermissionGate permissions={[GO_PERMISSIONS.CATALOG_MANAGE]}>
+                <CategoriesPage />
+              </PermissionGate>
+            }
+          />
+          <Route
+            path="/catalogs/countries"
+            element={
+              <PermissionGate permissions={[GO_PERMISSIONS.CATALOG_MANAGE]}>
+                <CountriesPage />
+              </PermissionGate>
+            }
+          />
+          <Route
+            path="/catalogs/provinces"
+            element={
+              <PermissionGate permissions={[GO_PERMISSIONS.CATALOG_MANAGE]}>
+                <ProvincesPage />
+              </PermissionGate>
+            }
+          />
+          <Route
+            path="/catalogs/tags"
+            element={
+              <PermissionGate permissions={[GO_PERMISSIONS.CATALOG_MANAGE]}>
+                <TagsPage />
+              </PermissionGate>
+            }
+          />
           <Route
             path="/system/settings"
             element={
-              <PermissionGate permissions={['go.settings.manage']}>
+              <PermissionGate permissions={[GO_PERMISSIONS.SETTINGS_MANAGE]}>
                 <SettingsPage />
               </PermissionGate>
             }
@@ -506,11 +577,12 @@ export function App() {
           <Route
             path="/system/logs"
             element={
-              <PermissionGate permissions={['go.logs.read']}>
+              <PermissionGate permissions={[GO_PERMISSIONS.LOGS_READ]}>
                 <LogsPage />
               </PermissionGate>
             }
           />
+          <Route path="*" element={<NotFoundResult />} />
         </Routes>
       </Suspense>
     </ProLayout>
@@ -527,19 +599,9 @@ function setMetaContent(name: string, content: string, attribute: 'name' | 'prop
   meta.content = content;
 }
 
-function PermissionGate({ permissions, children }: { permissions: string[]; children: ReactNode }) {
-  const account = useCurrentAccount();
-  if (account.isLoading) {
-    return <Spin fullscreen />;
-  }
-  if (
-    !account.data ||
-    (!isAdminUserType(account.data.user_type) &&
-      !permissions.some((permission) => account.data.permissions.includes(permission)))
-  ) {
-    return <Navigate to="/" replace />;
-  }
-  return children;
+/** Hides menu groups whose children were all filtered out by permissions. */
+function removeEmptyMenuGroups<T extends { routes?: unknown[] }>(routes: T[]): T[] {
+  return routes.filter((item) => !item.routes || item.routes.length > 0);
 }
 
 function GoogleDriveCallbackRoute() {
