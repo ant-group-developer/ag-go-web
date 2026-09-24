@@ -431,7 +431,11 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
               const status = statusForFile(file);
               return (
                 <Space direction="vertical" size={4} style={{ width: '100%' }}>
-                  <Tag icon={statusIcons[status]} color={statusColors[status]} style={{ margin: 0 }}>
+                  <Tag
+                    icon={statusIcons[status]}
+                    color={statusColors[status]}
+                    style={{ margin: 0 }}
+                  >
                     {statusLabels[status]}
                   </Tag>
                   {status === 'uploading' ? (

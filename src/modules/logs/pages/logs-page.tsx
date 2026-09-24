@@ -1,7 +1,7 @@
-import { PageContainer } from '@ant-design/pro-components';
+import { PageContainer, ProTable } from '@ant-design/pro-components';
 import { useQuery } from '@tanstack/react-query';
 import type { TablePaginationConfig } from 'antd';
-import { Alert, DatePicker, Descriptions, Drawer, Input, Select, Space, Table, Tag } from 'antd';
+import { Alert, DatePicker, Descriptions, Drawer, Input, Select, Space, Tag } from 'antd';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getLogs, type SystemLog } from '../api/logs';
@@ -74,6 +74,7 @@ export function LogsPage() {
             { label: t('logs.levelWarn'), value: 'warn' },
             { label: t('logs.levelError'), value: 'error' },
           ]}
+          style={{ width: 100 }}
           value={level}
           onChange={(value) => {
             setPage(1);
@@ -81,8 +82,10 @@ export function LogsPage() {
           }}
         />
       </Space>
-      <Table<SystemLog>
+      <ProTable<SystemLog>
         rowKey="id"
+        sticky={{ offsetHeader: 64 }}
+        search={false}
         loading={query.isLoading}
         dataSource={query.data?.items ?? []}
         pagination={{
@@ -90,22 +93,28 @@ export function LogsPage() {
           pageSize: query.data?.pageSize ?? 25,
           total: query.data?.total ?? 0,
         }}
+        bordered
         onChange={onTableChange}
         onRow={(record) => ({ onClick: () => setSelected(record), style: { cursor: 'pointer' } })}
         columns={[
           {
             title: t('logs.time'),
             dataIndex: 'createdAt',
-            render: (value: string) => new Date(value).toLocaleString('vi-VN'),
+            render: (_, record) =>
+              record.createdAt ? new Date(record.createdAt).toLocaleString('vi-VN') : '—',
           },
           { title: t('logs.category'), dataIndex: 'category' },
           { title: t('logs.action'), dataIndex: 'action' },
           {
             title: t('logs.level'),
             dataIndex: 'level',
-            render: (value: SystemLog['level']) => (
-              <Tag color={value === 'error' ? 'red' : value === 'warn' ? 'orange' : 'blue'}>
-                {value}
+            render: (_, record) => (
+              <Tag
+                color={
+                  record.level === 'error' ? 'red' : record.level === 'warn' ? 'orange' : 'blue'
+                }
+              >
+                {record.level}
               </Tag>
             ),
           },
@@ -118,13 +127,19 @@ export function LogsPage() {
           { title: t('logs.message'), dataIndex: 'message', ellipsis: true },
         ]}
       />
-      <Drawer title={t('logs.details')} open={Boolean(selected)} onClose={() => setSelected(undefined)}>
+      <Drawer
+        title={t('logs.details')}
+        open={Boolean(selected)}
+        onClose={() => setSelected(undefined)}
+      >
         {selected ? (
           <Descriptions column={1} bordered size="small">
             <Descriptions.Item label="ID">{selected.id}</Descriptions.Item>
             <Descriptions.Item label={t('logs.action')}>{selected.action}</Descriptions.Item>
             <Descriptions.Item label={t('logs.message')}>{selected.message}</Descriptions.Item>
-            <Descriptions.Item label={t('logs.project')}>{selected.projectId ?? '-'}</Descriptions.Item>
+            <Descriptions.Item label={t('logs.project')}>
+              {selected.projectId ?? '-'}
+            </Descriptions.Item>
             <Descriptions.Item label={t('logs.metadata')}>
               <pre style={{ whiteSpace: 'pre-wrap' }}>
                 {JSON.stringify(selected.metadata ?? {}, null, 2)}

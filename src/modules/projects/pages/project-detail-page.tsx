@@ -304,9 +304,7 @@ export function ProjectDetailPage() {
                 </Form.Item>
 
                 <Form.Item name="countryId" label={t('projects.country')}>
-                  <CountrySelect
-                    onChange={() => form.setFieldValue('provinceId', undefined)}
-                  />
+                  <CountrySelect onChange={() => form.setFieldValue('provinceId', undefined)} />
                 </Form.Item>
 
                 <Form.Item name="provinceId" label={t('projects.province')}>

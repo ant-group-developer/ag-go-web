@@ -281,7 +281,7 @@ function FilterContent({
 
             <Input
               allowClear
-              size="large"
+              size="middle"
               placeholder={t('projects.searchFolderPlaceholder')}
               prefix={<Search size={16} style={{ color: '#9ca3af' }} />}
               value={folderSearch}
@@ -374,7 +374,7 @@ function FilterContent({
             </div>
             <Select
               allowClear
-              size="large"
+              size="middle"
               optionFilterProp="label"
               options={categories.data?.map((cat) => ({ value: cat.id, label: cat.name }))}
               placeholder={t('projects.categoryPlaceholder')}
@@ -401,7 +401,7 @@ function FilterContent({
             <Select
               allowClear
               mode="multiple"
-              size="large"
+              size="middle"
               optionFilterProp="label"
               options={tags.data?.map((tag) => ({ value: tag.id, label: tag.name }))}
               placeholder={t('projects.tagsFilterPlaceholder')}
@@ -442,7 +442,7 @@ function FilterContent({
               </Typography.Text>
               <Select
                 allowClear
-                size="large"
+                size="middle"
                 disabled={!countryId}
                 loading={provinces.isPending}
                 optionFilterProp="label"
@@ -634,7 +634,6 @@ export function ProjectFilterPopover({
           borderColor: activeCount > 0 ? '#1677ff' : undefined,
           color: activeCount > 0 ? '#1677ff' : undefined,
           background: activeCount > 0 ? '#e6f4ff' : undefined,
-          height: 38,
           display: 'inline-flex',
           alignItems: 'center',
           gap: 6,
