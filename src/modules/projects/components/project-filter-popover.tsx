@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useCategories } from '../../categories/hooks/use-categories';
+import { CategorySelect } from '../../categories/components/category-select';
 import { CountrySelect } from '../../countries/components/country-select';
 import { useFolders } from '../../folders/hooks/use-folders';
 import type { Folder as FolderType } from '../../folders/types/folder.type';
@@ -177,7 +177,6 @@ function FilterContent({
   const tags = useTags();
   const countryId = value.countryId;
   const provinces = useProvinces({ page: 1, pageSize: 100, countryId }, Boolean(countryId));
-  const categories = useCategories();
 
   const { treeData: folderTree, matchingKeySet } = useMemo(
     () => buildFolderTree(folders.data ?? [], folderSearch),
@@ -372,13 +371,9 @@ function FilterContent({
                 {t('projects.category')}
               </Typography.Text>
             </div>
-            <Select
-              allowClear
+            <CategorySelect
+              allowCreate={false}
               size="middle"
-              optionFilterProp="label"
-              options={categories.data?.map((cat) => ({ value: cat.id, label: cat.name }))}
-              placeholder={t('projects.categoryPlaceholder')}
-              showSearch
               value={value.categoryId}
               onChange={(v) => onChange({ ...value, categoryId: v })}
               style={{ width: '100%', fontSize: 14 }}

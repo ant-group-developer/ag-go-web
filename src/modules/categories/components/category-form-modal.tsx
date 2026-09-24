@@ -1,18 +1,36 @@
 import { Alert, App as AntApp, Form, Input, InputNumber, Modal } from 'antd';
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useCreateCategory } from '../hooks/use-categories';
+import type { Category } from '../types/category.type';
 import type { CreateCategoryInput } from '../types/create-category-input.type';
 
 type CategoryFormModalProps = {
   open: boolean;
   onClose: () => void;
+  /** Called with the created category after a successful create. */
+  onCreated?: (category: Category) => void;
+  /** Prefills the name field when the modal opens. */
+  defaultName?: string;
 };
 
-export function CategoryFormModal({ open, onClose }: CategoryFormModalProps) {
+export function CategoryFormModal({
+  open,
+  onClose,
+  onCreated,
+  defaultName,
+}: CategoryFormModalProps) {
   const { t } = useTranslation();
   const { message } = AntApp.useApp();
   const [form] = Form.useForm<CreateCategoryInput>();
   const create = useCreateCategory();
+
+  useEffect(() => {
+    const name = defaultName?.trim();
+    if (open && name) {
+      form.setFieldsValue({ name, slug: createSlug(name) });
+    }
+  }, [open, defaultName, form]);
 
   const resetAndClose = () => {
     form.resetFields();
@@ -54,9 +72,10 @@ export function CategoryFormModal({ open, onClose }: CategoryFormModalProps) {
               sortOrder: values.sortOrder,
             },
             {
-              onSuccess: () => {
+              onSuccess: (category) => {
                 void message.success(t('catalogs.createCategorySuccess'));
                 resetAndClose();
+                onCreated?.(category);
               },
             },
           );

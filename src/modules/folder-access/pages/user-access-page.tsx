@@ -4,7 +4,6 @@ import {
   Breadcrumb,
   Button,
   Card,
-  Cascader,
   Empty,
   Form,
   Modal,
@@ -16,10 +15,10 @@ import {
 } from 'antd';
 import { Plus, Trash2 } from 'lucide-react';
 import { parseAsString, useQueryStates } from 'nuqs';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useFolders } from '../../folders/hooks/use-folders';
-import { buildFolderCascaderOptions } from '../../folders/utils/build-folder-cascader-options';
+import { FolderCascader } from '../../folders/components/folder-cascader';
+import type { Folder } from '../../folders/types/folder.type';
 import { formatDate } from '../../projects/utils/date.util';
 import { AccessLevelSelect } from '../components/access-level-select';
 import { FolderAccessDrawer } from '../components/folder-access-drawer';
@@ -31,6 +30,8 @@ import { useGrantActions } from '../hooks/use-grant-actions';
 import type { AccessLevel } from '../types/access-level.type';
 import type { AccountUserSummary } from '../types/account-user-summary.type';
 import type { UserFolderGrant } from '../types/user-folder-grant.type';
+
+const isManagedFolder = (folder: Folder) => folder.myAccessLevel === 'manager';
 
 type AddGrantValues = {
   folderPath: string[];
@@ -52,7 +53,6 @@ export function UserAccessPage() {
   const [drawerFolderId, setDrawerFolderId] = useState<string>();
   const userId = urlState.userId ?? undefined;
   const grants = useUserGrants(userId);
-  const folders = useFolders();
   const actions = useGrantActions();
 
   const selectedUser =
@@ -62,14 +62,6 @@ export function UserAccessPage() {
     setPickedUser(user);
     void setUrlState({ userId: nextUserId ?? null });
   };
-
-  const folderOptions = useMemo(
-    () =>
-      buildFolderCascaderOptions(
-        (folders.data ?? []).filter((folder) => folder.myAccessLevel === 'manager'),
-      ),
-    [folders.data],
-  );
 
   const columns: ProColumns<UserFolderGrant>[] = [
     {
@@ -267,10 +259,10 @@ export function UserAccessPage() {
             extra={t('folderAccess.managedFoldersOnly')}
             rules={[{ required: true, message: t('folderAccess.folderRequired') }]}
           >
-            <Cascader
-              options={folderOptions}
+            <FolderCascader
+              allowCreate={false}
+              filterFolders={isManagedFolder}
               changeOnSelect
-              showSearch
               placeholder={t('folderAccess.folderPlaceholder')}
             />
           </Form.Item>
