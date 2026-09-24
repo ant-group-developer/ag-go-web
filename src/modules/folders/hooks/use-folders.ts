@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createFolder, getFolders } from '../api/folders';
+import { createFolder, deleteFolder, getFolders, updateFolder } from '../api/folders';
+import type { UpdateFolderInput } from '../types/update-folder-input.type';
 import { folderQueryKeys } from '../queries/folder-query-keys';
 
 export function useFolders(enabled = true) {
@@ -16,6 +17,24 @@ export function useCreateFolder() {
 
   return useMutation({
     mutationFn: createFolder,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: folderQueryKeys.tree() }),
+  });
+}
+
+export function useUpdateFolder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: UpdateFolderInput }) => updateFolder(id, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: folderQueryKeys.tree() }),
+  });
+}
+
+export function useDeleteFolder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: deleteFolder,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: folderQueryKeys.tree() }),
   });
 }
