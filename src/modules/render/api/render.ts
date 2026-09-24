@@ -1,8 +1,5 @@
 import { apiClient } from '../../../shared/lib/api-client';
-import {
-  uploadAssetContent,
-  type UploadSession,
-} from '../../media/api/media';
+import { uploadAssetContent, type UploadSession } from '../../media/api/media';
 
 export const WATERMARK_POSITIONS = [
   'top-left',

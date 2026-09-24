@@ -26,10 +26,10 @@ import { useEffect, useRef, useState } from 'react';
 import { getAssetPreviewUrl } from '../../media/api/media';
 import {
   getRenderProfiles,
-  type RenderProfile,
-  type WatermarkConfig,
   uploadWatermarkLogo,
   WATERMARK_POSITIONS,
+  type RenderProfile,
+  type WatermarkConfig,
 } from '../../render/api/render';
 import { useUpdateRenderProfile } from '../../render/hooks/use-render';
 import { useSettings, useUpdateSettings } from '../hooks/use-settings';
@@ -57,18 +57,21 @@ function normalizeWatermarkConfig(config: Partial<WatermarkConfig> | undefined):
     logoAssetId: config?.logoAssetId ?? null,
     color: typeof config?.color === 'string' ? config.color : DEFAULT_WATERMARK_CONFIG.color,
     fontFamily:
-      typeof config?.fontFamily === 'string' ? config.fontFamily : DEFAULT_WATERMARK_CONFIG.fontFamily,
-    fontSize: typeof config?.fontSize === 'number' ? config.fontSize : DEFAULT_WATERMARK_CONFIG.fontSize,
+      typeof config?.fontFamily === 'string'
+        ? config.fontFamily
+        : DEFAULT_WATERMARK_CONFIG.fontFamily,
+    fontSize:
+      typeof config?.fontSize === 'number' ? config.fontSize : DEFAULT_WATERMARK_CONFIG.fontSize,
     repeat: typeof config?.repeat === 'boolean' ? config.repeat : DEFAULT_WATERMARK_CONFIG.repeat,
     gapX: typeof config?.gapX === 'number' ? config.gapX : DEFAULT_WATERMARK_CONFIG.gapX,
     gapY: typeof config?.gapY === 'number' ? config.gapY : DEFAULT_WATERMARK_CONFIG.gapY,
     rotate: typeof config?.rotate === 'number' ? config.rotate : DEFAULT_WATERMARK_CONFIG.rotate,
-    maxWidth: typeof config?.maxWidth === 'number' ? config.maxWidth : DEFAULT_WATERMARK_CONFIG.maxWidth,
+    maxWidth:
+      typeof config?.maxWidth === 'number' ? config.maxWidth : DEFAULT_WATERMARK_CONFIG.maxWidth,
     position: WATERMARK_POSITIONS.includes(config?.position as WatermarkConfig['position'])
       ? (config?.position as WatermarkConfig['position'])
       : DEFAULT_WATERMARK_CONFIG.position,
-    opacity:
-      typeof config?.opacity === 'number' ? Math.min(1, Math.max(0, config.opacity)) : 0.75,
+    opacity: typeof config?.opacity === 'number' ? Math.min(1, Math.max(0, config.opacity)) : 0.75,
     scale: typeof config?.scale === 'number' ? Math.min(1, Math.max(0.05, config.scale)) : 0.28,
     margin: typeof config?.margin === 'number' ? Math.max(0, config.margin) : 24,
   };
@@ -157,7 +160,11 @@ function WatermarkPreview({ sampleUrl, logoUrl, config, enabled }: PreviewProps)
             if (config.text) {
               context.fillStyle = config.color;
               context.font = `${fontSize}px ${config.fontFamily}`;
-              context.fillText(config.text.slice(0, 120), logoSize ? logoSize * 1.3 : 0, -tileHeight / 2);
+              context.fillText(
+                config.text.slice(0, 120),
+                logoSize ? logoSize * 1.3 : 0,
+                -tileHeight / 2,
+              );
             }
             context.restore();
           }
@@ -165,7 +172,10 @@ function WatermarkPreview({ sampleUrl, logoUrl, config, enabled }: PreviewProps)
         context.restore();
         return;
       }
-      const overlayWidth = Math.min(width, Math.max(1, tileWidth * Math.min(1, config.scale / 0.28)));
+      const overlayWidth = Math.min(
+        width,
+        Math.max(1, tileWidth * Math.min(1, config.scale / 0.28)),
+      );
       const overlayHeight = Math.min(height, Math.max(1, tileHeight * (overlayWidth / tileWidth)));
       const positions = {
         'top-left': { x: margin, y: margin },
@@ -178,7 +188,7 @@ function WatermarkPreview({ sampleUrl, logoUrl, config, enabled }: PreviewProps)
 
       context.save();
       context.globalAlpha = config.opacity;
-      let textX = position.x;
+      // let textX = position.x;
       if (logo?.complete && logo.naturalWidth > 0) {
         context.drawImage(
           logo,
@@ -187,7 +197,7 @@ function WatermarkPreview({ sampleUrl, logoUrl, config, enabled }: PreviewProps)
           logoSize,
           logoSize,
         );
-        textX += logoSize * 1.3;
+        // textX += logoSize * 1.3;
       }
       if (config.text) {
         context.fillStyle = config.color;
@@ -195,7 +205,11 @@ function WatermarkPreview({ sampleUrl, logoUrl, config, enabled }: PreviewProps)
         context.textBaseline = 'middle';
         context.translate(position.x + overlayWidth / 2, position.y + overlayHeight / 2);
         context.rotate((config.rotate * Math.PI) / 180);
-        context.fillText(config.text.slice(0, 120), -overlayWidth / 2 + (logoSize ? logoSize * 1.3 : 0), 0);
+        context.fillText(
+          config.text.slice(0, 120),
+          -overlayWidth / 2 + (logoSize ? logoSize * 1.3 : 0),
+          0,
+        );
       }
       context.restore();
     };
@@ -375,9 +389,15 @@ function RenderProfileEditor({
                 <Col xs={24} md={8}>
                   <Form.Item name={['watermarkConfig', 'fontFamily']} label="Font">
                     <Select
-                      options={['Arial', 'Times New Roman', 'Courier New', 'Verdana', 'Georgia', 'Impact', 'Tahoma'].map(
-                        (value) => ({ value, label: value }),
-                      )}
+                      options={[
+                        'Arial',
+                        'Times New Roman',
+                        'Courier New',
+                        'Verdana',
+                        'Georgia',
+                        'Impact',
+                        'Tahoma',
+                      ].map((value) => ({ value, label: value }))}
                     />
                   </Form.Item>
                 </Col>
@@ -408,7 +428,12 @@ function RenderProfileEditor({
                     </Upload>
                     {logoUrl ? (
                       <div style={{ marginTop: 8 }}>
-                        <Image src={logoUrl} width={96} height={48} style={{ objectFit: 'contain' }} />
+                        <Image
+                          src={logoUrl}
+                          width={96}
+                          height={48}
+                          style={{ objectFit: 'contain' }}
+                        />
                         <Button
                           type="link"
                           danger
@@ -435,7 +460,11 @@ function RenderProfileEditor({
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={6}>
-                  <Form.Item name={['watermarkConfig', 'repeat']} label="Lặp watermark" valuePropName="checked">
+                  <Form.Item
+                    name={['watermarkConfig', 'repeat']}
+                    label="Lặp watermark"
+                    valuePropName="checked"
+                  >
                     <Switch />
                   </Form.Item>
                 </Col>
@@ -473,16 +502,10 @@ function RenderProfileEditor({
             </Card>
           </Col>
           <Col xs={24} lg={10}>
-            <Card
-              size="small"
-              title="Preview watermark"
-              style={{ position: 'sticky', top: 16 }}
-            >
+            <Card size="small" title="Preview watermark" style={{ position: 'sticky', top: 16 }}>
               <Flex vertical gap={16}>
                 <Flex align="center" justify="flex-start" gap={16}>
-                  <Typography.Text type="secondary">
-                    Ảnh mẫu preview
-                  </Typography.Text>
+                  <Typography.Text type="secondary">Ảnh mẫu preview</Typography.Text>
 
                   <Upload
                     accept="image/*"
@@ -497,9 +520,7 @@ function RenderProfileEditor({
                       return false;
                     }}
                   >
-                    <Button icon={<ImagePlus size={16} />}>
-                      Chọn ảnh mẫu
-                    </Button>
+                    <Button icon={<ImagePlus size={16} />}>Chọn ảnh mẫu</Button>
                   </Upload>
                 </Flex>
 

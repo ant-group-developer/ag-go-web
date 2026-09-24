@@ -106,7 +106,11 @@ export function LogsPage() {
             title: 'Mức',
             dataIndex: 'level',
             render: (_, record) => (
-              <Tag color={record.level === 'error' ? 'red' : record.level === 'warn' ? 'orange' : 'blue'}>
+              <Tag
+                color={
+                  record.level === 'error' ? 'red' : record.level === 'warn' ? 'orange' : 'blue'
+                }
+              >
                 {record.level}
               </Tag>
             ),

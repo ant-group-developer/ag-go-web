@@ -25,7 +25,7 @@ import {
   Spin,
   Tag,
   Typography,
-  theme
+  theme,
 } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -653,7 +653,7 @@ export function ProjectDetailDrawer({ open, projectId, onClose }: ProjectReviewD
                                     flex: 1,
                                     minWidth: 0,
                                     overflow: 'hidden',
-                                    fontWeight: 700
+                                    fontWeight: 700,
                                   }}
                                 >
                                   {item.asset.originalFilename}

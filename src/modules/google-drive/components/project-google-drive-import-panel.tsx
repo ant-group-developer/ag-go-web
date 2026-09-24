@@ -147,94 +147,94 @@ export function ProjectGoogleDriveImportPanel({ projectId }: { projectId: string
           </Space.Compact>
           {pickerOpen ? (
             <DrivePicker
-            {...({
-              id: 'project-drive-picker',
-              'app-id': import.meta.env.VITE_GOOGLE_PICKER_APP_ID,
-              'client-id': import.meta.env.VITE_GOOGLE_PICKER_CLIENT_ID,
-              'developer-key': import.meta.env.VITE_GOOGLE_PICKER_API_KEY,
-              'oauth-token': pickerToken.data?.accessToken,
-              scope: 'https://www.googleapis.com/auth/drive.readonly',
-              'mine-only': false,
-              origin: window.location.origin,
-              'max-items': 100,
-            } as Record<string, unknown>)}
-            multiselect
-            onCanceled={() => setPickerOpen(false)}
-            onOauthError={() => {
-              setPickerOpen(false);
-              setPickerError('Google Picker không thể xác thực quyền truy cập Google Drive.');
-            }}
-            onOauthResponse={() => setPickerError(undefined)}
-            onPicked={(event: PickerEvent) => {
-              setPickerOpen(false);
-              const pickedDocs = event.detail?.docs ?? [];
-              const sources = pickedDocs
-                .filter(
-                  (doc) =>
-                    doc.mimeType === 'application/vnd.google-apps.folder' ||
-                    doc.mimeType?.startsWith('image/') ||
-                    doc.mimeType?.startsWith('video/'),
-                )
-                .map((doc) => ({
-                  fileId: doc.id,
-                  driveId: doc.driveId,
-                  name: doc.name,
-                  mimeType: doc.mimeType,
-                }));
-              if (sources.length < pickedDocs.length) {
-                setPickerError('Chỉ có thể import file ảnh, video hoặc thư mục.');
-              }
-              setSelected(sources);
-              summarizeSources.mutate(
-                sources.map((source) => ({ fileId: source.fileId, driveId: source.driveId })),
-              );
-            }}
+              {...({
+                id: 'project-drive-picker',
+                'app-id': import.meta.env.VITE_GOOGLE_PICKER_APP_ID,
+                'client-id': import.meta.env.VITE_GOOGLE_PICKER_CLIENT_ID,
+                'developer-key': import.meta.env.VITE_GOOGLE_PICKER_API_KEY,
+                'oauth-token': pickerToken.data?.accessToken,
+                scope: 'https://www.googleapis.com/auth/drive.readonly',
+                'mine-only': false,
+                origin: window.location.origin,
+                'max-items': 100,
+              } as Record<string, unknown>)}
+              multiselect
+              onCanceled={() => setPickerOpen(false)}
+              onOauthError={() => {
+                setPickerOpen(false);
+                setPickerError('Google Picker không thể xác thực quyền truy cập Google Drive.');
+              }}
+              onOauthResponse={() => setPickerError(undefined)}
+              onPicked={(event: PickerEvent) => {
+                setPickerOpen(false);
+                const pickedDocs = event.detail?.docs ?? [];
+                const sources = pickedDocs
+                  .filter(
+                    (doc) =>
+                      doc.mimeType === 'application/vnd.google-apps.folder' ||
+                      doc.mimeType?.startsWith('image/') ||
+                      doc.mimeType?.startsWith('video/'),
+                  )
+                  .map((doc) => ({
+                    fileId: doc.id,
+                    driveId: doc.driveId,
+                    name: doc.name,
+                    mimeType: doc.mimeType,
+                  }));
+                if (sources.length < pickedDocs.length) {
+                  setPickerError('Chỉ có thể import file ảnh, video hoặc thư mục.');
+                }
+                setSelected(sources);
+                summarizeSources.mutate(
+                  sources.map((source) => ({ fileId: source.fileId, driveId: source.driveId })),
+                );
+              }}
             >
-            {pickerMode === 'files' ? (
-              <>
-                <DrivePickerDocsView
-                  {...({
-                    'include-folders': 'false',
-                    'select-folder-enabled': 'false',
-                    'mime-types': 'image/*,video/*',
-                    mode: 'GRID',
-                    'view-id': 'DOCS',
-                  } as Record<string, unknown>)}
-                />
-                <DrivePickerDocsView
-                  {...({
-                    'enable-drives': 'true',
-                    'include-folders': 'false',
-                    'select-folder-enabled': 'false',
-                    'mime-types': 'image/*,video/*',
-                    mode: 'GRID',
-                    'view-id': 'DOCS',
-                  } as Record<string, unknown>)}
-                />
-              </>
-            ) : (
-              <>
-                <DrivePickerDocsView
-                  {...({
-                    'include-folders': 'true',
-                    'select-folder-enabled': 'true',
-                    'mime-types': 'application/vnd.google-apps.folder',
-                    mode: 'GRID',
-                    'view-id': 'FOLDERS',
-                  } as Record<string, unknown>)}
-                />
-                <DrivePickerDocsView
-                  {...({
-                    'enable-drives': 'true',
-                    'include-folders': 'true',
-                    'select-folder-enabled': 'true',
-                    'mime-types': 'application/vnd.google-apps.folder',
-                    mode: 'GRID',
-                    'view-id': 'FOLDERS',
-                  } as Record<string, unknown>)}
-                />
-              </>
-            )}
+              {pickerMode === 'files' ? (
+                <>
+                  <DrivePickerDocsView
+                    {...({
+                      'include-folders': 'false',
+                      'select-folder-enabled': 'false',
+                      'mime-types': 'image/*,video/*',
+                      mode: 'GRID',
+                      'view-id': 'DOCS',
+                    } as Record<string, unknown>)}
+                  />
+                  <DrivePickerDocsView
+                    {...({
+                      'enable-drives': 'true',
+                      'include-folders': 'false',
+                      'select-folder-enabled': 'false',
+                      'mime-types': 'image/*,video/*',
+                      mode: 'GRID',
+                      'view-id': 'DOCS',
+                    } as Record<string, unknown>)}
+                  />
+                </>
+              ) : (
+                <>
+                  <DrivePickerDocsView
+                    {...({
+                      'include-folders': 'true',
+                      'select-folder-enabled': 'true',
+                      'mime-types': 'application/vnd.google-apps.folder',
+                      mode: 'GRID',
+                      'view-id': 'FOLDERS',
+                    } as Record<string, unknown>)}
+                  />
+                  <DrivePickerDocsView
+                    {...({
+                      'enable-drives': 'true',
+                      'include-folders': 'true',
+                      'select-folder-enabled': 'true',
+                      'mime-types': 'application/vnd.google-apps.folder',
+                      mode: 'GRID',
+                      'view-id': 'FOLDERS',
+                    } as Record<string, unknown>)}
+                  />
+                </>
+              )}
             </DrivePicker>
           ) : null}
           {selected.length ? (

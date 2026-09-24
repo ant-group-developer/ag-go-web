@@ -61,9 +61,7 @@ export function getGoogleDrivePickerToken() {
   return apiClient<{ accessToken: string; expiresAt: string }>('/google-drive/picker-token');
 }
 
-export function summarizeGoogleDriveSources(
-  sources: Array<{ fileId: string; driveId?: string }>,
-) {
+export function summarizeGoogleDriveSources(sources: Array<{ fileId: string; driveId?: string }>) {
   return apiClient<DriveSourceSummary>('/google-drive/sources/summary', {
     method: 'POST',
     body: JSON.stringify({ sources }),

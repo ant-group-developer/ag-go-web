@@ -17,9 +17,9 @@ import {
   Skeleton,
   Space,
   Tag,
+  theme,
   Tooltip,
   Typography,
-  theme,
 } from 'antd';
 import { ClipboardCheck, Pencil, Plus, Trash2 } from 'lucide-react';
 
@@ -507,7 +507,11 @@ export function ProjectsPage() {
                                 justifyContent: 'space-between',
                               }}
                             >
-                              <Skeleton.Button active size="small" style={{ width: 80, borderRadius: 100 }} />
+                              <Skeleton.Button
+                                active
+                                size="small"
+                                style={{ width: 80, borderRadius: 100 }}
+                              />
                               <Skeleton active paragraph={{ rows: 2 }} />
                             </div>
                           </Col>
