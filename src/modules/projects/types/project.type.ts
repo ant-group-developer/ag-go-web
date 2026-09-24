@@ -1,6 +1,12 @@
 export type Project = {
   id: string;
   ownerUserId?: string;
+  ownerUser?: {
+    id: string;
+    name?: string;
+    email?: string;
+    avatar?: string;
+  } | null;
   name: string;
   folderId: string;
   categoryId: string | null;

@@ -8,6 +8,7 @@ import {
   getGoogleDrivePickerToken,
   retryDriveImportItem,
   startGoogleDriveConnection,
+  summarizeGoogleDriveSources,
 } from '../api/google-drive';
 
 const keys = {
@@ -45,6 +46,12 @@ export function useDisconnectGoogleDrive() {
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: keys.connection() });
     },
+  });
+}
+
+export function useSummarizeGoogleDriveSources() {
+  return useMutation({
+    mutationFn: summarizeGoogleDriveSources,
   });
 }
 

@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import {
   Alert,
   App as AntApp,
+  Avatar,
   Button,
   Image,
   Input,
@@ -215,24 +216,29 @@ export function ProjectsPage() {
 
   const columns: ProColumns<Project>[] = [
     {
-      title: t('projects.thumbnail'),
-      dataIndex: 'thumbnailAssetId',
-      key: 'thumbnail',
-      width: 100,
-      align: 'center',
-      render: (_, project) => <ProjectThumbnailCell assetId={project.thumbnailAssetId} />,
-    },
-    {
       title: t('projects.name'),
       dataIndex: 'name',
       key: 'name',
-      width: 260,
+      width: 340,
       fixed: 'left',
       ellipsis: true,
       render: (_, project) => (
-        <Typography.Link onClick={() => setReviewProjectId(project.id)}>
-          {project.name}
-        </Typography.Link>
+        <Space align="start">
+          <ProjectThumbnailCell assetId={project.thumbnailAssetId} />
+          <Space direction="vertical" size={2}>
+            <Typography.Link onClick={() => setReviewProjectId(project.id)}>
+              {project.name}
+            </Typography.Link>
+            <Space size={6}>
+              <Avatar size={18} src={project.ownerUser?.avatar}>
+                {project.ownerUser?.name?.charAt(0)?.toUpperCase()}
+              </Avatar>
+              <Typography.Text type="secondary" ellipsis>
+                {project.ownerUser?.name || project.ownerUser?.email || t('common.unknown')}
+              </Typography.Text>
+            </Space>
+          </Space>
+        </Space>
       ),
     },
     {
@@ -395,7 +401,7 @@ export function ProjectsPage() {
           actionRef={actionRef}
           columns={columns}
           columnsState={{
-            persistenceKey: 'ag-go.projects.columns.v1',
+            persistenceKey: 'ag-go.projects.columns.v2',
             persistenceType: 'localStorage',
           }}
           headerTitle={
@@ -491,6 +497,14 @@ export function ProjectsPage() {
                         : undefined,
                       imageCount: p.imageCount,
                       videoCount: p.videoCount,
+                      author: p.ownerUser
+                        ? {
+                            id: p.ownerUser.id,
+                            name: p.ownerUser.name ?? p.ownerUser.email ?? t('common.unknown'),
+                            email: p.ownerUser.email,
+                            avatar: p.ownerUser.avatar,
+                          }
+                        : null,
                     }))}
                     isLoading={false}
                     onView={(id) => setReviewProjectId(id)}

@@ -1,6 +1,6 @@
 import { DrivePicker, DrivePickerDocsView } from '@googleworkspace/drive-picker-react';
-import { Button, Card, List, Progress, Space, Tag, Typography } from 'antd';
-import { useState } from 'react';
+import { Alert, Button, Card, List, Progress, Space, Tag, Typography } from 'antd';
+import { useMemo, useState } from 'react';
 import {
   useCancelDriveImport,
   useCreateDriveImport,
@@ -10,6 +10,7 @@ import {
   useGoogleDrivePickerToken,
   useRetryDriveImportItem,
   useStartGoogleDriveConnection,
+  useSummarizeGoogleDriveSources,
 } from '../hooks/use-google-drive';
 
 type PickedSource = {
@@ -27,68 +28,147 @@ type PickerDocument = {
 };
 
 type PickerEvent = { detail?: { docs?: PickerDocument[] } };
+type PickerMode = 'files' | 'folders';
 
 export function ProjectGoogleDriveImportPanel({ projectId }: { projectId: string }) {
   const [selected, setSelected] = useState<PickedSource[]>([]);
   const connection = useGoogleDriveConnection();
-  const pickerToken = useGoogleDrivePickerToken(Boolean(connection.data));
+  const pickerToken = useGoogleDrivePickerToken(
+    connection.data?.status === 'active' &&
+      connection.data.scopes.some((scope) =>
+        scope.includes('https://www.googleapis.com/auth/drive.readonly'),
+      ),
+  );
   const start = useStartGoogleDriveConnection();
   const disconnect = useDisconnectGoogleDrive();
   const createImport = useCreateDriveImport();
   const cancelImport = useCancelDriveImport();
   const retryItem = useRetryDriveImportItem();
+  const summarizeSources = useSummarizeGoogleDriveSources();
   const [batchId, setBatchId] = useState<string>();
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerMode, setPickerMode] = useState<PickerMode>('files');
+  const [pickerError, setPickerError] = useState<string>();
   const batch = useDriveImport(batchId ?? '');
+  const selectedCounts = useMemo(
+    () =>
+      selected.reduce(
+        (counts, source) => {
+          if (source.mimeType === 'application/vnd.google-apps.folder') {
+            counts.folderCount += 1;
+          } else if (source.mimeType?.startsWith('video/')) {
+            counts.videoCount += 1;
+          } else if (source.mimeType?.startsWith('image/')) {
+            counts.imageCount += 1;
+          }
+          return counts;
+        },
+        { imageCount: 0, videoCount: 0, folderCount: 0 },
+      ),
+    [selected],
+  );
 
-  const openPicker = () => {
-    if (pickerToken.data?.accessToken) {
-      const picker = document.getElementById('project-drive-picker') as
-        (HTMLElement & { visible?: boolean }) | null;
-      if (picker) {
-        picker.visible = true;
-      }
+  const openPicker = (mode: PickerMode) => {
+    if (pickerToken.data?.accessToken && connection.data?.status === 'active') {
+      setPickerError(undefined);
+      setPickerMode(mode);
+      setPickerOpen(true);
     }
   };
+
+  const hasPickerScope = Boolean(
+    connection.data?.scopes.some((scope) =>
+      scope.includes('https://www.googleapis.com/auth/drive.readonly'),
+    ),
+  );
+  const isConnected = connection.data?.status === 'active' && hasPickerScope;
 
   return (
     <Card
       title="Google Drive import"
       extra={
-        connection.data ? (
+        connection.data?.status === 'active' ? (
           <Button danger size="small" onClick={() => disconnect.mutate()}>
             Ngắt kết nối
           </Button>
         ) : null
       }
     >
-      {!connection.data ? (
-        <Button type="primary" loading={start.isPending} onClick={() => start.mutate(projectId)}>
-          Kết nối Google Drive
+      {!isConnected ? (
+        <Button
+          type="primary"
+          loading={start.isPending}
+          onClick={() =>
+            start.mutate({
+              projectId,
+              returnUrl: `${window.location.pathname}${window.location.search}${window.location.hash}`,
+            })
+          }
+        >
+          {connection.data ? 'Kết nối lại Google Drive' : 'Kết nối Google Drive'}
         </Button>
       ) : (
         <Space direction="vertical" style={{ width: '100%' }}>
+          {!hasPickerScope ? (
+            <Alert
+              type="warning"
+              showIcon
+              message="Google Drive cần được cấp lại quyền đọc file để hiển thị My Drive và Shared with me."
+            />
+          ) : null}
+          {pickerToken.isError ? (
+            <Alert
+              type="error"
+              showIcon
+              message={pickerToken.error.message}
+              description="Hãy kết nối lại Google Drive nếu quyền OAuth đã cũ."
+            />
+          ) : null}
+          {pickerError ? <Alert type="error" showIcon message={pickerError} /> : null}
           <Typography.Text type="secondary">
-            Chọn nhiều file hoặc thư mục ảnh/video từ Google Drive.
+            Chọn file ảnh/video hoặc thư mục chứa ảnh/video từ Google Drive.
           </Typography.Text>
-          <Button
-            disabled={!pickerToken.data?.accessToken}
-            loading={pickerToken.isLoading}
-            onClick={openPicker}
-          >
-            Mở Google Picker
-          </Button>
-          <DrivePicker
+          <Space.Compact block>
+            <Button
+              type="primary"
+              disabled={!pickerToken.data?.accessToken}
+              loading={pickerToken.isLoading}
+              onClick={() => openPicker('files')}
+            >
+              Chọn file ảnh/video
+            </Button>
+            <Button
+              disabled={!pickerToken.data?.accessToken}
+              loading={pickerToken.isLoading}
+              onClick={() => openPicker('folders')}
+            >
+              Chọn folder
+            </Button>
+          </Space.Compact>
+          {pickerOpen ? (
+            <DrivePicker
             {...({
               id: 'project-drive-picker',
               'app-id': import.meta.env.VITE_GOOGLE_PICKER_APP_ID,
               'client-id': import.meta.env.VITE_GOOGLE_PICKER_CLIENT_ID,
               'developer-key': import.meta.env.VITE_GOOGLE_PICKER_API_KEY,
               'oauth-token': pickerToken.data?.accessToken,
+              scope: 'https://www.googleapis.com/auth/drive.readonly',
+              'mine-only': false,
+              origin: window.location.origin,
               'max-items': 100,
             } as Record<string, unknown>)}
             multiselect
+            onCanceled={() => setPickerOpen(false)}
+            onOauthError={() => {
+              setPickerOpen(false);
+              setPickerError('Google Picker không thể xác thực quyền truy cập Google Drive.');
+            }}
+            onOauthResponse={() => setPickerError(undefined)}
             onPicked={(event: PickerEvent) => {
-              const sources = (event.detail?.docs ?? [])
+              setPickerOpen(false);
+              const pickedDocs = event.detail?.docs ?? [];
+              const sources = pickedDocs
                 .filter(
                   (doc) =>
                     doc.mimeType === 'application/vnd.google-apps.folder' ||
@@ -101,21 +181,106 @@ export function ProjectGoogleDriveImportPanel({ projectId }: { projectId: string
                   name: doc.name,
                   mimeType: doc.mimeType,
                 }));
+              if (sources.length < pickedDocs.length) {
+                setPickerError('Chỉ có thể import file ảnh, video hoặc thư mục.');
+              }
               setSelected(sources);
+              summarizeSources.mutate(
+                sources.map((source) => ({ fileId: source.fileId, driveId: source.driveId })),
+              );
             }}
-          >
-            <DrivePickerDocsView
-              {...({
-                'enable-drives': 'true',
-                'include-folders': 'true',
-                'select-folder-enabled': 'true',
-                'mime-types': 'image/*,video/*,application/vnd.google-apps.folder',
-                'view-id': 'DOCS',
-              } as Record<string, unknown>)}
-            />
-          </DrivePicker>
+            >
+            {pickerMode === 'files' ? (
+              <>
+                <DrivePickerDocsView
+                  {...({
+                    'include-folders': 'false',
+                    'select-folder-enabled': 'false',
+                    'mime-types': 'image/*,video/*',
+                    mode: 'GRID',
+                    'view-id': 'DOCS',
+                  } as Record<string, unknown>)}
+                />
+                <DrivePickerDocsView
+                  {...({
+                    'enable-drives': 'true',
+                    'include-folders': 'false',
+                    'select-folder-enabled': 'false',
+                    'mime-types': 'image/*,video/*',
+                    mode: 'GRID',
+                    'view-id': 'DOCS',
+                  } as Record<string, unknown>)}
+                />
+              </>
+            ) : (
+              <>
+                <DrivePickerDocsView
+                  {...({
+                    'include-folders': 'true',
+                    'select-folder-enabled': 'true',
+                    'mime-types': 'application/vnd.google-apps.folder',
+                    mode: 'GRID',
+                    'view-id': 'FOLDERS',
+                  } as Record<string, unknown>)}
+                />
+                <DrivePickerDocsView
+                  {...({
+                    'enable-drives': 'true',
+                    'include-folders': 'true',
+                    'select-folder-enabled': 'true',
+                    'mime-types': 'application/vnd.google-apps.folder',
+                    mode: 'GRID',
+                    'view-id': 'FOLDERS',
+                  } as Record<string, unknown>)}
+                />
+              </>
+            )}
+            </DrivePicker>
+          ) : null}
           {selected.length ? (
             <>
+              {summarizeSources.isPending ? (
+                <Alert
+                  type="info"
+                  showIcon
+                  message="Đang quét folder để thống kê số file ảnh/video..."
+                />
+              ) : summarizeSources.isError ? (
+                <Alert
+                  type="error"
+                  showIcon
+                  message="Không thể thống kê file trong Google Drive"
+                  description={summarizeSources.error.message}
+                />
+              ) : summarizeSources.data ? (
+                <Alert
+                  type="info"
+                  showIcon
+                  message={`Tổng cộng ${summarizeSources.data.fileCount} file hợp lệ`}
+                  description={
+                    <Space wrap>
+                      <Tag color="blue">{summarizeSources.data.imageCount} ảnh</Tag>
+                      <Tag color="purple">{summarizeSources.data.videoCount} video</Tag>
+                      {summarizeSources.data.folderCount > 0 ? (
+                        <Tag>{summarizeSources.data.folderCount} folder</Tag>
+                      ) : null}
+                      {summarizeSources.data.unsupportedCount > 0 ? (
+                        <Typography.Text type="secondary">
+                          {summarizeSources.data.unsupportedCount} file khác sẽ bị bỏ qua
+                        </Typography.Text>
+                      ) : null}
+                    </Space>
+                  }
+                />
+              ) : (
+                <Space wrap>
+                  <Tag color="blue">{selectedCounts.imageCount} ảnh đã chọn</Tag>
+                  <Tag color="purple">{selectedCounts.videoCount} video đã chọn</Tag>
+                  {selectedCounts.folderCount > 0 ? (
+                    <Tag>{selectedCounts.folderCount} folder đang chờ quét</Tag>
+                  ) : null}
+                </Space>
+              )}
               <List
                 bordered
                 size="small"
@@ -131,7 +296,8 @@ export function ProjectGoogleDriveImportPanel({ projectId }: { projectId: string
               />
               <Button
                 type="primary"
-                loading={createImport.isPending}
+                loading={createImport.isPending || summarizeSources.isPending}
+                disabled={summarizeSources.isPending || summarizeSources.isError}
                 onClick={() =>
                   void createImport
                     .mutateAsync({
