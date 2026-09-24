@@ -71,19 +71,19 @@ function formatDimensions(
   width: number | null | undefined,
   height: number | null | undefined,
 ): string {
-  return width && height ? `${width} × ${height}` : '—';
+  return width && height ? `${width} × ${height}` : '-';
 }
 
 function formatDuration(value: number | null | undefined): string {
   if (value === null || value === undefined || !Number.isFinite(value)) {
-    return '—';
+    return '-';
   }
   const total = Math.round(value);
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
 }
 
 function formatDate(value: string | null | undefined): string {
-  return value ? new Date(value).toLocaleString('vi-VN') : '—';
+  return value ? new Date(value).toLocaleString('vi-VN') : '-';
 }
 
 type ProjectMediaPanelProps = {
@@ -437,7 +437,7 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
               file.response?.creatorName ||
               file.response?.createdByUser?.name ||
               file.response?.createdByUser?.email ||
-              '—',
+              '-',
           },
           {
             title: t('projects.updatedAt'),

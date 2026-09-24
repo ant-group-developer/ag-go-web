@@ -96,7 +96,7 @@ function ProjectThumbnailCell({ assetId }: { assetId?: string | null }) {
           width: 64,
         }}
       >
-        <span>—</span>
+        <span>-</span>
       </div>
     );
   }
@@ -259,7 +259,7 @@ export function ProjectsPage() {
                 preview={false}
               />
             ) : null}
-            <Typography.Text>{project.countryName || '—'}</Typography.Text>
+            <Typography.Text>{project.countryName || '-'}</Typography.Text>
           </Space>
           {project.provinceName ? (
             <Typography.Text type="secondary">{project.provinceName}</Typography.Text>
@@ -275,7 +275,7 @@ export function ProjectsPage() {
       ellipsis: true,
       render: (_, project) => (
         <Tooltip title={project.folderPath || t('projects.folderUnavailable')}>
-          <Typography.Text ellipsis>{project.folderPath || '—'}</Typography.Text>
+          <Typography.Text ellipsis>{project.folderPath || '-'}</Typography.Text>
         </Tooltip>
       ),
     },

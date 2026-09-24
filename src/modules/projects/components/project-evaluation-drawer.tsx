@@ -109,7 +109,7 @@ export function ProjectEvaluationDrawer({ open, projectId, onClose }: Props) {
       open={open}
       placement="right"
       width={720}
-      title={`${t('evaluations.title')}${project.data?.name ? ` — ${project.data.name}` : ''}`}
+      title={`${t('evaluations.title')}${project.data?.name ? ` - ${project.data.name}` : ''}`}
       onClose={onClose}
     >
       {project.isError || media.isError ? (
@@ -198,7 +198,7 @@ export function ProjectEvaluationDrawer({ open, projectId, onClose }: Props) {
                         {evaluationStatusLabels[item.evaluationStatus] ?? item.evaluationStatus}
                       </Tag>
                     }
-                    description={`${item.comment || '—'} · ${item.evaluatedBy} · ${formatDate(item.createdAt)}`}
+                    description={`${item.comment || '-'} · ${item.evaluatedBy} · ${formatDate(item.createdAt)}`}
                   />
                 </List.Item>
               )}

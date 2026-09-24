@@ -78,20 +78,20 @@ function importStatusColor(status: string): string {
 }
 
 function formatDimensions(width: number | null, height: number | null): string {
-  return width && height ? `${width} × ${height}` : '—';
+  return width && height ? `${width} × ${height}` : '-';
 }
 
 function formatDuration(value: string | null): string {
   const seconds = Number(value);
   if (!Number.isFinite(seconds) || seconds <= 0) {
-    return '—';
+    return '-';
   }
   const total = Math.round(seconds);
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
 }
 
 function formatDate(value: string | null): string {
-  return value ? new Date(value).toLocaleString('vi-VN') : '—';
+  return value ? new Date(value).toLocaleString('vi-VN') : '-';
 }
 
 export function ProjectGoogleDriveImportPanel({ projectId }: { projectId: string }) {
@@ -493,7 +493,7 @@ export function ProjectGoogleDriveImportPanel({ projectId }: { projectId: string
                   {
                     title: t('common.author'),
                     dataIndex: 'sourceCreator',
-                    render: (value: string | null) => value || '—',
+                    render: (value: string | null) => value || '-',
                   },
                   {
                     title: t('projects.updatedAt'),

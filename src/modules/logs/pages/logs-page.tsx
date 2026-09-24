@@ -113,7 +113,7 @@ export function LogsPage() {
             title: t('logs.actor'),
             dataIndex: 'actorUser',
             render: (_: unknown, record) =>
-              record.actorUser?.name ?? record.actorUser?.email ?? record.userId ?? '—',
+              record.actorUser?.name ?? record.actorUser?.email ?? record.userId ?? '-',
           },
           { title: t('logs.message'), dataIndex: 'message', ellipsis: true },
         ]}
@@ -124,7 +124,7 @@ export function LogsPage() {
             <Descriptions.Item label="ID">{selected.id}</Descriptions.Item>
             <Descriptions.Item label={t('logs.action')}>{selected.action}</Descriptions.Item>
             <Descriptions.Item label={t('logs.message')}>{selected.message}</Descriptions.Item>
-            <Descriptions.Item label={t('logs.project')}>{selected.projectId ?? '—'}</Descriptions.Item>
+            <Descriptions.Item label={t('logs.project')}>{selected.projectId ?? '-'}</Descriptions.Item>
             <Descriptions.Item label={t('logs.metadata')}>
               <pre style={{ whiteSpace: 'pre-wrap' }}>
                 {JSON.stringify(selected.metadata ?? {}, null, 2)}
