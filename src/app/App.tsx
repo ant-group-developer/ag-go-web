@@ -218,7 +218,7 @@ export function App() {
       {
         key: 'logout',
         icon: <LogoutOutlined />,
-        label: 'Đăng xuất',
+        label: t('menu.logout'),
         onClick: handleLogout,
         danger: true,
       },
@@ -239,15 +239,6 @@ export function App() {
               path: '/statistics',
               name: t('menu.statistics'),
               icon: <BarChart3 size={16} />,
-            },
-          ]
-        : []),
-      ...(hasPermission('go.render.read')
-        ? [
-            {
-              path: '/render',
-              name: 'Render',
-              icon: <Activity size={16} />,
             },
           ]
         : []),
@@ -346,6 +337,15 @@ export function App() {
                   path: '/system/logs',
                   name: t('menu.logs'),
                   icon: <ScrollText size={16} />,
+                },
+              ]
+            : []),
+          ...(hasPermission('go.render.read')
+            ? [
+                {
+                  path: '/render',
+                  name: t('menu.render'),
+                  icon: <Activity size={16} />,
                 },
               ]
             : []),

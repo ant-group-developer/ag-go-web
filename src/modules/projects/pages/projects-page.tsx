@@ -588,6 +588,7 @@ export function ProjectsPage() {
         onClose={() => setCreateOpen(false)}
         onComplete={(project) => {
           setCreateOpen(false);
+          void message.success(t('projects.createSuccess'));
           navigate(`/projects/${project.id}/edit`);
         }}
       />

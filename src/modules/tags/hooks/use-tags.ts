@@ -7,6 +7,7 @@ export function useTags(enabled = true) {
     queryKey: tagQueryKeys.list(),
     queryFn: getTags,
     enabled,
+    refetchOnWindowFocus: true,
   });
 }
 

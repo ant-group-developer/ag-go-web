@@ -22,6 +22,7 @@ import {
 import type { RcFile } from 'antd/es/upload';
 import { ImagePlus, RotateCcw, UploadCloud } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getAssetPreviewUrl } from '../../media/api/media';
 import {
   getRenderProfiles,
@@ -177,7 +178,6 @@ function WatermarkPreview({ sampleUrl, logoUrl, config, enabled }: PreviewProps)
 
       context.save();
       context.globalAlpha = config.opacity;
-      let textX = position.x;
       if (logo?.complete && logo.naturalWidth > 0) {
         context.drawImage(
           logo,
@@ -186,7 +186,6 @@ function WatermarkPreview({ sampleUrl, logoUrl, config, enabled }: PreviewProps)
           logoSize,
           logoSize,
         );
-        textX += logoSize * 1.3;
       }
       if (config.text) {
         context.fillStyle = config.color;
@@ -220,6 +219,7 @@ function RenderProfileEditor({
   profile: RenderProfile;
   onSuccess: () => void;
 }) {
+  const { t } = useTranslation();
   const [form] = Form.useForm();
   const { message } = AntApp.useApp();
   const updateProfile = useUpdateRenderProfile();
@@ -263,9 +263,11 @@ function RenderProfileEditor({
       const assetId = await uploadWatermarkLogo(file);
       form.setFieldValue(['watermarkConfig', 'logoAssetId'], assetId);
       setLogoUrl(URL.createObjectURL(file));
-      void message.success('Đã tải logo watermark');
+      void message.success(t('settings.logoUploadSuccess'));
     } catch (error) {
-      void message.error(error instanceof Error ? error.message : 'Không thể tải logo watermark');
+      void message.error(
+        error instanceof Error ? error.message : t('settings.logoUploadFailed'),
+      );
     } finally {
       setLogoUploading(false);
     }
@@ -303,12 +305,12 @@ function RenderProfileEditor({
             },
             {
               onSuccess: () => {
-                void message.success('Đã cập nhật render profile');
+                void message.success(t('settings.profileUpdateSuccess'));
                 onSuccess();
               },
               onError: (error) =>
                 void message.error(
-                  error instanceof Error ? error.message : 'Không thể cập nhật render profile',
+                  error instanceof Error ? error.message : t('settings.profileUpdateFailed'),
                 ),
             },
           );
@@ -318,12 +320,12 @@ function RenderProfileEditor({
           <Col xs={24} lg={14}>
             <Row gutter={16}>
           <Col xs={24} md={12}>
-            <Form.Item name="name" label="Tên profile" rules={[{ required: true }]}>
+            <Form.Item name="name" label={t('settings.profileName')} rules={[{ required: true }]}>
               <Input maxLength={100} />
             </Form.Item>
           </Col>
           <Col xs={24} md={12}>
-            <Form.Item name="outputFormat" label="Output format">
+            <Form.Item name="outputFormat" label={t('settings.outputFormat')}>
               <Select
                 options={['webp', 'jpeg', 'jpg', 'png', 'mp4', 'webm'].map((value) => ({
                   label: value,
@@ -333,46 +335,46 @@ function RenderProfileEditor({
             </Form.Item>
           </Col>
           <Col xs={12} md={6}>
-            <Form.Item name="maxWidth" label="Max width">
+            <Form.Item name="maxWidth" label={t('settings.maxWidth')}>
               <InputNumber min={1} max={10000} style={{ width: '100%' }} />
             </Form.Item>
           </Col>
           <Col xs={12} md={6}>
-            <Form.Item name="maxHeight" label="Max height">
+            <Form.Item name="maxHeight" label={t('settings.maxHeight')}>
               <InputNumber min={1} max={10000} style={{ width: '100%' }} />
             </Form.Item>
           </Col>
           <Col xs={12} md={6}>
-            <Form.Item name="imageQuality" label="Image quality">
+            <Form.Item name="imageQuality" label={t('settings.imageQuality')}>
               <InputNumber min={1} max={100} style={{ width: '100%' }} />
             </Form.Item>
           </Col>
           <Col xs={12} md={6}>
-            <Form.Item name="videoBitrateBps" label="Video bitrate (bps)">
+            <Form.Item name="videoBitrateBps" label={t('settings.videoBitrate')}>
               <Input />
             </Form.Item>
           </Col>
             </Row>
 
-            <Card size="small" title="Watermark" style={{ marginBottom: 16 }}>
+            <Card size="small" title={t('settings.watermark')} style={{ marginBottom: 16 }}>
               <Row gutter={16}>
             <Col xs={24} md={6}>
-              <Form.Item name="watermarkEnabled" label="Bật watermark" valuePropName="checked">
+              <Form.Item name="watermarkEnabled" label={t('settings.watermarkEnabled')} valuePropName="checked">
                 <Switch />
               </Form.Item>
             </Col>
             <Col xs={24} md={18}>
-              <Form.Item name={['watermarkConfig', 'text']} label="Text">
+              <Form.Item name={['watermarkConfig', 'text']} label={t('settings.text')}>
                 <Input maxLength={200} placeholder="AG Go Preview" />
               </Form.Item>
             </Col>
             <Col xs={12} md={6}>
-              <Form.Item name={['watermarkConfig', 'color']} label="Màu chữ">
+              <Form.Item name={['watermarkConfig', 'color']} label={t('settings.textColor')}>
                 <Input type="color" />
               </Form.Item>
             </Col>
             <Col xs={24} md={8}>
-              <Form.Item name={['watermarkConfig', 'fontFamily']} label="Font">
+              <Form.Item name={['watermarkConfig', 'fontFamily']} label={t('settings.font')}>
                 <Select
                   options={['Arial', 'Times New Roman', 'Courier New', 'Verdana', 'Georgia', 'Impact', 'Tahoma'].map(
                     (value) => ({ value, label: value }),
@@ -381,17 +383,17 @@ function RenderProfileEditor({
               </Form.Item>
             </Col>
             <Col xs={12} md={8}>
-              <Form.Item name={['watermarkConfig', 'fontSize']} label="Font size">
+              <Form.Item name={['watermarkConfig', 'fontSize']} label={t('settings.fontSize')}>
                 <InputNumber min={8} max={240} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
             <Col xs={12} md={8}>
-              <Form.Item name={['watermarkConfig', 'rotate']} label="Rotate">
+              <Form.Item name={['watermarkConfig', 'rotate']} label={t('settings.rotate')}>
                 <InputNumber min={-360} max={360} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>
-              <Form.Item label="Logo">
+              <Form.Item label={t('settings.logo')}>
                 <Upload
                   accept="image/*"
                   maxCount={1}
@@ -402,7 +404,7 @@ function RenderProfileEditor({
                   }}
                 >
                   <Button icon={<UploadCloud size={16} />} loading={logoUploading}>
-                    Upload logo
+                    {t('settings.uploadLogo')}
                   </Button>
                 </Upload>
                 {logoUrl ? (
@@ -417,7 +419,7 @@ function RenderProfileEditor({
                         setLogoUrl(undefined);
                       }}
                     >
-                      Xóa logo
+                      {t('settings.deleteLogo')}
                     </Button>
                   </div>
                 ) : null}
@@ -427,44 +429,44 @@ function RenderProfileEditor({
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>
-              <Form.Item name={['watermarkConfig', 'position']} label="Vị trí">
+              <Form.Item name={['watermarkConfig', 'position']} label={t('settings.position')}>
                 <Select
                   options={WATERMARK_POSITIONS.map((value) => ({ value, label: value }))}
                 />
               </Form.Item>
             </Col>
             <Col xs={24} md={6}>
-              <Form.Item name={['watermarkConfig', 'repeat']} label="Lặp watermark" valuePropName="checked">
+              <Form.Item name={['watermarkConfig', 'repeat']} label={t('settings.repeatWatermark')} valuePropName="checked">
                 <Switch />
               </Form.Item>
             </Col>
             <Col xs={12} md={6}>
-              <Form.Item name={['watermarkConfig', 'maxWidth']} label="Max width">
+              <Form.Item name={['watermarkConfig', 'maxWidth']} label={t('settings.maxWidth')}>
                 <InputNumber min={1} max={10000} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
             <Col xs={12} md={6}>
-              <Form.Item name={['watermarkConfig', 'gapX']} label="Gap X">
+              <Form.Item name={['watermarkConfig', 'gapX']} label={t('settings.gapX')}>
                 <InputNumber min={40} max={2000} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
             <Col xs={12} md={6}>
-              <Form.Item name={['watermarkConfig', 'gapY']} label="Gap Y">
+              <Form.Item name={['watermarkConfig', 'gapY']} label={t('settings.gapY')}>
                 <InputNumber min={40} max={2000} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
             <Col xs={24} md={8}>
-              <Form.Item name={['watermarkConfig', 'opacity']} label="Opacity">
+              <Form.Item name={['watermarkConfig', 'opacity']} label={t('settings.opacity')}>
                 <Slider min={0} max={1} step={0.05} />
               </Form.Item>
             </Col>
             <Col xs={24} md={8}>
-              <Form.Item name={['watermarkConfig', 'scale']} label="Scale">
+              <Form.Item name={['watermarkConfig', 'scale']} label={t('settings.scale')}>
                 <Slider min={0.05} max={1} step={0.01} />
               </Form.Item>
             </Col>
             <Col xs={24} md={8}>
-              <Form.Item name={['watermarkConfig', 'margin']} label="Margin">
+              <Form.Item name={['watermarkConfig', 'margin']} label={t('settings.margin')}>
                 <InputNumber min={0} max={500} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
@@ -474,10 +476,10 @@ function RenderProfileEditor({
           <Col xs={24} lg={10}>
             <Card
               size="small"
-              title="Preview watermark"
+              title={t('settings.previewWatermark')}
               style={{ position: 'sticky', top: 16 }}
             >
-              <Typography.Text type="secondary">Ảnh mẫu preview</Typography.Text>
+              <Typography.Text type="secondary">{t('settings.previewSample')}</Typography.Text>
               <Upload
                 accept="image/*"
                 maxCount={1}
@@ -491,7 +493,7 @@ function RenderProfileEditor({
                 }}
               >
                 <Button icon={<ImagePlus size={16} />} style={{ margin: '8px 0 12px' }}>
-                  Chọn ảnh mẫu
+                  {t('settings.selectSample')}
                 </Button>
               </Upload>
               <WatermarkPreview
@@ -505,7 +507,7 @@ function RenderProfileEditor({
         </Row>
 
         <Button type="primary" htmlType="submit" loading={updateProfile.isPending}>
-          Lưu render profile
+          {t('settings.saveProfile')}
         </Button>
       </Form>
     </Card>
@@ -513,6 +515,7 @@ function RenderProfileEditor({
 }
 
 export function SettingsPage() {
+  const { t } = useTranslation();
   const settings = useSettings();
   const update = useUpdateSettings();
   const profiles = useQuery({
@@ -536,14 +539,14 @@ export function SettingsPage() {
   ));
 
   return (
-    <PageContainer title="Cấu hình hệ thống">
+    <PageContainer title={t('settings.title')}>
       {settings.isError ? <Alert type="error" showIcon message={settings.error.message} /> : null}
       {settings.isLoading ? <Spin /> : null}
       <Tabs
         items={[
           {
             key: 'web',
-            label: 'Thông tin website',
+            label: t('settings.tabWebsite'),
             children: (
               <Card>
                 <Form
@@ -553,29 +556,29 @@ export function SettingsPage() {
                     update.mutate(values);
                   }}
                 >
-                  <Form.Item name="siteName" label="Tên website" rules={[{ required: true }]}>
+                  <Form.Item name="siteName" label={t('settings.siteName')} rules={[{ required: true }]}>
                     <Input maxLength={160} />
                   </Form.Item>
-                  <Form.Item name="siteDescription" label="Mô tả website">
+                  <Form.Item name="siteDescription" label={t('settings.siteDescription')}>
                     <Input.TextArea maxLength={300} rows={3} />
                   </Form.Item>
-                  <Form.Item name="logoUrl" label="Logo URL">
+                  <Form.Item name="logoUrl" label={t('settings.logoUrl')}>
                     <Input placeholder="https://..." />
                   </Form.Item>
-                  <Form.Item name="faviconUrl" label="Favicon URL">
+                  <Form.Item name="faviconUrl" label={t('settings.faviconUrl')}>
                     <Input placeholder="https://..." />
                   </Form.Item>
-                  <Form.Item name="supportEmail" label="Email hỗ trợ">
+                  <Form.Item name="supportEmail" label={t('settings.supportEmail')}>
                     <Input type="email" />
                   </Form.Item>
-                  <Form.Item name="supportUrl" label="Trang hỗ trợ">
+                  <Form.Item name="supportUrl" label={t('settings.supportUrl')}>
                     <Input placeholder="https://..." />
                   </Form.Item>
-                  <Form.Item name="primaryColor" label="Màu chủ đạo">
+                  <Form.Item name="primaryColor" label={t('settings.primaryColor')}>
                     <Input placeholder="#1677ff" />
                   </Form.Item>
                   <Button type="primary" htmlType="submit" loading={update.isPending}>
-                    Lưu cấu hình
+                    {t('settings.saveSettings')}
                   </Button>
                 </Form>
               </Card>
@@ -583,11 +586,11 @@ export function SettingsPage() {
           },
           {
             key: 'render',
-            label: 'Render profiles',
+            label: t('settings.tabRender'),
             children: (
               <Card>
                 <Typography.Paragraph type="secondary">
-                  Mỗi lần lưu sẽ tạo một version mới. Các render job đang chạy vẫn giữ version cũ.
+                  {t('settings.renderProfileNote')}
                 </Typography.Paragraph>
                 {profiles.isError ? <Alert type="error" message={profiles.error.message} /> : null}
                 {profiles.isLoading ? <Spin /> : null}

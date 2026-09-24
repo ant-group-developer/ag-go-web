@@ -447,10 +447,10 @@ export function ProjectDetailDrawer({ open, projectId, onClose }: ProjectReviewD
         return;
       }
       setDownloadJobId(result.downloadJobId);
-      void message.success('Đã tạo download job');
+      void message.success(t('projects.downloadJobCreated'));
     },
     onError: (error) => {
-      void message.error(error instanceof Error ? error.message : 'Không thể tạo download');
+      void message.error(error instanceof Error ? error.message : t('projects.downloadFailed'));
     },
   });
   const retry = useMutation({
@@ -485,7 +485,7 @@ export function ProjectDetailDrawer({ open, projectId, onClose }: ProjectReviewD
       return;
     }
     if (scope === 'multiple' && selectedMediaIds.length === 0) {
-      void message.warning('Hãy chọn ít nhất một file');
+      void message.warning(t('projects.selectAtLeastOneFile'));
       return;
     }
     download.mutate({
@@ -542,7 +542,7 @@ export function ProjectDetailDrawer({ open, projectId, onClose }: ProjectReviewD
                       size="small"
                       onClick={() => requestDownload('multiple')}
                     >
-                      Tải file đã chọn
+                      {t('projects.downloadSelected')}
                     </Button>
                     <Button
                       icon={<DownloadOutlined />}
@@ -551,7 +551,7 @@ export function ProjectDetailDrawer({ open, projectId, onClose }: ProjectReviewD
                       type="primary"
                       onClick={() => requestDownload('project')}
                     >
-                      Tải toàn bộ
+                      {t('projects.downloadAll')}
                     </Button>
                     {media.hasNextPage ? (
                       <Button
@@ -663,12 +663,12 @@ export function ProjectDetailDrawer({ open, projectId, onClose }: ProjectReviewD
               )}
             </Col>
           </Row>
-          <Card title="Audit log" style={{ marginTop: 16 }}>
-            {audit.isError ? <Alert type="error" message="Không thể tải audit log" /> : null}
+          <Card title={t('projects.auditLog')} style={{ marginTop: 16 }}>
+            {audit.isError ? <Alert type="error" message={t('projects.auditLogError')} /> : null}
             <List
               dataSource={audit.data?.items ?? []}
               loading={audit.isPending}
-              locale={{ emptyText: 'Chưa có audit log' }}
+              locale={{ emptyText: t('projects.auditLogEmpty') }}
               renderItem={(item: AuditLog) => (
                 <List.Item>
                   <List.Item.Meta
@@ -683,11 +683,11 @@ export function ProjectDetailDrawer({ open, projectId, onClose }: ProjectReviewD
             <Alert
               style={{ marginTop: 16 }}
               type={downloadJob.data?.status === 'failed' ? 'error' : 'info'}
-              message={`Download: ${downloadJob.data?.status ?? 'queued'}`}
+              message={t('projects.downloadStatus', { status: downloadJob.data?.status ?? 'queued' })}
               description={
                 downloadJob.data?.url ? (
                   <Button type="link" href={downloadJob.data.url} target="_blank">
-                    Mở file ZIP
+                    {t('projects.openZipFile')}
                   </Button>
                 ) : undefined
               }

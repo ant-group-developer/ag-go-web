@@ -134,17 +134,6 @@ function buildFolderTree(
 }
 
 // ─── Sidebar Category Definitions ────────────────────────────────────────────
-const filterCategories: Array<{
-  key: FilterCategory;
-  icon: React.ReactNode;
-  label: string;
-}> = [
-  { key: 'keyword', icon: <Search size={16} />, label: 'Từ khóa' },
-  { key: 'folder', icon: <FolderIcon size={16} />, label: 'Thư mục' },
-  { key: 'category', icon: <Layers size={16} />, label: 'Danh mục' },
-  { key: 'tags', icon: <TagIcon size={16} />, label: 'Tags' },
-  { key: 'location', icon: <MapPin size={16} />, label: 'Địa điểm' },
-];
 
 function getCategoryFilterCount(key: FilterCategory, value: ProjectFilterValues): number {
   switch (key) {
@@ -218,6 +207,19 @@ function FilterContent({
     [value],
   );
 
+  const filterCategories = useMemo<
+    Array<{ key: FilterCategory; icon: React.ReactNode; label: string }>
+  >(
+    () => [
+      { key: 'keyword', icon: <Search size={16} />, label: t('projects.keyword') },
+      { key: 'folder', icon: <FolderIcon size={16} />, label: t('projects.folder') },
+      { key: 'category', icon: <Layers size={16} />, label: t('projects.category') },
+      { key: 'tags', icon: <TagIcon size={16} />, label: t('projects.tags') },
+      { key: 'location', icon: <MapPin size={16} />, label: t('projects.location') },
+    ],
+    [t],
+  );
+
   const visibleCategories = filterCategories.filter((c) =>
     c.label.toLowerCase().includes(sidebarSearch.trim().toLowerCase()),
   );
@@ -236,7 +238,7 @@ function FilterContent({
             <Input
               allowClear
               size="large"
-              placeholder="Nhập từ khóa tìm kiếm..."
+              placeholder={t('projects.keywordPlaceholderSearch')}
               prefix={<Search size={16} style={{ color: '#9ca3af' }} />}
               value={value.keyword ?? ''}
               onChange={(e) => onChange({ ...value, keyword: e.target.value || undefined })}
@@ -355,8 +357,8 @@ function FilterContent({
             {/* <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography.Text type="secondary" style={{ fontSize: 12.5 }}>
                 {(value.folderIds?.length ?? 0) > 0
-                  ? `Đã chọn ${value.folderIds!.length} thư mục`
-                  : 'Chọn các thư mục để lọc dự án'}
+                  ? t('projects.selectedFoldersCount', { count: value.folderIds!.length })
+                  : t('projects.selectFoldersToFilter')}
               </Typography.Text>
             </div> */}
           </div>

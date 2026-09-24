@@ -34,7 +34,7 @@ export function HomePage() {
         console.groupEnd();
       })
       .catch((error: unknown) => {
-        console.error('[AG Go] Không thể lấy hoặc decode access token', error);
+        console.error('[AG Go] Failed to retrieve or decode access token', error);
       });
   }, []);
 

@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Area,
   AreaChart,
@@ -48,14 +49,6 @@ import statsData from '../data/project-media-statistics.json';
 
 const { Text } = Typography;
 
-const PRESET_OPTIONS = [
-  { label: 'Hôm nay', value: 'today' },
-  { label: 'Tuần này', value: 'week' },
-  { label: 'Tháng này', value: 'month' },
-  { label: 'Năm nay', value: 'year' },
-  { label: 'Tùy chọn', value: 'custom' },
-];
-
 const GREEN = '#22c55e';
 const RED = '#f87171';
 const AMBER = '#fbbf24';
@@ -70,12 +63,18 @@ function formatUnitValue(value: number, unit: string) {
   return `${value.toLocaleString('en-US', { maximumFractionDigits: 2 })} ${unit}`;
 }
 
-const HEALTH_STATUS_META: Record<string, { color: string; label: string }> = {
-  healthy: { color: GREEN, label: 'Healthy' },
-  warning: { color: AMBER, label: 'Warning' },
-  critical: { color: RED, label: 'Critical' },
-  down: { color: RED, label: 'Down' },
-};
+function getHealthStatusMeta(
+  status: string,
+  t: (key: string) => string,
+): { color: string; label: string } {
+  const meta: Record<string, { color: string; label: string }> = {
+    healthy: { color: GREEN, label: t('statistics.healthHealthy') },
+    warning: { color: AMBER, label: t('statistics.healthWarning') },
+    critical: { color: RED, label: t('statistics.healthCritical') },
+    down: { color: RED, label: t('statistics.healthDown') },
+  };
+  return meta[status] ?? meta.healthy;
+}
 
 /* ------------------------------------------------------------------ */
 /*  Top projects by metric config                                      */
@@ -95,18 +94,6 @@ type RecentProject = {
   pendingPercent: number;
   lastUpdated: string;
 };
-const TOP_PROJECT_METRICS: {
-  key: TopMetricKey;
-  label: string;
-  icon: ReactNode;
-  color: string;
-}[] = [
-  { key: 'view', label: 'View', icon: <Eye size={13} />, color: '#0ea5e9' },
-  { key: 'media', label: 'Media', icon: <Film size={13} />, color: '#6366f1' },
-  { key: 'size', label: 'Size', icon: <HardDrive size={13} />, color: AMBER },
-  { key: 'image', label: 'Image', icon: <ImageIcon size={13} />, color: GREEN },
-  { key: 'video', label: 'Video', icon: <Film size={13} />, color: RED },
-];
 
 /* ------------------------------------------------------------------ */
 /*  Summary card                                                       */
@@ -301,6 +288,7 @@ type StorageStats = {
 };
 
 function StorageStatsCard({ storage }: { storage: StorageStats }) {
+  const { t } = useTranslation();
   const { token } = theme.useToken();
   const barColor = storage.usedPercent >= 90 ? RED : storage.usedPercent >= 75 ? AMBER : '#6366f1';
 
@@ -321,7 +309,7 @@ function StorageStatsCard({ storage }: { storage: StorageStats }) {
           >
             <HardDrive size={16} />
           </Flex>
-          <Text style={{ fontSize: 13 }}>Storage used</Text>
+          <Text style={{ fontSize: 13 }}>{t('statistics.storageUsed')}</Text>
         </Flex>
         <Text strong style={{ fontSize: 13 }}>
           {storage.usedPercent}%
@@ -339,7 +327,7 @@ function StorageStatsCard({ storage }: { storage: StorageStats }) {
         <Col span={8}>
           <Flex vertical gap={2}>
             <Text type="secondary" style={{ fontSize: 12 }}>
-              Total
+              {t('statistics.total')}
             </Text>
             <Text strong style={{ fontSize: 15 }}>
               {formatUnitValue(storage.total.value, storage.total.unit)}
@@ -349,7 +337,7 @@ function StorageStatsCard({ storage }: { storage: StorageStats }) {
         <Col span={8}>
           <Flex vertical gap={2}>
             <Text type="secondary" style={{ fontSize: 12 }}>
-              Used
+              {t('statistics.used')}
             </Text>
             <Text strong style={{ fontSize: 15, color: barColor }}>
               {formatUnitValue(storage.used.value, storage.used.unit)}
@@ -359,7 +347,7 @@ function StorageStatsCard({ storage }: { storage: StorageStats }) {
         <Col span={8}>
           <Flex vertical gap={2}>
             <Text type="secondary" style={{ fontSize: 12 }}>
-              Available
+              {t('statistics.available')}
             </Text>
             <Text strong style={{ fontSize: 15, color: GREEN }}>
               {formatUnitValue(storage.available.value, storage.available.unit)}
@@ -384,7 +372,8 @@ type SystemHealth = {
 };
 
 function SystemHealthCard({ health }: { health: SystemHealth }) {
-  const overall = HEALTH_STATUS_META[health.status] ?? HEALTH_STATUS_META.healthy;
+  const { t } = useTranslation();
+  const overall = getHealthStatusMeta(health.status, t);
 
   return (
     <Flex vertical gap={16}>
@@ -406,7 +395,7 @@ function SystemHealthCard({ health }: { health: SystemHealth }) {
           <Flex vertical gap={0}>
             <Text style={{ fontSize: 13 }}>{health.statusLabel}</Text>
             <Text type="secondary" style={{ fontSize: 11 }}>
-              Uptime {health.uptimePercent}% · checked {health.lastChecked}
+              {t('statistics.uptimeChecked', { uptime: health.uptimePercent, time: health.lastChecked })}
             </Text>
           </Flex>
         </Flex>
@@ -425,7 +414,7 @@ function SystemHealthCard({ health }: { health: SystemHealth }) {
 
       <Flex vertical gap={10}>
         {health.services.map((s) => {
-          const meta = HEALTH_STATUS_META[s.status] ?? HEALTH_STATUS_META.healthy;
+          const meta = getHealthStatusMeta(s.status, t);
           return (
             <Flex key={s.name} align="center" justify="space-between">
               <Flex align="center" gap={8} style={{ minWidth: 0 }}>
@@ -467,12 +456,35 @@ const ACTIVITY_META: Record<string, { color: string; icon: ReactNode }> = {
 /* ------------------------------------------------------------------ */
 
 export function StatisticsPage() {
+  const { t } = useTranslation();
   const { token } = theme.useToken();
   const [preset, setPreset] = useState('today');
   const [customRange, setCustomRange] = useState<[Dayjs, Dayjs]>([
     dayjs().subtract(6, 'day').startOf('day'),
     dayjs(),
   ]);
+
+  const presetOptions = useMemo(
+    () => [
+      { label: t('statistics.today'), value: 'today' },
+      { label: t('statistics.thisWeek'), value: 'week' },
+      { label: t('statistics.thisMonth'), value: 'month' },
+      { label: t('statistics.thisYear'), value: 'year' },
+      { label: t('statistics.customRange'), value: 'custom' },
+    ],
+    [t],
+  );
+
+  const topProjectMetrics = useMemo(
+    () => [
+      { key: 'view' as const, label: t('statistics.metricView'), icon: <Eye size={13} />, color: '#0ea5e9' },
+      { key: 'media' as const, label: t('statistics.metricMedia'), icon: <Film size={13} />, color: '#6366f1' },
+      { key: 'size' as const, label: t('statistics.metricSize'), icon: <HardDrive size={13} />, color: AMBER },
+      { key: 'image' as const, label: t('statistics.metricImage'), icon: <ImageIcon size={13} />, color: GREEN },
+      { key: 'video' as const, label: t('statistics.metricVideo'), icon: <Film size={13} />, color: RED },
+    ],
+    [t],
+  );
 
   const {
     summary,
@@ -489,7 +501,7 @@ export function StatisticsPage() {
   const summaryCards = useMemo(
     () => [
       {
-        title: 'Total projects',
+        title: t('statistics.totalProjects'),
         value: summary.totalProjects.value,
         deltaPercent: summary.totalProjects.deltaPercent,
         trend: summary.totalProjects.trend as 'up' | 'down',
@@ -497,7 +509,7 @@ export function StatisticsPage() {
         icon: <FolderKanban size={20} />,
       },
       {
-        title: 'Total media files',
+        title: t('statistics.totalMediaFiles'),
         value: summary.totalMediaFiles.value,
         deltaPercent: summary.totalMediaFiles.deltaPercent,
         trend: summary.totalMediaFiles.trend as 'up' | 'down',
@@ -505,7 +517,7 @@ export function StatisticsPage() {
         icon: <Film size={20} />,
       },
       {
-        title: 'Pending evaluation',
+        title: t('statistics.pendingEvaluation'),
         value: summary.pendingEvaluation.value,
         deltaPercent: summary.pendingEvaluation.deltaPercent,
         trend: summary.pendingEvaluation.trend as 'up' | 'down',
@@ -513,7 +525,7 @@ export function StatisticsPage() {
         icon: <Clock3 size={20} />,
       },
       {
-        title: 'Approved media',
+        title: t('statistics.approvedMedia'),
         value: summary.approvedMedia.value,
         deltaPercent: summary.approvedMedia.deltaPercent,
         trend: summary.approvedMedia.trend as 'up' | 'down',
@@ -521,7 +533,7 @@ export function StatisticsPage() {
         icon: <CheckCircle2 size={20} />,
       },
       {
-        title: 'Rejected media',
+        title: t('statistics.rejectedMedia'),
         value: summary.rejectedMedia.value,
         deltaPercent: summary.rejectedMedia.deltaPercent,
         trend: summary.rejectedMedia.trend as 'up' | 'down',
@@ -529,7 +541,7 @@ export function StatisticsPage() {
         icon: <XCircle size={20} />,
       },
       {
-        title: 'Total User',
+        title: t('statistics.totalUser'),
         value: summary.totalUserProjects.value,
         deltaPercent: summary.totalUserProjects.deltaPercent,
         trend: summary.totalUserProjects.trend as 'up' | 'down',
@@ -537,7 +549,7 @@ export function StatisticsPage() {
         icon: <User size={20} />,
       },
     ],
-    [summary],
+    [summary, t],
   );
 
   const chartData = useMemo(
@@ -553,7 +565,7 @@ export function StatisticsPage() {
   const evalSegments = mediaEvaluationResults.segments as Segment[];
   const typeSegments = mediaTypeDistribution.segments as Segment[];
 
-  const activeTopMetric = TOP_PROJECT_METRICS.find((m) => m.key === topMetric)!;
+  const activeTopMetric = topProjectMetrics.find((m) => m.key === topMetric)!;
   const topProjectsList = (topProjectsBy[topMetric] ?? []) as {
     id: string;
     name: string;
@@ -573,7 +585,7 @@ export function StatisticsPage() {
 
   const columns = [
     {
-      title: 'Project',
+      title: t('statistics.projectColumn'),
       dataIndex: 'name',
       key: 'name',
       fixed: 'left' as const,
@@ -601,7 +613,7 @@ export function StatisticsPage() {
       ),
     },
     {
-      title: 'Media',
+      title: t('statistics.mediaColumn'),
       dataIndex: 'mediaCount',
       key: 'mediaCount',
       width: 90,
@@ -609,7 +621,7 @@ export function StatisticsPage() {
       render: (v: number) => <Text strong>{formatNumber(v)}</Text>,
     },
     {
-      title: 'Approved',
+      title: t('statistics.approvedColumn'),
       dataIndex: 'approvedPercent',
       key: 'approved',
       width: 160,
@@ -626,7 +638,7 @@ export function StatisticsPage() {
       ),
     },
     {
-      title: 'Rejected',
+      title: t('statistics.rejectedColumn'),
       dataIndex: 'rejectedPercent',
       key: 'rejected',
       width: 160,
@@ -643,7 +655,7 @@ export function StatisticsPage() {
       ),
     },
     {
-      title: 'Pending',
+      title: t('statistics.pendingColumn'),
       dataIndex: 'pendingPercent',
       key: 'pending',
       width: 140,
@@ -661,7 +673,7 @@ export function StatisticsPage() {
     },
 
     {
-      title: 'Last updated',
+      title: t('statistics.lastUpdatedColumn'),
       dataIndex: 'lastUpdated',
       key: 'lastUpdated',
       width: 130,
@@ -677,8 +689,8 @@ export function StatisticsPage() {
 
   return (
     <PageContainer
-      title="Thống kê"
-      subTitle="Tổng quan dự án & media"
+      title={t('statistics.title')}
+      subTitle={t('statistics.subtitle')}
       extra={[
         preset === 'custom' && (
           <DatePicker.RangePicker
@@ -695,7 +707,7 @@ export function StatisticsPage() {
           key="preset"
           value={preset}
           onChange={(value) => setPreset(String(value))}
-          options={PRESET_OPTIONS}
+          options={presetOptions}
         />,
       ]}
       style={{
@@ -716,12 +728,12 @@ export function StatisticsPage() {
       {/* ---------------- Storage & System health ---------------- */}
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
         <Col xs={24} md={12}>
-          <ProCard title="Storage statistics" bordered headerBordered style={cardStyle}>
+          <ProCard title={t('statistics.storageStatistics')} bordered headerBordered style={cardStyle}>
             <StorageStatsCard storage={storageStatistics as StorageStats} />
           </ProCard>
         </Col>
         <Col xs={24} md={12}>
-          <ProCard title="System health" bordered headerBordered style={cardStyle}>
+          <ProCard title={t('statistics.systemHealth')} bordered headerBordered style={cardStyle}>
             <SystemHealthCard health={systemHealth as SystemHealth} />
           </ProCard>
         </Col>
@@ -731,7 +743,7 @@ export function StatisticsPage() {
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
         <Col xs={24} lg={16}>
           <ProCard
-            title="Projects & Media · last 30 days"
+            title={t('statistics.last30DaysChart')}
             bordered
             headerBordered
             style={cardStyle}
@@ -783,7 +795,7 @@ export function StatisticsPage() {
                     yAxisId="left"
                     type="monotone"
                     dataKey="projects"
-                    name="Projects"
+                    name={t('statistics.projectsName')}
                     stroke="#6366f1"
                     strokeWidth={2}
                     fill="url(#gradProjects)"
@@ -792,7 +804,7 @@ export function StatisticsPage() {
                     yAxisId="right"
                     type="monotone"
                     dataKey="mediaFiles"
-                    name="Media files"
+                    name={t('statistics.mediaFilesName')}
                     stroke="#f59e0b"
                     strokeWidth={2}
                     fill="url(#gradMedia)"
@@ -805,13 +817,13 @@ export function StatisticsPage() {
 
         <Col xs={24} lg={8}>
           <ProCard
-            title="Media type distribution"
+            title={t('statistics.mediaTypeDistribution')}
             bordered
             headerBordered
             style={cardStyle}
             bodyStyle={{ paddingTop: 8 }}
           >
-            <DonutChart segments={typeSegments} centerLabel="Total files" height={220} />
+            <DonutChart segments={typeSegments} centerLabel={t('statistics.totalFiles')} height={220} />
             <div style={{ marginTop: 16 }}>
               <SegmentLegend segments={typeSegments} total={mediaTypeDistribution.total} />
             </div>
@@ -824,13 +836,13 @@ export function StatisticsPage() {
         {/* Media type distribution */}
         <Col xs={24} lg={8}>
           <ProCard
-            title="Media evaluation results"
+            title={t('statistics.mediaEvaluationResults')}
             bordered
             headerBordered
             style={cardStyle}
             bodyStyle={{ paddingTop: 8 }}
           >
-            <DonutChart segments={evalSegments} centerLabel="Total media" height={220} />
+            <DonutChart segments={evalSegments} centerLabel={t('statistics.totalMedia')} height={220} />
             <div style={{ marginTop: 16 }}>
               <SegmentLegend segments={evalSegments} total={mediaEvaluationResults.total} />
             </div>
@@ -840,7 +852,7 @@ export function StatisticsPage() {
         {/* Top projects by */}
         <Col xs={24} lg={8}>
           <ProCard
-            title="Top projects by"
+            title={t('statistics.topProjectsBy')}
             bordered
             headerBordered
             style={cardStyle}
@@ -849,7 +861,7 @@ export function StatisticsPage() {
                 size="small"
                 value={topMetric}
                 onChange={(value) => setTopMetric(value as TopMetricKey)}
-                options={TOP_PROJECT_METRICS.map((m) => ({
+                options={topProjectMetrics.map((m) => ({
                   label: (
                     <Flex align="center" gap={4}>
                       {m.icon}
@@ -904,7 +916,7 @@ export function StatisticsPage() {
 
         {/* Recent activities */}
         <Col xs={24} lg={8}>
-          <ProCard title="Recent activities" bordered headerBordered style={cardStyle}>
+          <ProCard title={t('statistics.recentActivities')} bordered headerBordered style={cardStyle}>
             <Timeline
               items={statsData.recentActivities.map((a) => {
                 const meta = ACTIVITY_META[a.type] ?? ACTIVITY_META.created;
@@ -955,7 +967,7 @@ export function StatisticsPage() {
       {/* ---------------- Table ---------------- */}
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
         <Col span={24}>
-          <ProCard title="Recent projects" bordered headerBordered style={cardStyle}>
+          <ProCard title={t('statistics.recentProjects')} bordered headerBordered style={cardStyle}>
             <Table
               rowKey="id"
               size="middle"
