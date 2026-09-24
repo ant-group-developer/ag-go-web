@@ -5,7 +5,6 @@ import {
   Alert,
   App as AntApp,
   Button,
-  Cascader,
   Drawer,
   Form,
   Input,
@@ -14,12 +13,12 @@ import {
   Typography,
   Upload,
 } from 'antd';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useCategories } from '../../categories/hooks/use-categories';
+import { CategorySelect } from '../../categories/components/category-select';
 import { CountrySelect } from '../../countries/components/country-select';
+import { FolderCascader } from '../../folders/components/folder-cascader';
 import { useFolders } from '../../folders/hooks/use-folders';
-import { buildFolderCascaderOptions } from '../../folders/utils/build-folder-cascader-options';
 import {
   abortUpload,
   attachProjectMedia,
@@ -42,13 +41,9 @@ export function CreateProjectModal({ open, onClose, onComplete }: CreateProjectM
   const queryClient = useQueryClient();
   const [form] = Form.useForm<ProjectFormValues>();
   const folders = useFolders(open);
-  const categories = useCategories(open);
   const tags = useTags(open);
   const create = useCreateProject();
-  const folderOptions = useMemo(
-    () => buildFolderCascaderOptions(folders.data ?? []),
-    [folders.data],
-  );
+  const hasFolders = (folders.data?.length ?? 0) > 0;
   const countryId = Form.useWatch('countryId', form);
   const provinces = useProvinces({ page: 1, pageSize: 100, countryId }, open && Boolean(countryId));
   const [thumbnailFile, setThumbnailFile] = useState<UploadFile>();
@@ -165,7 +160,7 @@ export function CreateProjectModal({ open, onClose, onComplete }: CreateProjectM
       <Button
         type="primary"
         loading={isSubmitting || create.isPending}
-        disabled={folders.isPending || folders.isError || folderOptions.length === 0}
+        disabled={folders.isPending || folders.isError || !hasFolders}
         onClick={() => form.submit()}
       >
         {t('projects.create')}
@@ -210,31 +205,16 @@ export function CreateProjectModal({ open, onClose, onComplete }: CreateProjectM
           extra={
             folders.isError
               ? folders.error.message
-              : folderOptions.length === 0
+              : !hasFolders
                 ? t('projects.noFolders')
                 : undefined
           }
         >
-          <Cascader
-            options={folderOptions}
-            showSearch
-            changeOnSelect
-            placeholder={t('projects.folderPlaceholder')}
-          />
+          <FolderCascader enabled={open} changeOnSelect />
         </Form.Item>
 
         <Form.Item name="categoryId" label={t('projects.category')}>
-          <Select
-            allowClear
-            showSearch
-            optionFilterProp="label"
-            loading={categories.isPending}
-            options={categories.data?.map((category) => ({
-              value: category.id,
-              label: category.name,
-            }))}
-            placeholder={t('projects.categoryPlaceholder')}
-          />
+          <CategorySelect enabled={open} />
         </Form.Item>
 
         <Form.Item name="countryId" label={t('projects.country')}>

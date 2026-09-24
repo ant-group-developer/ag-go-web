@@ -7,7 +7,6 @@ import {
   App as AntApp,
   Button,
   Card,
-  Cascader,
   Col,
   Form,
   Input,
@@ -20,10 +19,10 @@ import { ArrowLeft } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useCategories } from '../../categories/hooks/use-categories';
+import { CategorySelect } from '../../categories/components/category-select';
 import { CountrySelect } from '../../countries/components/country-select';
+import { FolderCascader } from '../../folders/components/folder-cascader';
 import { useFolders } from '../../folders/hooks/use-folders';
-import { buildFolderCascaderOptions } from '../../folders/utils/build-folder-cascader-options';
 import { ProjectGoogleDriveImportPanel } from '../../google-drive/components/project-google-drive-import-panel';
 import {
   abortUpload,
@@ -66,9 +65,7 @@ export function ProjectDetailPage() {
     enabled: Boolean(projectId),
   });
   const folders = useFolders();
-  const categories = useCategories();
   const tags = useTags();
-  const folderOptions = buildFolderCascaderOptions(folders.data ?? []);
   const countryId = Form.useWatch('countryId', form);
   const provinces = useProvinces(
     { page: 1, pageSize: 100, countryId: countryId || undefined },
@@ -281,26 +278,11 @@ export function ProjectDetailPage() {
                   rules={[{ required: true, message: t('projects.folderRequired') }]}
                   extra={folders.isError ? folders.error.message : undefined}
                 >
-                  <Cascader
-                    options={folderOptions}
-                    showSearch
-                    changeOnSelect
-                    placeholder={t('projects.folderPlaceholder')}
-                  />
+                  <FolderCascader changeOnSelect />
                 </Form.Item>
 
                 <Form.Item name="categoryId" label={t('projects.category')}>
-                  <Select
-                    allowClear
-                    showSearch
-                    optionFilterProp="label"
-                    loading={categories.isPending}
-                    options={categories.data?.map((category) => ({
-                      value: category.id,
-                      label: category.name,
-                    }))}
-                    placeholder={t('projects.categoryPlaceholder')}
-                  />
+                  <CategorySelect />
                 </Form.Item>
 
                 <Form.Item name="countryId" label={t('projects.country')}>

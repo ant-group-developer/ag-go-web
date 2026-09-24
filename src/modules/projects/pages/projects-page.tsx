@@ -23,7 +23,14 @@ import {
 } from 'antd';
 import { ClipboardCheck, Pencil, Plus, Trash2 } from 'lucide-react';
 
-import { parseAsArrayOf, parseAsInteger, parseAsString, useQueryStates } from 'nuqs';
+import {
+  parseAsArrayOf,
+  parseAsBoolean,
+  parseAsInteger,
+  parseAsString,
+  useQueryState,
+  useQueryStates,
+} from 'nuqs';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -118,6 +125,18 @@ export function ProjectsPage() {
   });
   const [createOpen, setCreateOpen] = useState(false);
   const [reviewProjectId, setReviewProjectId] = useState<string>();
+  // `?create=true` (e.g. from the dashboard quick action) opens the create drawer once.
+  const [createParam, setCreateParam] = useQueryState(
+    'create',
+    parseAsBoolean.withOptions({ history: 'replace' }),
+  );
+
+  useEffect(() => {
+    if (createParam) {
+      setCreateOpen(true);
+      void setCreateParam(null);
+    }
+  }, [createParam, setCreateParam]);
 
   useEffect(() => {
     if (routeProjectId) {
