@@ -9,6 +9,7 @@ export type Folder = {
   isActive: boolean;
   childCount?: number;
   projectCount?: number;
+  myAccessLevel?: 'viewer' | 'editor' | 'manager';
   createdBy?: string;
   createdByUser?: {
     id: string;

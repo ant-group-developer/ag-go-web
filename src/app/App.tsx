@@ -16,6 +16,7 @@ import {
   MapPinned,
   ScrollText,
   Settings,
+  Shield,
   Tags,
   User,
 } from 'lucide-react';
@@ -59,6 +60,11 @@ const TagsPage = lazy(() =>
 const FoldersPage = lazy(() =>
   import('../modules/folders/pages/folders-page').then(({ FoldersPage }) => ({
     default: FoldersPage,
+  })),
+);
+const UserAccessPage = lazy(() =>
+  import('../modules/folder-access/pages/user-access-page').then(({ UserAccessPage }) => ({
+    default: UserAccessPage,
   })),
 );
 const HealthPage = lazy(() =>
@@ -288,6 +294,11 @@ export function App() {
                         name: t('menu.folders'),
                         icon: <Folder size={16} />,
                       },
+                      {
+                        path: '/folder-access',
+                        name: t('menu.folderAccess'),
+                        icon: <Shield size={16} />,
+                      },
                     ]
                   : []),
                 ...(hasPermission('go.catalog.manage')
@@ -444,6 +455,14 @@ export function App() {
           <Route path="/downloads" element={<Navigate to="/projects" replace />} />
           <Route path="/google-drive" element={<Navigate to="/projects" replace />} />
           <Route path="/folders" element={<FoldersPage />} />
+          <Route
+            path="/folder-access"
+            element={
+              <PermissionGate permissions={['go.folder.manage']}>
+                <UserAccessPage />
+              </PermissionGate>
+            }
+          />
           <Route path="/projects" element={<ProjectsPage />} />
           <Route
             path="/project-evaluations"

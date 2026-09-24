@@ -11,17 +11,25 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
-import { Folder as FolderIcon, FolderPlus, Pencil, Trash2 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { Folder as FolderIcon, FolderPlus, Pencil, Shield, Trash2 } from 'lucide-react';
 import { parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from 'nuqs';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { FolderAccessDrawer } from '../../folder-access/components/folder-access-drawer';
 import { formatDate } from '../../projects/utils/date.util';
 import { CreateFolderModal } from '../components/create-folder-modal';
 import { EditFolderModal } from '../components/edit-folder-modal';
 import { useDeleteFolder, useFolders } from '../hooks/use-folders';
 import type { Folder } from '../types/folder.type';
 
-const sortFields = ['name', 'childCount', 'projectCount', 'owner', 'createdAt', 'updatedAt'] as const;
+const sortFields = [
+  'name',
+  'childCount',
+  'projectCount',
+  'owner',
+  'createdAt',
+  'updatedAt',
+] as const;
 type FolderSortField = (typeof sortFields)[number];
 
 const folderUrlParams = {
@@ -32,7 +40,8 @@ const folderUrlParams = {
   pageSize: parseAsInteger.withDefault(20),
 };
 
-const ownerName = (folder: Folder) => folder.createdByUser?.name || folder.createdByUser?.email || '';
+const ownerName = (folder: Folder) =>
+  folder.createdByUser?.name || folder.createdByUser?.email || '';
 
 const sortValue = (folder: Folder, field: FolderSortField): string | number => {
   switch (field) {
@@ -55,6 +64,7 @@ export function FoldersPage() {
   const { message } = AntApp.useApp();
   const [createOpen, setCreateOpen] = useState(false);
   const [editingFolder, setEditingFolder] = useState<Folder>();
+  const [accessFolderId, setAccessFolderId] = useState<string>();
   const deleteMutation = useDeleteFolder();
   const [urlState, setUrlState] = useQueryStates(folderUrlParams, { history: 'replace' });
   const folders = useFolders();
@@ -144,9 +154,7 @@ export function FoldersPage() {
           <Avatar size={18} src={folder.createdByUser?.avatar}>
             {folder.createdByUser?.name?.charAt(0)?.toUpperCase()}
           </Avatar>
-          <Typography.Text ellipsis>
-            {ownerName(folder) || t('common.unknown')}
-          </Typography.Text>
+          <Typography.Text ellipsis>{ownerName(folder) || t('common.unknown')}</Typography.Text>
         </Space>
       ),
     },
@@ -165,39 +173,55 @@ export function FoldersPage() {
     {
       title: t('folders.actions'),
       key: 'actions',
-      width: 110,
+      width: 150,
       fixed: 'right',
       render: (_, folder) => {
         const isEmpty = !folder.childCount && !folder.projectCount;
+        const level = folder.myAccessLevel ?? 'viewer';
+        const isManager = level === 'manager';
         return (
           <Space size={0}>
-            <Tooltip title={t('folders.edit')}>
-              <Button
-                aria-label={t('folders.edit')}
-                icon={<Pencil size={16} />}
-                type="text"
-                onClick={() => setEditingFolder(folder)}
-              />
-            </Tooltip>
-            <Popconfirm
-              title={t('folders.deleteConfirm', { name: folder.name })}
-              okText={t('common.delete')}
-              cancelText={t('common.cancel')}
-              okButtonProps={{ danger: true, loading: deleteMutation.isPending }}
-              disabled={!isEmpty}
-              onConfirm={() => handleDelete(folder)}
-            >
-              <Tooltip title={isEmpty ? t('folders.delete') : t('folders.deleteNotEmpty')}>
+            {isManager ? (
+              <Tooltip title={t('folderAccess.manage')}>
                 <Button
-                  aria-label={t('folders.delete')}
-                  danger
-                  disabled={!isEmpty}
-                  icon={<Trash2 size={16} />}
-                  loading={deleteMutation.isPending && deleteMutation.variables === folder.id}
+                  aria-label={t('folderAccess.manage')}
+                  icon={<Shield size={16} />}
                   type="text"
+                  onClick={() => setAccessFolderId(folder.id)}
                 />
               </Tooltip>
-            </Popconfirm>
+            ) : null}
+            {level !== 'viewer' ? (
+              <Tooltip title={t('folders.edit')}>
+                <Button
+                  aria-label={t('folders.edit')}
+                  icon={<Pencil size={16} />}
+                  type="text"
+                  onClick={() => setEditingFolder(folder)}
+                />
+              </Tooltip>
+            ) : null}
+            {isManager ? (
+              <Popconfirm
+                title={t('folders.deleteConfirm', { name: folder.name })}
+                okText={t('common.delete')}
+                cancelText={t('common.cancel')}
+                okButtonProps={{ danger: true, loading: deleteMutation.isPending }}
+                disabled={!isEmpty}
+                onConfirm={() => handleDelete(folder)}
+              >
+                <Tooltip title={isEmpty ? t('folders.delete') : t('folders.deleteNotEmpty')}>
+                  <Button
+                    aria-label={t('folders.delete')}
+                    danger
+                    disabled={!isEmpty}
+                    icon={<Trash2 size={16} />}
+                    loading={deleteMutation.isPending && deleteMutation.variables === folder.id}
+                    type="text"
+                  />
+                </Tooltip>
+              </Popconfirm>
+            ) : null}
           </Space>
         );
       },
@@ -296,6 +320,11 @@ export function FoldersPage() {
         defaultParentPath={currentPath}
       />
       <EditFolderModal folder={editingFolder} onClose={() => setEditingFolder(undefined)} />
+      <FolderAccessDrawer
+        folderId={accessFolderId}
+        onClose={() => setAccessFolderId(undefined)}
+        onOpenFolder={setAccessFolderId}
+      />
     </>
   );
 }
