@@ -6,6 +6,7 @@ import {
   getDriveImport,
   getGoogleDriveConnection,
   getGoogleDrivePickerToken,
+  getProjectImports,
   retryDriveImportItem,
   startGoogleDriveConnection,
   summarizeGoogleDriveSources,
@@ -15,6 +16,7 @@ const keys = {
   all: ['google-drive'] as const,
   connection: () => [...keys.all, 'connection'] as const,
   import: (id: string) => [...keys.all, 'import', id] as const,
+  projectImports: (id: string) => [...keys.all, 'project-imports', id] as const,
 };
 
 export function useGoogleDriveConnection() {
@@ -61,6 +63,7 @@ export function useCreateDriveImport() {
     mutationFn: createDriveImport,
     onSuccess: (batch) => {
       void client.invalidateQueries({ queryKey: keys.import(batch.id) });
+      void client.invalidateQueries({ queryKey: keys.projectImports(batch.projectId) });
     },
   });
 }
@@ -74,6 +77,14 @@ export function useDriveImport(id: string) {
       query.state.data && ['completed', 'failed', 'cancelled'].includes(query.state.data.status)
         ? false
         : 5_000,
+  });
+}
+
+export function useProjectImports(projectId: string) {
+  return useQuery({
+    queryKey: keys.projectImports(projectId),
+    queryFn: () => getProjectImports(projectId),
+    enabled: Boolean(projectId),
   });
 }
 

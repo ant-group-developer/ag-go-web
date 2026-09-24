@@ -17,9 +17,9 @@ import {
   Avatar,
   Button,
   Card,
-  List,
   Progress,
   Space,
+  Table,
   Tag,
   Typography,
   Upload,
@@ -27,6 +27,7 @@ import {
 import type { ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { formatFileSize } from '../../../shared/lib/format-file-size';
 import { projectQueryKeys } from '../../projects/queries/project-query-keys';
 import {
   abortUpload,
@@ -49,6 +50,41 @@ type UploadTask = {
 };
 
 const MAX_CONCURRENT_UPLOADS = 3;
+
+function displayFilename(name: string, mimeType?: string | null): string {
+  if (name.lastIndexOf('.') > 0) {
+    return name;
+  }
+  const extensions: Record<string, string> = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp',
+    'video/mp4': 'mp4',
+    'video/quicktime': 'mp4',
+    'video/webm': 'webm',
+  };
+  const extension = mimeType ? extensions[mimeType.toLowerCase()] : undefined;
+  return extension ? `${name}.${extension}` : name;
+}
+
+function formatDimensions(
+  width: number | null | undefined,
+  height: number | null | undefined,
+): string {
+  return width && height ? `${width} × ${height}` : '—';
+}
+
+function formatDuration(value: number | null | undefined): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) {
+    return '—';
+  }
+  const total = Math.round(value);
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+}
+
+function formatDate(value: string | null | undefined): string {
+  return value ? new Date(value).toLocaleString('vi-VN') : '—';
+}
 
 type ProjectMediaPanelProps = {
   projectId: string;
@@ -74,7 +110,7 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
     () =>
       (items ?? []).map((item) => ({
         uid: item.id,
-        name: item.asset.originalFilename,
+        name: displayFilename(item.asset.originalFilename, item.asset.mimeType),
         status: 'done',
         percent: 100,
         response: item,
@@ -173,6 +209,7 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
               originalFilename: file.name,
               mimeType: file.type || 'application/octet-stream',
               fileSizeBytes: file.size,
+              targetProjectId: projectId,
             },
             globalThis.crypto.randomUUID(),
           );
@@ -331,43 +368,26 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
         <p className="ant-upload-text">{t('media.dropFiles')}</p>
         <p className="ant-upload-hint">{t('media.dropFilesHint')}</p>
       </Upload.Dragger>
-      <List<ProjectMediaUploadFile>
+      <Table<ProjectMediaUploadFile>
         style={{ marginTop: 24 }}
-        itemLayout="horizontal"
-        dataSource={fileList}
+        size="small"
+        rowKey="uid"
+        scroll={{ x: 980 }}
+        pagination={false}
         locale={{ emptyText: t('media.empty') }}
-        renderItem={(file) => {
-          const status = statusForFile(file);
-          const video = isVideoFile(file);
-
-          return (
-            <List.Item
-              key={file.uid}
-              style={{
-                padding: '10px 12px',
-                marginBottom: 8,
-                borderRadius: 8,
-                border: '1px solid',
-                borderColor: status === 'error' ? 'rgba(255, 77, 79, 0.35)' : 'rgba(5, 5, 5, 0.06)',
-                background: status === 'error' ? 'rgba(255, 77, 79, 0.04)' : 'rgba(0, 0, 0, 0.015)',
-              }}
-              actions={[
-                <Button
-                  key="delete"
-                  type="text"
-                  danger
-                  aria-label={t('common.delete')}
-                  icon={<DeleteOutlined />}
-                  disabled={status === 'uploading'}
-                  onClick={() => void removeFile(file)}
-                />,
-              ]}
-            >
-              <List.Item.Meta
-                avatar={
+        dataSource={fileList}
+        columns={[
+          {
+            title: t('common.file'),
+            dataIndex: 'name',
+            render: (name: string, file) => {
+              const status = statusForFile(file);
+              const video = isVideoFile(file);
+              return (
+                <Space>
                   <Avatar
                     shape="square"
-                    size={48}
+                    size={40}
                     src={file.thumbUrl}
                     icon={
                       !file.thumbUrl ? (
@@ -379,34 +399,67 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
                       ) : undefined
                     }
                   />
-                }
-                title={
-                  <Space size={8} wrap>
-                    <Typography.Text ellipsis style={{ maxWidth: 320, fontWeight: 400 }}>
-                      {file.name}
-                    </Typography.Text>
-                    <Tag
-                      icon={statusIcons[status]}
-                      color={statusColors[status]}
-                      style={{ margin: 0 }}
-                    >
-                      {statusLabels[status]}
-                    </Tag>
+                  <Space direction="vertical" size={2}>
+                    <Space size={8} wrap>
+                      <Typography.Text>
+                        {displayFilename(
+                          name,
+                          file.response?.asset.mimeType ?? file.type ?? undefined,
+                        )}
+                      </Typography.Text>
+                      <Tag icon={statusIcons[status]} color={statusColors[status]}>
+                        {statusLabels[status]}
+                      </Tag>
+                    </Space>
+                    {status === 'uploading' ? (
+                      <Progress percent={Math.round(file.percent ?? 0)} size="small" />
+                    ) : null}
                   </Space>
-                }
-                description={
-                  status === 'uploading' ? (
-                    <Progress
-                      percent={Math.round(file.percent ?? 0)}
-                      size="small"
-                      style={{ maxWidth: 280 }}
-                    />
-                  ) : undefined
-                }
-              />
-            </List.Item>
-          );
-        }}
+                </Space>
+              );
+            },
+          },
+          {
+            title: t('media.size'),
+            render: (_, file) => formatFileSize(file.response?.asset.fileSizeBytes ?? file.size),
+          },
+          {
+            title: t('media.resolution'),
+            render: (_, file) => formatDimensions(file.response?.width, file.response?.height),
+          },
+          {
+            title: t('media.duration'),
+            render: (_, file) => formatDuration(file.response?.durationSeconds),
+          },
+          {
+            title: t('common.author'),
+            render: (_, file) =>
+              file.response?.creatorName ||
+              file.response?.createdByUser?.name ||
+              file.response?.createdByUser?.email ||
+              '—',
+          },
+          {
+            title: t('projects.updatedAt'),
+            render: (_, file) => formatDate(file.response?.modifiedAt ?? file.response?.updatedAt),
+          },
+          {
+            title: t('common.actions'),
+            render: (_, file) => {
+              const status = statusForFile(file);
+              return (
+                <Button
+                  type="text"
+                  danger
+                  aria-label={t('common.delete')}
+                  icon={<DeleteOutlined />}
+                  disabled={status === 'uploading'}
+                  onClick={() => void removeFile(file)}
+                />
+              );
+            },
+          },
+        ]}
       />
     </Card>
   );
