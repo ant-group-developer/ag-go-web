@@ -72,6 +72,7 @@ export function LogsPage() {
             { label: 'Warning', value: 'warn' },
             { label: 'Error', value: 'error' },
           ]}
+          style={{ width: 100 }}
           value={level}
           onChange={(value) => {
             setPage(1);

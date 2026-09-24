@@ -425,7 +425,7 @@ export function ProjectsPage() {
               />
               <Input.Search
                 allowClear
-                size="large"
+                size="middle"
                 placeholder={t('projects.keywordPlaceholder')}
                 value={keywordInput}
                 onChange={(e) => setKeywordInput(e.target.value)}
@@ -541,11 +541,11 @@ export function ProjectsPage() {
                         videoCount: p.videoCount,
                         author: p.ownerUser
                           ? {
-                              id: p.ownerUser.id,
-                              name: p.ownerUser.name ?? p.ownerUser.email ?? t('common.unknown'),
-                              email: p.ownerUser.email,
-                              avatar: p.ownerUser.avatar,
-                            }
+                            id: p.ownerUser.id,
+                            name: p.ownerUser.name ?? p.ownerUser.email ?? t('common.unknown'),
+                            email: p.ownerUser.email,
+                            avatar: p.ownerUser.avatar,
+                          }
                           : null,
                       }))}
                       isLoading={isLoading || isFetching}
