@@ -42,7 +42,10 @@ export function EditFolderModal({ folder, onClose }: EditFolderModalProps) {
           if (!folder) {
             return;
           }
-          update.mutate({ id: folder.id, input: { name: values.name.trim() } }, { onSuccess: onClose });
+          update.mutate(
+            { id: folder.id, input: { name: values.name.trim() } },
+            { onSuccess: onClose },
+          );
         }}
       >
         <Form.Item
