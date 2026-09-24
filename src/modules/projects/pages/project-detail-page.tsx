@@ -5,7 +5,6 @@ import type { UploadFile } from 'antd';
 import {
   Alert,
   App as AntApp,
-  Avatar,
   Button,
   Card,
   Cascader,
@@ -22,7 +21,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useCategories } from '../../categories/hooks/use-categories';
-import { useCountries } from '../../countries/hooks/use-countries';
+import { CountrySelect } from '../../countries/components/country-select';
 import { useFolders } from '../../folders/hooks/use-folders';
 import { buildFolderCascaderOptions } from '../../folders/utils/build-folder-cascader-options';
 import { ProjectGoogleDriveImportPanel } from '../../google-drive/components/project-google-drive-import-panel';
@@ -68,7 +67,6 @@ export function ProjectDetailPage() {
   });
   const folders = useFolders();
   const categories = useCategories();
-  const countries = useCountries();
   const tags = useTags();
   const folderOptions = buildFolderCascaderOptions(folders.data ?? []);
   const countryId = Form.useWatch('countryId', form);
@@ -306,23 +304,7 @@ export function ProjectDetailPage() {
                 </Form.Item>
 
                 <Form.Item name="countryId" label={t('projects.country')}>
-                  <Select
-                    allowClear
-                    showSearch
-                    optionFilterProp="label"
-                    loading={countries.isPending}
-                    options={countries.data?.map((country) => ({
-                      value: country.id,
-                      label: (
-                        <Space size={8}>
-                          <Avatar size={20} shape="square" src={country.flagUrl ?? undefined}>
-                            {country.code?.slice(0, 2)}
-                          </Avatar>
-                          {country.name}
-                        </Space>
-                      ),
-                    }))}
-                    placeholder={t('projects.countryPlaceholder')}
+                  <CountrySelect
                     onChange={() => form.setFieldValue('provinceId', undefined)}
                   />
                 </Form.Item>

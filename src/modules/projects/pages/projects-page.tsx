@@ -24,6 +24,7 @@ import { parseAsArrayOf, parseAsInteger, parseAsString, useQueryStates } from 'n
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
+import { CountryFlag } from '../../countries/components';
 import { getAssetPreviewUrl } from '../../media/api/media';
 import { getProjects } from '../api/projects';
 import { CreateProjectModal } from '../components/create-project-modal';
@@ -248,17 +249,12 @@ export function ProjectsPage() {
       width: 200,
       render: (_, project) => (
         <Space direction="vertical" size={0}>
-          <Space size={6}>
-            {project.countryFlagUrl ? (
-              <Image
-                alt=""
-                height={14}
-                src={project.countryFlagUrl}
-                style={{ objectFit: 'cover' }}
-                width={20}
-                preview={false}
-              />
-            ) : null}
+          <Space size={6} align="center">
+            <CountryFlag
+              flagUrl={project.countryFlagUrl || undefined}
+              name={project.countryName || undefined}
+              height={14}
+            />
             <Typography.Text>{project.countryName || '-'}</Typography.Text>
           </Space>
           {project.provinceName ? (

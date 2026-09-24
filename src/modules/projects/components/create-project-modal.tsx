@@ -4,7 +4,6 @@ import type { UploadFile, UploadProps } from 'antd';
 import {
   Alert,
   App as AntApp,
-  Avatar,
   Button,
   Cascader,
   Drawer,
@@ -18,7 +17,7 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useCategories } from '../../categories/hooks/use-categories';
-import { useCountries } from '../../countries/hooks/use-countries';
+import { CountrySelect } from '../../countries/components/country-select';
 import { useFolders } from '../../folders/hooks/use-folders';
 import { buildFolderCascaderOptions } from '../../folders/utils/build-folder-cascader-options';
 import {
@@ -44,7 +43,6 @@ export function CreateProjectModal({ open, onClose, onComplete }: CreateProjectM
   const [form] = Form.useForm<ProjectFormValues>();
   const folders = useFolders(open);
   const categories = useCategories(open);
-  const countries = useCountries(open);
   const tags = useTags(open);
   const create = useCreateProject();
   const folderOptions = useMemo(
@@ -240,23 +238,8 @@ export function CreateProjectModal({ open, onClose, onComplete }: CreateProjectM
         </Form.Item>
 
         <Form.Item name="countryId" label={t('projects.country')}>
-          <Select
-            allowClear
-            showSearch
-            optionFilterProp="label"
-            loading={countries.isPending}
-            options={countries.data?.map((country) => ({
-              value: country.id,
-              label: (
-                <Space size={8}>
-                  <Avatar size={20} shape="square" src={country.flagUrl ?? undefined}>
-                    {country.code?.slice(0, 2)}
-                  </Avatar>
-                  {country.name}
-                </Space>
-              ),
-            }))}
-            placeholder={t('projects.countryPlaceholder')}
+          <CountrySelect
+            enabled={open}
             onChange={() => form.setFieldValue('provinceId', undefined)}
           />
         </Form.Item>

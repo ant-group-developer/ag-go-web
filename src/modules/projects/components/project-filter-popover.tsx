@@ -1,4 +1,4 @@
-import { Avatar, Button, Empty, Input, Popover, Select, Space, Spin, Tree, Typography } from 'antd';
+import { Button, Empty, Input, Popover, Select, Spin, Tree, Typography } from 'antd';
 import type { DataNode } from 'antd/es/tree';
 import { t } from 'i18next';
 import {
@@ -12,7 +12,7 @@ import {
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useCategories } from '../../categories/hooks/use-categories';
-import { useCountries } from '../../countries/hooks/use-countries';
+import { CountrySelect } from '../../countries/components/country-select';
 import { useFolders } from '../../folders/hooks/use-folders';
 import type { Folder as FolderType } from '../../folders/types/folder.type';
 import { useProvinces } from '../../provinces/hooks/use-provinces';
@@ -174,7 +174,6 @@ function FilterContent({
   const [autoExpandParent, setAutoExpandParent] = useState(true);
 
   const folders = useFolders();
-  const countries = useCountries();
   const tags = useTags();
   const countryId = value.countryId;
   const provinces = useProvinces({ page: 1, pageSize: 100, countryId }, Boolean(countryId));
@@ -430,23 +429,8 @@ function FilterContent({
               <Typography.Text style={{ fontSize: 13.5, fontWeight: 500, color: '#374151' }}>
                 {t('projects.country')}
               </Typography.Text>
-              <Select
-                allowClear
+              <CountrySelect
                 size="large"
-                optionFilterProp="label"
-                options={countries.data?.map((c) => ({
-                  value: c.id,
-                  label: (
-                    <Space size={8}>
-                      <Avatar size={20} shape="square" src={c.flagUrl ?? undefined}>
-                        {c.code?.slice(0, 2)}
-                      </Avatar>
-                      {c.name}
-                    </Space>
-                  ),
-                }))}
-                placeholder={t('projects.countryPlaceholder')}
-                showSearch
                 value={value.countryId}
                 onChange={(v) => onChange({ ...value, countryId: v, provinceId: undefined })}
                 style={{ width: '100%' }}
