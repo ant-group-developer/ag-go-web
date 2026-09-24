@@ -34,7 +34,7 @@ export function CategorySelect({
   const [open, setOpen] = useState(false);
   const [searchValue, setSearchValue] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
-  const canCreate = allowCreate && can(GO_PERMISSIONS.CATALOG_MANAGE);
+  const canCreate = allowCreate && can(GO_PERMISSIONS.CATEGORY_CREATE);
 
   const options = useMemo(
     () =>

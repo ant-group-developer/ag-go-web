@@ -67,7 +67,7 @@ export function HomePage() {
   const { token } = theme.useToken();
   const screens = Grid.useBreakpoint();
   const webSettings = usePublicSettings();
-  const { can, isLoading } = usePermissions();
+  const { can, canAny, isLoading } = usePermissions();
 
   useEffect(() => {
     if (!import.meta.env.DEV) {
@@ -92,10 +92,11 @@ export function HomePage() {
         ...group,
         features: HOME_FEATURES.filter(
           (feature) =>
-            feature.group === group.key && (!feature.permission || can(feature.permission)),
+            feature.group === group.key &&
+            (!feature.permission || canAny([feature.permission].flat())),
         ),
       })).filter((group) => group.features.length > 0),
-    [can],
+    [canAny],
   );
 
   const quickActions = [
