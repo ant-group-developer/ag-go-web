@@ -24,8 +24,10 @@ export interface CountrySelectOption {
   country: Country;
 }
 
-export interface CountrySelectProps
-  extends Omit<SelectProps<string, CountrySelectOption>, 'options'> {
+export interface CountrySelectProps extends Omit<
+  SelectProps<string, CountrySelectOption>,
+  'options'
+> {
   /** Whether the query to fetch countries is enabled. Defaults to true. */
   enabled?: boolean;
   /** Whether to render country flag next to the name. Defaults to true. */

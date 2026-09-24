@@ -34,9 +34,7 @@ export function AuditPage() {
       ) : !query.isLoading && !query.isError ? (
         <Empty description={t('audit.empty')} />
       ) : null}
-      <Typography.Text type="secondary">
-        {t('audit.scopeNote')}
-      </Typography.Text>
+      <Typography.Text type="secondary">{t('audit.scopeNote')}</Typography.Text>
     </PageContainer>
   );
 }

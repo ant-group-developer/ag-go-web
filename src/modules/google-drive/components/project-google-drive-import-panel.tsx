@@ -114,9 +114,9 @@ export function ProjectGoogleDriveImportPanel({ projectId }: { projectId: string
   const connection = useGoogleDriveConnection();
   const pickerToken = useGoogleDrivePickerToken(
     connection.data?.status === 'active' &&
-    connection.data.scopes.some((scope) =>
-      scope.includes('https://www.googleapis.com/auth/drive.readonly'),
-    ),
+      connection.data.scopes.some((scope) =>
+        scope.includes('https://www.googleapis.com/auth/drive.readonly'),
+      ),
   );
   const start = useStartGoogleDriveConnection();
   const disconnect = useDisconnectGoogleDrive();

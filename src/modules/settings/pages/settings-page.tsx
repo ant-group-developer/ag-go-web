@@ -280,9 +280,7 @@ function RenderProfileEditor({
       setLogoUrl(URL.createObjectURL(file));
       void message.success(t('settings.logoUploadSuccess'));
     } catch (error) {
-      void message.error(
-        error instanceof Error ? error.message : t('settings.logoUploadFailed'),
-      );
+      void message.error(error instanceof Error ? error.message : t('settings.logoUploadFailed'));
     } finally {
       setLogoUploading(false);
     }
@@ -335,7 +333,11 @@ function RenderProfileEditor({
           <Col xs={24} lg={14}>
             <Row gutter={16}>
               <Col xs={24} md={12}>
-                <Form.Item name="name" label={t('settings.profileName')} rules={[{ required: true }]}>
+                <Form.Item
+                  name="name"
+                  label={t('settings.profileName')}
+                  rules={[{ required: true }]}
+                >
                   <Input maxLength={100} />
                 </Form.Item>
               </Col>
@@ -369,12 +371,16 @@ function RenderProfileEditor({
                   <Input />
                 </Form.Item>
               </Col>
-            </Row >
+            </Row>
 
             <Card size="small" title={t('settings.watermark')} style={{ marginBottom: 16 }}>
               <Row gutter={16}>
                 <Col xs={24} md={6}>
-                  <Form.Item name="watermarkEnabled" label={t('settings.watermarkEnabled')} valuePropName="checked">
+                  <Form.Item
+                    name="watermarkEnabled"
+                    label={t('settings.watermarkEnabled')}
+                    valuePropName="checked"
+                  >
                     <Switch />
                   </Form.Item>
                 </Col>
@@ -391,9 +397,15 @@ function RenderProfileEditor({
                 <Col xs={24} md={8}>
                   <Form.Item name={['watermarkConfig', 'fontFamily']} label={t('settings.font')}>
                     <Select
-                      options={['Arial', 'Times New Roman', 'Courier New', 'Verdana', 'Georgia', 'Impact', 'Tahoma'].map(
-                        (value) => ({ value, label: value }),
-                      )}
+                      options={[
+                        'Arial',
+                        'Times New Roman',
+                        'Courier New',
+                        'Verdana',
+                        'Georgia',
+                        'Impact',
+                        'Tahoma',
+                      ].map((value) => ({ value, label: value }))}
                     />
                   </Form.Item>
                 </Col>
@@ -424,7 +436,12 @@ function RenderProfileEditor({
                     </Upload>
                     {logoUrl ? (
                       <div style={{ marginTop: 8 }}>
-                        <Image src={logoUrl} width={96} height={48} style={{ objectFit: 'contain' }} />
+                        <Image
+                          src={logoUrl}
+                          width={96}
+                          height={48}
+                          style={{ objectFit: 'contain' }}
+                        />
                         <Button
                           type="link"
                           danger
@@ -451,7 +468,11 @@ function RenderProfileEditor({
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={6}>
-                  <Form.Item name={['watermarkConfig', 'repeat']} label={t('settings.repeatWatermark')} valuePropName="checked">
+                  <Form.Item
+                    name={['watermarkConfig', 'repeat']}
+                    label={t('settings.repeatWatermark')}
+                    valuePropName="checked"
+                  >
                     <Switch />
                   </Form.Item>
                 </Col>
@@ -485,9 +506,9 @@ function RenderProfileEditor({
                     <InputNumber min={0} max={500} style={{ width: '100%' }} />
                   </Form.Item>
                 </Col>
-              </Row >
-            </Card >
-          </Col >
+              </Row>
+            </Card>
+          </Col>
           <Col xs={24} lg={10}>
             <Card size="small" title="Preview watermark" style={{ position: 'sticky', top: 16 }}>
               <Flex vertical gap={16}>
@@ -520,16 +541,15 @@ function RenderProfileEditor({
                   enabled={watermarkEnabled}
                 />
               </Flex>
-
             </Card>
           </Col>
-        </Row >
+        </Row>
 
         <Button type="primary" htmlType="submit" loading={updateProfile.isPending}>
           {t('settings.saveProfile')}
         </Button>
-      </Form >
-    </Card >
+      </Form>
+    </Card>
   );
 }
 
@@ -575,7 +595,11 @@ export function SettingsPage() {
                     update.mutate(values);
                   }}
                 >
-                  <Form.Item name="siteName" label={t('settings.siteName')} rules={[{ required: true }]}>
+                  <Form.Item
+                    name="siteName"
+                    label={t('settings.siteName')}
+                    rules={[{ required: true }]}
+                  >
                     <Input maxLength={160} />
                   </Form.Item>
                   <Form.Item name="siteDescription" label={t('settings.siteDescription')}>

@@ -160,7 +160,11 @@ export function ProjectEvaluationDrawer({ open, projectId, onClose }: Props) {
               layout="vertical"
               onFinish={(values) => update.mutate(values)}
             >
-              <Form.Item name="evaluationStatus" label={t('evaluations.status')} rules={[{ required: true }]}>
+              <Form.Item
+                name="evaluationStatus"
+                label={t('evaluations.status')}
+                rules={[{ required: true }]}
+              >
                 <Select
                   options={[
                     { label: t('projects.evaluationPending'), value: 'pending' },
@@ -203,9 +207,7 @@ export function ProjectEvaluationDrawer({ open, projectId, onClose }: Props) {
                 </List.Item>
               )}
             />
-            <Typography.Text type="secondary">
-              {t('evaluations.permissionNote')}
-            </Typography.Text>
+            <Typography.Text type="secondary">{t('evaluations.permissionNote')}</Typography.Text>
           </Card>
         </>
       ) : null}

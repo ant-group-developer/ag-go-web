@@ -64,7 +64,9 @@ export function RenderPage() {
                   <strong>{profile.name}</strong>
                   <Tag>{profile.outputFormat}</Tag>
                   <span>v{profile.profileVersion}</span>
-                  {profile.watermarkEnabled ? <Tag color="blue">{t('render.watermark')}</Tag> : null}
+                  {profile.watermarkEnabled ? (
+                    <Tag color="blue">{t('render.watermark')}</Tag>
+                  ) : null}
                 </Space>
               </List.Item>
             )}

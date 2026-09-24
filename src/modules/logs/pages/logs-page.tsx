@@ -127,13 +127,19 @@ export function LogsPage() {
           { title: t('logs.message'), dataIndex: 'message', ellipsis: true },
         ]}
       />
-      <Drawer title={t('logs.details')} open={Boolean(selected)} onClose={() => setSelected(undefined)}>
+      <Drawer
+        title={t('logs.details')}
+        open={Boolean(selected)}
+        onClose={() => setSelected(undefined)}
+      >
         {selected ? (
           <Descriptions column={1} bordered size="small">
             <Descriptions.Item label="ID">{selected.id}</Descriptions.Item>
             <Descriptions.Item label={t('logs.action')}>{selected.action}</Descriptions.Item>
             <Descriptions.Item label={t('logs.message')}>{selected.message}</Descriptions.Item>
-            <Descriptions.Item label={t('logs.project')}>{selected.projectId ?? '-'}</Descriptions.Item>
+            <Descriptions.Item label={t('logs.project')}>
+              {selected.projectId ?? '-'}
+            </Descriptions.Item>
             <Descriptions.Item label={t('logs.metadata')}>
               <pre style={{ whiteSpace: 'pre-wrap' }}>
                 {JSON.stringify(selected.metadata ?? {}, null, 2)}

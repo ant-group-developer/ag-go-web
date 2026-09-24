@@ -729,7 +729,9 @@ export function ProjectDetailDrawer({ open, projectId, onClose }: ProjectReviewD
             <Alert
               style={{ marginTop: 16 }}
               type={downloadJob.data?.status === 'failed' ? 'error' : 'info'}
-              message={t('projects.downloadStatus', { status: downloadJob.data?.status ?? 'queued' })}
+              message={t('projects.downloadStatus', {
+                status: downloadJob.data?.status ?? 'queued',
+              })}
               description={
                 downloadJob.data?.url ? (
                   <Button type="link" href={downloadJob.data.url} target="_blank">

@@ -395,7 +395,10 @@ function SystemHealthCard({ health }: { health: SystemHealth }) {
           <Flex vertical gap={0}>
             <Text style={{ fontSize: 13 }}>{health.statusLabel}</Text>
             <Text type="secondary" style={{ fontSize: 11 }}>
-              {t('statistics.uptimeChecked', { uptime: health.uptimePercent, time: health.lastChecked })}
+              {t('statistics.uptimeChecked', {
+                uptime: health.uptimePercent,
+                time: health.lastChecked,
+              })}
             </Text>
           </Flex>
         </Flex>
@@ -477,11 +480,36 @@ export function StatisticsPage() {
 
   const topProjectMetrics = useMemo(
     () => [
-      { key: 'view' as const, label: t('statistics.metricView'), icon: <Eye size={13} />, color: '#0ea5e9' },
-      { key: 'media' as const, label: t('statistics.metricMedia'), icon: <Film size={13} />, color: '#6366f1' },
-      { key: 'size' as const, label: t('statistics.metricSize'), icon: <HardDrive size={13} />, color: AMBER },
-      { key: 'image' as const, label: t('statistics.metricImage'), icon: <ImageIcon size={13} />, color: GREEN },
-      { key: 'video' as const, label: t('statistics.metricVideo'), icon: <Film size={13} />, color: RED },
+      {
+        key: 'view' as const,
+        label: t('statistics.metricView'),
+        icon: <Eye size={13} />,
+        color: '#0ea5e9',
+      },
+      {
+        key: 'media' as const,
+        label: t('statistics.metricMedia'),
+        icon: <Film size={13} />,
+        color: '#6366f1',
+      },
+      {
+        key: 'size' as const,
+        label: t('statistics.metricSize'),
+        icon: <HardDrive size={13} />,
+        color: AMBER,
+      },
+      {
+        key: 'image' as const,
+        label: t('statistics.metricImage'),
+        icon: <ImageIcon size={13} />,
+        color: GREEN,
+      },
+      {
+        key: 'video' as const,
+        label: t('statistics.metricVideo'),
+        icon: <Film size={13} />,
+        color: RED,
+      },
     ],
     [t],
   );
@@ -728,7 +756,12 @@ export function StatisticsPage() {
       {/* ---------------- Storage & System health ---------------- */}
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
         <Col xs={24} md={12}>
-          <ProCard title={t('statistics.storageStatistics')} bordered headerBordered style={cardStyle}>
+          <ProCard
+            title={t('statistics.storageStatistics')}
+            bordered
+            headerBordered
+            style={cardStyle}
+          >
             <StorageStatsCard storage={storageStatistics as StorageStats} />
           </ProCard>
         </Col>
@@ -823,7 +856,11 @@ export function StatisticsPage() {
             style={cardStyle}
             bodyStyle={{ paddingTop: 8 }}
           >
-            <DonutChart segments={typeSegments} centerLabel={t('statistics.totalFiles')} height={220} />
+            <DonutChart
+              segments={typeSegments}
+              centerLabel={t('statistics.totalFiles')}
+              height={220}
+            />
             <div style={{ marginTop: 16 }}>
               <SegmentLegend segments={typeSegments} total={mediaTypeDistribution.total} />
             </div>
@@ -842,7 +879,11 @@ export function StatisticsPage() {
             style={cardStyle}
             bodyStyle={{ paddingTop: 8 }}
           >
-            <DonutChart segments={evalSegments} centerLabel={t('statistics.totalMedia')} height={220} />
+            <DonutChart
+              segments={evalSegments}
+              centerLabel={t('statistics.totalMedia')}
+              height={220}
+            />
             <div style={{ marginTop: 16 }}>
               <SegmentLegend segments={evalSegments} total={mediaEvaluationResults.total} />
             </div>
@@ -916,7 +957,12 @@ export function StatisticsPage() {
 
         {/* Recent activities */}
         <Col xs={24} lg={8}>
-          <ProCard title={t('statistics.recentActivities')} bordered headerBordered style={cardStyle}>
+          <ProCard
+            title={t('statistics.recentActivities')}
+            bordered
+            headerBordered
+            style={cardStyle}
+          >
             <Timeline
               items={statsData.recentActivities.map((a) => {
                 const meta = ACTIVITY_META[a.type] ?? ACTIVITY_META.created;
