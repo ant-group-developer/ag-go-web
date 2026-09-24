@@ -45,6 +45,12 @@ const resources = {
         partial: 'Hoàn tất một phần',
         failed: 'Thất bại',
         cancelled: 'Đã hủy',
+        forbiddenTitle: 'Không có quyền truy cập',
+        forbiddenDescription:
+          'Bạn không có quyền truy cập trang này. Liên hệ quản trị viên nếu bạn cần được cấp quyền.',
+        notFoundTitle: 'Không tìm thấy trang',
+        notFoundDescription: 'Trang bạn tìm không tồn tại hoặc đã bị di chuyển.',
+        backHome: 'Về trang tổng quan',
       },
       auth: {
         authenticating: 'Đang xác thực...',
@@ -723,6 +729,12 @@ const resources = {
         partial: 'Partially completed',
         failed: 'Failed',
         cancelled: 'Cancelled',
+        forbiddenTitle: 'Access denied',
+        forbiddenDescription:
+          'You do not have permission to access this page. Contact an administrator if you need access.',
+        notFoundTitle: 'Page not found',
+        notFoundDescription: 'The page you are looking for does not exist or has been moved.',
+        backHome: 'Back to dashboard',
       },
       auth: {
         authenticating: 'Authenticating...',
