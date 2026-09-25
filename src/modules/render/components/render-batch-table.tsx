@@ -12,6 +12,8 @@ type RenderBatchTableProps = {
   /** Hide the project column, e.g. inside a project page. */
   hideScope?: boolean;
   onViewJobs: (batch: RenderBatch) => void;
+  /** Fixed body height; rows scroll inside the table. */
+  scrollY?: number;
 };
 
 export function RenderBatchTable({
@@ -19,6 +21,7 @@ export function RenderBatchTable({
   loading,
   hideScope,
   onViewJobs,
+  scrollY,
 }: RenderBatchTableProps) {
   const { t } = useTranslation();
   const columns: ColumnsType<RenderBatch> = [
@@ -105,7 +108,7 @@ export function RenderBatchTable({
       loading={loading}
       columns={columns}
       dataSource={batches}
-      scroll={{ x: 1000 }}
+      scroll={{ x: 1000, y: scrollY }}
       pagination={{ pageSize: 20, hideOnSinglePage: true, showSizeChanger: false }}
       onRow={(batch) => ({ onDoubleClick: () => onViewJobs(batch) })}
       locale={{ emptyText: t('render.noRenderHistory') }}

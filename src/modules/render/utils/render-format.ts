@@ -22,6 +22,24 @@ export function renderStatusLabel(status: string, t: (key: string) => string): s
   );
 }
 
+export function renderJobSourceLabel(source: string, t: (key: string) => string): string {
+  return (
+    {
+      batch: t('render.source.batch'),
+      upload: t('render.source.upload'),
+      import: t('render.source.import'),
+      retry: t('render.source.retry'),
+    }[source] ?? t('render.source.other')
+  );
+}
+
+export const RENDER_JOB_SOURCE_COLORS: Record<string, string> = {
+  batch: 'purple',
+  upload: 'cyan',
+  import: 'geekblue',
+  retry: 'orange',
+};
+
 export function formatResolution(width?: number | null, height?: number | null): string {
   return width && height ? `${width}×${height}` : '-';
 }

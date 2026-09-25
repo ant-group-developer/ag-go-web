@@ -7,7 +7,7 @@ import { usePublicSettings } from '../modules/settings/hooks/use-settings';
 
 const { Title, Text } = Typography;
 
-const BACKGROUND_IMAGE = '/images/background-login-16x9.jpg';
+const DEFAULT_BACKGROUND_IMAGE = '/images/background-login-16x9.jpg';
 
 type LoginScreenProps = {
   onLogin: () => void;
@@ -27,12 +27,13 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
   const siteName = brand?.siteName?.trim() || t('app.title');
   const description = brand?.siteDescription?.trim() || t('auth.tagline');
   const accent = brand?.primaryColor?.trim() || token.colorPrimary;
+  const backgroundImage = brand?.loginBackgroundUrl?.trim() || DEFAULT_BACKGROUND_IMAGE;
   const accentStyle = { '--login-accent': accent } as CSSProperties;
   const hasSupport = Boolean(brand?.supportEmail || brand?.supportUrl);
 
   return (
     <div className="login-screen" style={accentStyle}>
-      <div className="login-backdrop" style={{ backgroundImage: `url(${BACKGROUND_IMAGE})` }} />
+      <div className="login-backdrop" style={{ backgroundImage: `url("${backgroundImage}")` }} />
       <div className="login-overlay" />
 
       <div className="login-layout">

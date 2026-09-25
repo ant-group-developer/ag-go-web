@@ -24,7 +24,18 @@ export type ImportBatch = {
 
 export type DuplicatePolicy = 'create_new' | 'reuse_existing' | 'overwrite_existing';
 
-export type ImportHistoryItem = ImportBatch;
+export type ImportHistoryItem = ImportBatch & {
+  /** Files in the batch, excluding traversed folders. */
+  fileCount: number;
+  imageCount: number;
+  videoCount: number;
+  totalBytes: string;
+  importedBytes: string;
+  reusedCount: number;
+  finishedAt: string | null;
+  updatedAt: string;
+  createdByUser?: { id: string; name?: string; email?: string } | null;
+};
 
 export type ImportItem = {
   id: string;
