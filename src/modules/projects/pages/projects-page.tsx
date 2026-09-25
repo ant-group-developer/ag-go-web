@@ -1,4 +1,3 @@
-import { AppstoreOutlined, BarsOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { PageContainer, ProTable } from '@ant-design/pro-components';
 import { useIsFetching, useQueryClient } from '@tanstack/react-query';
@@ -8,6 +7,7 @@ import {
   Avatar,
   Button,
   Col,
+  Dropdown,
   Image,
   Input,
   Pagination,
@@ -21,13 +21,24 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
-import { ClipboardCheck, Pencil, Plus, Trash2 } from 'lucide-react';
+import {
+  ArrowDownWideNarrow,
+  ArrowUpNarrowWide,
+  Check,
+  ClipboardCheck,
+  LayoutGrid,
+  List,
+  Pencil,
+  Plus,
+  Trash2,
+} from 'lucide-react';
 
 import {
   parseAsArrayOf,
   parseAsBoolean,
   parseAsInteger,
   parseAsString,
+  parseAsStringLiteral,
   useQueryState,
   useQueryStates,
 } from 'nuqs';
@@ -44,7 +55,11 @@ import { ProjectFilterPopover } from '../components/project-filter-popover';
 import { ProjectReviewDrawer, type ProjectDrawerMode } from '../components/project-review-drawer';
 import { useDeleteProject } from '../hooks/use-projects';
 import { projectQueryKeys } from '../queries/project-query-keys';
-import type { ProjectListParams } from '../types/project-list-params.type';
+import type {
+  ProjectListParams,
+  ProjectSortField,
+  ProjectSortOrder,
+} from '../types/project-list-params.type';
 import type { Project } from '../types/project.type';
 import { formatDate } from '../utils/date.util';
 import { getProjectStatus } from '../utils/project-status.util';
@@ -52,6 +67,9 @@ import { getProjectStatus } from '../utils/project-status.util';
 const ProjectGridView = lazy(() =>
   import('../components/project-grid-view').then((m) => ({ default: m.ProjectGridView })),
 );
+
+const PROJECT_SORT_FIELDS = ['name', 'createdAt', 'updatedAt'] as const satisfies readonly ProjectSortField[];
+const PROJECT_SORT_ORDERS = ['asc', 'desc'] as const satisfies readonly ProjectSortOrder[];
 
 const projectUrlParams = {
   keyword: parseAsString,
@@ -63,6 +81,8 @@ const projectUrlParams = {
   categoryId: parseAsString,
   page: parseAsInteger.withDefault(1),
   pageSize: parseAsInteger.withDefault(20),
+  sortBy: parseAsStringLiteral(PROJECT_SORT_FIELDS).withDefault('updatedAt'),
+  sortOrder: parseAsStringLiteral(PROJECT_SORT_ORDERS).withDefault('desc'),
 };
 
 const PROJECTS_VIEW_MODE_STORAGE_KEY = 'ag-go.projects.viewMode';
@@ -97,6 +117,7 @@ export function ProjectsPage() {
     history: 'replace',
   });
   const [createOpen, setCreateOpen] = useState(false);
+  const [sortOpen, setSortOpen] = useState(false);
   const [reviewProjectId, setReviewProjectId] = useState<string>();
   const [reviewMode, setReviewMode] = useState<ProjectDrawerMode>('view');
   const openProject = (projectId: string, mode: ProjectDrawerMode) => {
@@ -212,6 +233,16 @@ export function ProjectsPage() {
     const newValues = { ...filterValues, keyword: keywordInput.trim() || undefined };
     setFilterValues(newValues);
     void applyFilter(newValues);
+  };
+
+  const sortFieldLabels: Record<ProjectSortField, string> = {
+    name: t('projects.sortName'),
+    createdAt: t('projects.createdAt'),
+    updatedAt: t('projects.updatedAt'),
+  };
+
+  const handleSortChange = (sort: { sortBy?: ProjectSortField; sortOrder?: ProjectSortOrder }) => {
+    void setUrlState({ ...sort, page: 1 });
   };
 
   const handleDelete = async (projectId: string) => {
@@ -457,6 +488,8 @@ export function ProjectsPage() {
               ...(urlState.countryId ? { countryId: urlState.countryId } : {}),
               ...(urlState.provinceId ? { provinceId: urlState.provinceId } : {}),
               ...(urlState.categoryId ? { categoryId: urlState.categoryId } : {}),
+              sortBy: urlState.sortBy,
+              sortOrder: urlState.sortOrder,
               page: current ?? 1,
               pageSize: pageSize ?? 20,
             };
@@ -583,32 +616,68 @@ export function ProjectsPage() {
             </>
           )}
           toolBarRender={() => [
+            <Dropdown
+              key="sort"
+              trigger={['click']}
+              open={sortOpen}
+              // Keep the menu open while picking field/order; close only via trigger or outside click.
+              onOpenChange={(nextOpen, info) => {
+                if (info.source === 'trigger') {
+                  setSortOpen(nextOpen);
+                }
+              }}
+              menu={{
+                items: [
+                  {
+                    type: 'group',
+                    label: t('projects.sort'),
+                    children: PROJECT_SORT_FIELDS.map((field) => ({
+                      key: `sortBy:${field}`,
+                      label: sortFieldLabels[field],
+                      extra: urlState.sortBy === field ? <Check size={14} /> : null,
+                      onClick: () => handleSortChange({ sortBy: field }),
+                    })),
+                  },
+                  { type: 'divider' },
+                  ...PROJECT_SORT_ORDERS.map((order) => ({
+                    key: `sortOrder:${order}`,
+                    icon:
+                      order === 'asc' ? (
+                        <ArrowUpNarrowWide size={14} />
+                      ) : (
+                        <ArrowDownWideNarrow size={14} />
+                      ),
+                    label: t(order === 'asc' ? 'projects.sortAsc' : 'projects.sortDesc'),
+                    extra: urlState.sortOrder === order ? <Check size={14} /> : null,
+                    onClick: () => handleSortChange({ sortOrder: order }),
+                  })),
+                ],
+              }}
+            >
+              <Button
+                icon={
+                  urlState.sortOrder === 'asc' ? (
+                    <ArrowUpNarrowWide size={16} />
+                  ) : (
+                    <ArrowDownWideNarrow size={16} />
+                  )
+                }
+              >
+                {sortFieldLabels[urlState.sortBy]}
+              </Button>
+            </Dropdown>,
             <Radio.Group
               key="view-mode"
               value={viewMode}
               onChange={(e) => setViewMode(e.target.value)}
               buttonStyle="solid"
             >
-              <Radio.Button
-                value="list"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <BarsOutlined />
+              <Radio.Button value="list" className="icon-radio-button">
+                <List size={16} />
               </Radio.Button>
 
-              <Radio.Button
-                value="grid"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <AppstoreOutlined />
+              <Radio.Button value="grid" className="icon-radio-button">
+                <LayoutGrid size={16} />
               </Radio.Button>
             </Radio.Group>,
           ]}
