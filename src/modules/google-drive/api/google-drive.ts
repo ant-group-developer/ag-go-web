@@ -35,6 +35,14 @@ export type ImportHistoryItem = ImportBatch & {
   finishedAt: string | null;
   updatedAt: string;
   createdByUser?: { id: string; name?: string; email?: string } | null;
+  /** Google Drive folders picked as sources of the batch (subfolders are not listed). */
+  sourceFolders: ImportSourceFolder[];
+};
+
+export type ImportSourceFolder = {
+  fileId: string | null;
+  name: string;
+  status: string;
 };
 
 export type ImportItem = {
