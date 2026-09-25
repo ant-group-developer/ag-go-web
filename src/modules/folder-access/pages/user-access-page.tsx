@@ -118,6 +118,7 @@ export function UserAccessPage() {
       title: t('folderAccess.grantedBy'),
       key: 'grantedBy',
       width: 220,
+      ellipsis: true,
       render: (_, grant) => <UserCell user={grant.grantedByUser} showEmail={false} />,
     },
     {

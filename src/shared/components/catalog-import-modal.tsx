@@ -156,14 +156,19 @@ export function CatalogImportModal({
                   width: 70,
                   render: (row: number) => (row > 0 ? row : '-'),
                 },
-                { title: t('catalogs.importField'), dataIndex: 'field', width: 130 },
+                {
+                  title: t('catalogs.importField'),
+                  dataIndex: 'field',
+                  width: 130,
+                  ellipsis: true,
+                },
                 {
                   title: t('catalogs.importValue'),
                   dataIndex: 'value',
                   width: 180,
                   ellipsis: true,
                 },
-                { title: t('catalogs.importReason'), dataIndex: 'reason' },
+                { title: t('catalogs.importReason'), dataIndex: 'reason', ellipsis: true },
               ]}
             />
           ) : null}

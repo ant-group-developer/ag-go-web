@@ -2,6 +2,7 @@ import {
   Alert,
   Button,
   Drawer,
+  Flex,
   Form,
   Popconfirm,
   Space,
@@ -93,14 +94,16 @@ export function FolderAccessDrawer({ folderId, onClose, onOpenFolder }: FolderAc
       width: 170,
       ellipsis: true,
       render: (_, grant) => (
-        <Space direction="vertical" size={0}>
-          <Typography.Text ellipsis>
+        <Flex vertical style={{ minWidth: 0 }}>
+          <Typography.Text
+            ellipsis={{ tooltip: grant.grantedByUser?.name || grant.grantedByUser?.email }}
+          >
             {grant.grantedByUser?.name || grant.grantedByUser?.email || '-'}
           </Typography.Text>
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
             {formatDate(grant.updatedAt)}
           </Typography.Text>
-        </Space>
+        </Flex>
       ),
     },
     {

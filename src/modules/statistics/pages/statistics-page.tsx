@@ -634,7 +634,7 @@ export function StatisticsPage() {
           >
             <FolderKanban size={14} />
           </Flex>
-          <Text strong style={{ fontSize: 13 }}>
+          <Text strong ellipsis={{ tooltip: name }} style={{ fontSize: 13, minWidth: 0 }}>
             {name}
           </Text>
         </Flex>
