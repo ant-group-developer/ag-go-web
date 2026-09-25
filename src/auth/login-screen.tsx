@@ -2,6 +2,8 @@ import { Button, Skeleton, Typography, theme as antdTheme } from 'antd';
 import { ArrowRight, LifeBuoy, Mail, ShieldCheck } from 'lucide-react';
 import type { CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
+import { LEGAL_PATHS } from '../modules/legal/legal-routes';
 import type { WebSettings } from '../modules/settings/api/settings';
 import { usePublicSettings } from '../modules/settings/hooks/use-settings';
 
@@ -123,6 +125,11 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
         <span>
           © {new Date().getFullYear()} {siteName}
         </span>
+        <nav className="login-footer-links">
+          <Link to={LEGAL_PATHS.about}>{t('auth.about')}</Link>
+          <Link to={LEGAL_PATHS.privacy}>{t('auth.privacy')}</Link>
+          <Link to={LEGAL_PATHS.terms}>{t('auth.terms')}</Link>
+        </nav>
       </footer>
     </div>
   );
