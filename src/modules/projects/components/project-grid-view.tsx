@@ -29,6 +29,7 @@ import {
   Trash,
 } from 'lucide-react';
 
+import { useAssetPreviewUrl } from '../../media/hooks/use-asset-preview-url';
 import { formatDate } from '../utils/date.util';
 import { getProjectStatus } from '../utils/project-status.util';
 import styles from './project-grid-view.module.css';
@@ -49,6 +50,8 @@ export interface ProjectGridItem {
     width?: number;
     height?: number;
   } | null;
+  /** Asset whose thumbnail variant is shown when no explicit cover URL is given. */
+  thumbnailAssetId?: string | null;
   stats: {
     views: number;
     likes: number;
@@ -75,6 +78,27 @@ export interface ProjectGridItem {
   };
   imageCount?: number;
   videoCount?: number;
+}
+
+function ProjectGridCover({ item }: { item: ProjectGridItem }) {
+  const thumbnailUrl = useAssetPreviewUrl(item.cover?.url ? null : item.thumbnailAssetId);
+  const [failed, setFailed] = useState(false);
+  const url = item.cover?.url ?? thumbnailUrl;
+
+  useEffect(() => {
+    setFailed(false);
+  }, [url]);
+
+  if (!url || failed) {
+    return (
+      <div className={styles.placeholderImage}>
+        <Camera style={{ width: 48, height: 48 }} strokeWidth={1.2} />
+      </div>
+    );
+  }
+  return (
+    <img alt={item.title} src={url} className={styles.image} onError={() => setFailed(true)} />
+  );
 }
 
 const GRID_BREAKPOINTS: { minWidth: number; span: number }[] = [
@@ -234,13 +258,7 @@ export function ProjectGridView({
             <Col span={colSpan} key={item.id}>
               <div className={styles.card}>
                 {/* Ảnh full card */}
-                {item.cover?.url ? (
-                  <img alt={item.title} src={item.cover.url} className={styles.image} />
-                ) : (
-                  <div className={styles.placeholderImage}>
-                    <Camera style={{ width: 48, height: 48 }} strokeWidth={1.2} />
-                  </div>
-                )}
+                <ProjectGridCover item={item} />
 
                 <div className={styles.gradient} />
 

@@ -27,26 +27,39 @@ import {
   Typography,
   theme,
 } from 'antd';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { usePermissions } from '../../account/hooks/use-current-account';
 import { getProjectAudit, type AuditLog } from '../../audit/api/audit';
 import { createDownload, getDownload, type DownloadResult } from '../../downloads/api/downloads';
 import {
-  getAssetPreviewUrl,
+  getAssetOriginalUrl,
   getProjectMedia,
   getProjectMediaEvaluationHistory,
   retryAssetProcessing,
   type ProjectMedia,
   type ProjectMediaEvaluation,
 } from '../../media/api/media';
+import { RenditionPicker } from '../../media/components/rendition-picker';
+import { useAssetPreviewUrl } from '../../media/hooks/use-asset-preview-url';
+import { useRenditionSelection } from '../../media/hooks/use-rendition-selection';
 import { mediaQueryKeys } from '../../media/queries/media-query-keys';
 import { getProject } from '../api/projects';
 import { projectQueryKeys } from '../queries/project-query-keys';
 import type { Project } from '../types/project.type';
 
+/** 'evaluate' shows the original files; 'view' shows the watermarked previews. */
+export type ProjectDrawerMode = 'view' | 'evaluate';
+
+type MediaSource = 'preview' | 'original';
+
+const ORIGINAL_URL_STALE_MS = 5 * 60 * 1000;
+const ORIGINAL_PERMISSIONS = ['go.project.evaluate', 'go.project.download_original'];
+
 type ProjectReviewDrawerProps = {
   open: boolean;
   projectId?: string;
+  mode?: ProjectDrawerMode;
   onClose: () => void;
 };
 
@@ -110,71 +123,174 @@ function getEvaluationStatus(status: ProjectMedia['evaluationStatus'], t: (key: 
   return statuses[status];
 }
 
-function MediaPreview({ media }: { media: ProjectMedia }) {
+const previewPlaceholderStyle = {
+  alignItems: 'center',
+  background: '#f5f5f5',
+  color: '#8c8c8c',
+  display: 'flex',
+  minHeight: 420,
+  justifyContent: 'center',
+} as const;
+
+/**
+ * Evaluation shows the original file at full quality. Formats the browser cannot display
+ * (e.g. HEIC, TIFF, some video codecs) fall back to the watermarked preview.
+ */
+function MediaPreview({ media, source }: { media: ProjectMedia; source: MediaSource }) {
   const { t } = useTranslation();
-  const [previewUrl, setPreviewUrl] = useState<string>();
-  const isReady = media.asset.processingStatus === 'ready';
+  const [originalFailed, setOriginalFailed] = useState(false);
 
   useEffect(() => {
-    if (media.previewUrl) {
-      setPreviewUrl(media.previewUrl);
-      return undefined;
+    setOriginalFailed(false);
+  }, [media.id]);
+
+  if (source === 'original' && !originalFailed) {
+    return <OriginalMediaPreview media={media} onUnavailable={() => setOriginalFailed(true)} />;
+  }
+  return (
+    <>
+      {source === 'original' ? (
+        <Alert
+          type="warning"
+          showIcon
+          message={t('projects.originalUnavailable')}
+          style={{ marginBottom: 8 }}
+        />
+      ) : null}
+      <RenderedMediaPreview media={media} />
+    </>
+  );
+}
+
+function OriginalMediaPreview({
+  media,
+  onUnavailable,
+}: {
+  media: ProjectMedia;
+  onUnavailable: () => void;
+}) {
+  const { t } = useTranslation();
+  // The original exists as soon as the upload completed, before any render.
+  const uploaded = !['uploading', 'cancelled'].includes(media.asset.processingStatus);
+  const original = useQuery({
+    queryKey: mediaQueryKeys.assetOriginalUrl(media.assetId),
+    queryFn: () => getAssetOriginalUrl(media.assetId),
+    enabled: uploaded,
+    staleTime: ORIGINAL_URL_STALE_MS,
+    gcTime: ORIGINAL_URL_STALE_MS * 2,
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (original.isError) {
+      onUnavailable();
     }
-    if (!isReady) {
-      setPreviewUrl(undefined);
-      return undefined;
-    }
+  }, [original.isError, onUnavailable]);
 
-    let disposed = false;
-    void getAssetPreviewUrl(media.assetId, 'preview')
-      .then((url) => {
-        if (disposed) {
-          return;
-        }
-        setPreviewUrl(url);
-      })
-      .catch(() => setPreviewUrl(undefined));
-
-    return () => {
-      disposed = true;
-    };
-  }, [isReady, media.assetId, media.previewUrl]);
-
-  if (!previewUrl) {
+  if (!uploaded || !original.data) {
     return (
-      <div
-        style={{
-          alignItems: 'center',
-          background: '#f5f5f5',
-          color: '#8c8c8c',
-          display: 'flex',
-          minHeight: 420,
-          justifyContent: 'center',
-        }}
-      >
-        {isReady ? <Spin size="small" /> : t('projects.previewUnavailable')}
+      <div style={previewPlaceholderStyle}>
+        {uploaded ? <Spin size="small" /> : t('projects.previewUnavailable')}
       </div>
     );
   }
 
-  if (media.asset.assetType === 'video') {
-    return (
-      <video
-        controls
-        preload="metadata"
-        src={previewUrl}
-        style={{
-          background: '#000',
-          display: 'block',
-          maxHeight: 560,
-          objectFit: 'contain',
-          width: '100%',
-        }}
-      />
-    );
-  }
-
   return (
+    <Flex vertical gap={8}>
+      <Space size={4} wrap>
+        <Tag color="gold">{t('projects.originalFile')}</Tag>
+        <Typography.Text type="secondary">{formatResolution(media)}</Typography.Text>
+        <Typography.Text type="secondary">
+          {formatFileSize(media.asset.fileSizeBytes)}
+        </Typography.Text>
+      </Space>
+      {media.asset.assetType === 'video' ? (
+        <video
+          controls
+          preload="metadata"
+          src={original.data}
+          onError={onUnavailable}
+          style={{
+            background: '#000',
+            display: 'block',
+            maxHeight: 560,
+            objectFit: 'contain',
+            width: '100%',
+          }}
+        />
+      ) : (
+        <Image
+          alt={media.asset.originalFilename}
+          preview
+          src={original.data}
+          onError={onUnavailable}
+          style={{ maxHeight: 560, objectFit: 'contain', width: '100%' }}
+          wrapperStyle={{ display: 'block', textAlign: 'center' }}
+        />
+      )}
+    </Flex>
+  );
+}
+
+function RenderedMediaPreview({ media }: { media: ProjectMedia }) {
+  const { t } = useTranslation();
+  const frameRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  // Playback position survives switching to another size (manually or when the frame resizes).
+  const playbackRef = useRef({ time: 0, playing: false });
+  const isReady = media.asset.processingStatus === 'ready';
+  const isVideo = media.asset.assetType === 'video';
+  const variants = useMemo(() => media.previewVariants ?? [], [media.previewVariants]);
+  const { quality, autoVariant, selected, setQuality } = useRenditionSelection(variants, frameRef);
+  const selectedUrl = useAssetPreviewUrl(
+    isReady && selected ? media.assetId : null,
+    selected?.variantCode ?? 'preview',
+  );
+  // Older API responses without preview sizes still carry a single preview URL.
+  const previewUrl = variants.length > 0 ? selectedUrl : (media.previewUrl ?? undefined);
+
+  useEffect(() => {
+    playbackRef.current = { time: 0, playing: false };
+  }, [media.id]);
+
+  const content = !previewUrl ? (
+    <div style={previewPlaceholderStyle}>
+      {isReady ? <Spin size="small" /> : t('projects.previewUnavailable')}
+    </div>
+  ) : isVideo ? (
+    <video
+      ref={videoRef}
+      controls
+      preload="metadata"
+      src={previewUrl}
+      onTimeUpdate={(event) => {
+        playbackRef.current.time = event.currentTarget.currentTime;
+      }}
+      onPlay={() => {
+        playbackRef.current.playing = true;
+      }}
+      onPause={() => {
+        playbackRef.current.playing = false;
+      }}
+      onLoadedMetadata={(event) => {
+        const video = event.currentTarget;
+        const { time, playing } = playbackRef.current;
+        if (time > 0) {
+          video.currentTime = time;
+        }
+        if (playing) {
+          void video.play().catch(() => undefined);
+        }
+      }}
+      style={{
+        background: '#000',
+        display: 'block',
+        maxHeight: 560,
+        objectFit: 'contain',
+        width: '100%',
+      }}
+    />
+  ) : (
     <Image
       alt={media.asset.originalFilename}
       preview
@@ -183,31 +299,31 @@ function MediaPreview({ media }: { media: ProjectMedia }) {
       wrapperStyle={{ display: 'block', textAlign: 'center' }}
     />
   );
+
+  return (
+    <div ref={frameRef}>
+      {content}
+      {variants.length > 1 ? (
+        <Flex justify="flex-end" style={{ marginTop: 8 }}>
+          <RenditionPicker
+            variants={variants}
+            value={quality}
+            autoVariant={autoVariant}
+            isVideo={isVideo}
+            onChange={setQuality}
+          />
+        </Flex>
+      ) : null}
+    </div>
+  );
 }
 
 function MediaThumbnail({ media }: { media: ProjectMedia }) {
-  const [previewUrl, setPreviewUrl] = useState<string>();
-
-  useEffect(() => {
-    if (media.asset.processingStatus !== 'ready') {
-      setPreviewUrl(undefined);
-      return undefined;
-    }
-
-    let disposed = false;
-    void getAssetPreviewUrl(media.assetId)
-      .then((url) => {
-        if (disposed) {
-          return;
-        }
-        setPreviewUrl(url);
-      })
-      .catch(() => setPreviewUrl(undefined));
-
-    return () => {
-      disposed = true;
-    };
-  }, [media.asset.processingStatus, media.assetId]);
+  // The list response carries the un-watermarked thumbnail; fetch it only for older responses.
+  const fetchedUrl = useAssetPreviewUrl(
+    media.thumbnailUrl || media.asset.processingStatus !== 'ready' ? null : media.assetId,
+  );
+  const previewUrl = media.thumbnailUrl ?? fetchedUrl;
 
   return previewUrl ? (
     <Image
@@ -398,8 +514,16 @@ function MediaDetails({
   );
 }
 
-export function ProjectDetailDrawer({ open, projectId, onClose }: ProjectReviewDrawerProps) {
+export function ProjectDetailDrawer({
+  open,
+  projectId,
+  mode = 'view',
+  onClose,
+}: ProjectReviewDrawerProps) {
   const { t } = useTranslation();
+  const { canAny } = usePermissions();
+  const mediaSource: MediaSource =
+    mode === 'evaluate' && canAny(ORIGINAL_PERMISSIONS) ? 'original' : 'preview';
   const { token } = theme.useToken();
   const { message } = AntApp.useApp();
   const [selectedMediaId, setSelectedMediaId] = useState<string>();
@@ -505,7 +629,11 @@ export function ProjectDetailDrawer({ open, projectId, onClose }: ProjectReviewD
       height="100vh"
       open={open}
       placement="top"
-      title={project.data?.name ?? t('projects.reviewTitle')}
+      title={
+        mode === 'evaluate'
+          ? `${t('projects.review')} · ${project.data?.name ?? ''}`
+          : (project.data?.name ?? t('projects.reviewTitle'))
+      }
       width="100vw"
       onClose={close}
       extra={
@@ -691,7 +819,7 @@ export function ProjectDetailDrawer({ open, projectId, onClose }: ProjectReviewD
                 styles={{ body: { background: '#fafafa', padding: 12 } }}
               >
                 {selectedMedia ? (
-                  <MediaPreview media={selectedMedia} />
+                  <MediaPreview media={selectedMedia} source={mediaSource} />
                 ) : (
                   <Empty description={t('projects.selectFileToPreview')} />
                 )}

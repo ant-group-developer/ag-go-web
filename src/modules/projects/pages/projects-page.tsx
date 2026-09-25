@@ -35,13 +35,13 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { CountryFlag } from '../../countries/components';
-import { getAssetPreviewUrl } from '../../media/api/media';
+import { useAssetPreviewUrl } from '../../media/hooks/use-asset-preview-url';
 import { getProjects } from '../api/projects';
 import { CreateProjectModal } from '../components/create-project-modal';
 import type { ProjectFilterValues } from '../components/project-filter-popover';
 import { ProjectFilterPopover } from '../components/project-filter-popover';
 
-import { ProjectReviewDrawer } from '../components/project-review-drawer';
+import { ProjectReviewDrawer, type ProjectDrawerMode } from '../components/project-review-drawer';
 import { useDeleteProject } from '../hooks/use-projects';
 import { projectQueryKeys } from '../queries/project-query-keys';
 import type { ProjectListParams } from '../types/project-list-params.type';
@@ -69,34 +69,7 @@ const PROJECTS_VIEW_MODE_STORAGE_KEY = 'ag-go.projects.viewMode';
 
 function ProjectThumbnailCell({ assetId }: { assetId?: string | null }) {
   const { t } = useTranslation();
-  const [previewUrl, setPreviewUrl] = useState<string>();
-
-  useEffect(() => {
-    if (!assetId) {
-      setPreviewUrl(undefined);
-      return undefined;
-    }
-
-    let disposed = false;
-    let createdUrl: string | undefined;
-    void getAssetPreviewUrl(assetId)
-      .then((url) => {
-        if (disposed) {
-          URL.revokeObjectURL(url);
-          return;
-        }
-        createdUrl = url;
-        setPreviewUrl(url);
-      })
-      .catch(() => setPreviewUrl(undefined));
-
-    return () => {
-      disposed = true;
-      if (createdUrl) {
-        URL.revokeObjectURL(createdUrl);
-      }
-    };
-  }, [assetId]);
+  const previewUrl = useAssetPreviewUrl(assetId);
 
   return (
     <Image
@@ -125,6 +98,11 @@ export function ProjectsPage() {
   });
   const [createOpen, setCreateOpen] = useState(false);
   const [reviewProjectId, setReviewProjectId] = useState<string>();
+  const [reviewMode, setReviewMode] = useState<ProjectDrawerMode>('view');
+  const openProject = (projectId: string, mode: ProjectDrawerMode) => {
+    setReviewMode(mode);
+    setReviewProjectId(projectId);
+  };
   // `?create=true` (e.g. from the dashboard quick action) opens the create drawer once.
   const [createParam, setCreateParam] = useQueryState(
     'create',
@@ -140,6 +118,7 @@ export function ProjectsPage() {
 
   useEffect(() => {
     if (routeProjectId) {
+      setReviewMode('view');
       setReviewProjectId(routeProjectId);
     }
   }, [routeProjectId]);
@@ -257,7 +236,7 @@ export function ProjectsPage() {
         <Space align="start">
           <ProjectThumbnailCell assetId={project.thumbnailAssetId} />
           <Space direction="vertical" size={2}>
-            <Typography.Link onClick={() => setReviewProjectId(project.id)}>
+            <Typography.Link onClick={() => openProject(project.id, 'view')}>
               {project.name}
             </Typography.Link>
             <Space size={6}>
@@ -358,7 +337,7 @@ export function ProjectsPage() {
               aria-label={t('projects.review')}
               icon={<ClipboardCheck size={16} />}
               type="text"
-              onClick={() => setReviewProjectId(project.id)}
+              onClick={() => openProject(project.id, 'evaluate')}
             />
           </Tooltip>
           <Tooltip title={t('projects.edit')}>
@@ -543,7 +522,7 @@ export function ProjectsPage() {
                         evaluation_status: p.evaluationStatus,
                         createdAt: p.createdAt,
                         updatedAt: p.updatedAt,
-                        cover: null,
+                        thumbnailAssetId: p.thumbnailAssetId ?? null,
                         stats: { views: 0, likes: 0, comments: 0 },
                         folder: p.folderPath ? { id: p.folderId, name: p.folderPath } : undefined,
                         province: p.provinceName
@@ -564,10 +543,10 @@ export function ProjectsPage() {
                           : null,
                       }))}
                       isLoading={isLoading || isFetching}
-                      onView={(id) => setReviewProjectId(id)}
+                      onView={(id) => openProject(id, 'view')}
                       onEdit={(id) => navigate(`/projects/${id}/edit`)}
                       onDelete={(item) => void handleDelete(item.id)}
-                      onEvaluate={(item) => setReviewProjectId(item.id)}
+                      onEvaluate={(item) => openProject(item.id, 'evaluate')}
                       canEvaluate
                     />
                   </Suspense>
@@ -653,6 +632,7 @@ export function ProjectsPage() {
       <ProjectReviewDrawer
         open={Boolean(reviewProjectId)}
         projectId={reviewProjectId}
+        mode={reviewMode}
         onClose={() => {
           setReviewProjectId(undefined);
           if (routeProjectId) {
