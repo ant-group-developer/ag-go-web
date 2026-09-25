@@ -1,7 +1,7 @@
 import { DeleteOutlined } from '@ant-design/icons';
 import { DrivePicker, DrivePickerDocsView } from '@googleworkspace/drive-picker-react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Alert, Button, Card, List, Progress, Radio, Space, Table, Tag, Typography } from 'antd';
+import { Alert, Button, Card, List, Progress, Radio, Space, Tag, Typography } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatFileSize } from '../../../shared/lib/format-file-size';
@@ -15,10 +15,16 @@ import {
   useDriveImport,
   useGoogleDriveConnection,
   useGoogleDrivePickerToken,
-  useRetryDriveImportItem,
   useStartGoogleDriveConnection,
   useSummarizeGoogleDriveSources,
 } from '../hooks/use-google-drive';
+import {
+  displayFilename,
+  importStatusColor,
+  importStatusLabel,
+  isFolderItem,
+} from '../utils/import-format';
+import { ImportItemsTable } from './import-items-table';
 
 type PickedSource = {
   fileId: string;
@@ -40,72 +46,6 @@ type PickerDocument = {
 type PickerEvent = { detail?: { docs?: PickerDocument[] } };
 type PickerMode = 'files' | 'folders';
 
-function displayFilename(name: string, mimeType?: string | null): string {
-  if (name.lastIndexOf('.') > 0) {
-    return name;
-  }
-  const extensions: Record<string, string> = {
-    'image/jpeg': 'jpg',
-    'image/png': 'png',
-    'image/webp': 'webp',
-    'video/mp4': 'mp4',
-    'video/quicktime': 'mp4',
-    'video/webm': 'webm',
-  };
-  const extension = mimeType ? extensions[mimeType.toLowerCase()] : undefined;
-  return extension ? `${name}.${extension}` : name;
-}
-
-function importStatusLabel(status: string, t: (key: string) => string): string {
-  const normalized = status.toLowerCase();
-  return (
-    {
-      queued: t('googleDrive.status.queued'),
-      importing: t('googleDrive.status.importing'),
-      processing: t('googleDrive.status.processing'),
-      completed: t('googleDrive.status.completed'),
-      partial: t('googleDrive.status.partial'),
-      partially_completed: t('googleDrive.status.partial'),
-      failed: t('googleDrive.status.failed'),
-      cancelled: t('googleDrive.status.cancelled'),
-    }[normalized] ?? status
-  );
-}
-
-function importStatusColor(status: string): string {
-  const normalized = status.toLowerCase();
-  switch (normalized) {
-    case 'completed':
-      return 'success';
-    case 'failed':
-      return 'error';
-    case 'cancelled':
-      return 'default';
-    case 'partial':
-    case 'partially_completed':
-      return 'warning';
-    default:
-      return 'processing';
-  }
-}
-
-function formatDimensions(width: number | null, height: number | null): string {
-  return width && height ? `${width} × ${height}` : '-';
-}
-
-function formatDuration(value: string | null): string {
-  const seconds = Number(value);
-  if (!Number.isFinite(seconds) || seconds <= 0) {
-    return '-';
-  }
-  const total = Math.round(seconds);
-  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
-}
-
-function formatDate(value: string | null): string {
-  return value ? new Date(value).toLocaleString('vi-VN') : '-';
-}
-
 export function ProjectGoogleDriveImportPanel({ projectId }: { projectId: string }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -122,7 +62,6 @@ export function ProjectGoogleDriveImportPanel({ projectId }: { projectId: string
   const disconnect = useDisconnectGoogleDrive();
   const createImport = useCreateDriveImport();
   const cancelImport = useCancelDriveImport();
-  const retryItem = useRetryDriveImportItem();
   const summarizeSources = useSummarizeGoogleDriveSources();
   const [batchId, setBatchId] = useState<string>();
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -498,72 +437,8 @@ export function ProjectGoogleDriveImportPanel({ projectId }: { projectId: string
                   </Button>
                 ) : null}
               </Space>
-              <Table
-                size="small"
-                rowKey="id"
-                scroll={{ x: 860 }}
-                pagination={false}
-                dataSource={(batch.data?.items ?? []).filter((item) => {
-                  const mime = item.sourceMimeType?.toLowerCase();
-                  return mime !== 'application/vnd.google-apps.folder' && !mime?.includes('folder');
-                })}
-                columns={[
-                  {
-                    title: t('common.file'),
-                    dataIndex: 'sourceName',
-                    render: (name: string, item) => (
-                      <Typography.Text ellipsis style={{ maxWidth: 220 }}>
-                        {displayFilename(name, item.sourceMimeType)}
-                      </Typography.Text>
-                    ),
-                  },
-                  {
-                    title: t('media.size'),
-                    dataIndex: 'sourceSizeBytes',
-                    render: (value: string | null) => formatFileSize(value),
-                  },
-                  {
-                    title: t('media.resolution'),
-                    render: (_, item) => formatDimensions(item.sourceWidth, item.sourceHeight),
-                  },
-                  {
-                    title: t('media.duration'),
-                    dataIndex: 'sourceDurationSeconds',
-                    render: (value: string | null) => formatDuration(value),
-                  },
-                  // Tạm ẩn cột người tạo
-                  {
-                    title: t('projects.updatedAt'),
-                    dataIndex: 'sourceModifiedAt',
-                    render: (value: string | null) => formatDate(value),
-                  },
-                  {
-                    title: t('common.status'),
-                    dataIndex: 'status',
-                    render: (value: string) => (
-                      <Tag color={importStatusColor(value)}>{importStatusLabel(value, t)}</Tag>
-                    ),
-                  },
-                  {
-                    title: t('googleDrive.resolution'),
-                    dataIndex: 'resolution',
-                    render: (value: string | null) =>
-                      value ? <Tag>{t(`googleDrive.resolutions.${value}`)}</Tag> : '-',
-                  },
-                  {
-                    title: t('common.actions'),
-                    render: (_, item) =>
-                      item.status === 'failed' ? (
-                        <Button
-                          size="small"
-                          loading={retryItem.isPending && retryItem.variables?.itemId === item.id}
-                          onClick={() => retryItem.mutate({ batchId, itemId: item.id })}
-                        >
-                          {t('common.retry')}
-                        </Button>
-                      ) : null,
-                  },
-                ]}
+              <ImportItemsTable
+                items={(batch.data?.items ?? []).filter((item) => !isFolderItem(item))}
               />
             </Card>
           ) : null}
