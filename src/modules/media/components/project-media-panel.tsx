@@ -33,10 +33,8 @@ import { formatFileSize } from '../../../shared/lib/format-file-size';
 import { projectQueryKeys } from '../../projects/queries/project-query-keys';
 import {
   abortUpload,
-  attachProjectMedia,
   completeUpload,
   createUploadSession,
-  getAssetPreviewUrl,
   getProjectMedia,
   removeProjectMedia,
   uploadAssetContent,
@@ -99,8 +97,9 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
   const uploadQueueRef = useRef<UploadTask[]>([]);
   const activeUploadsRef = useRef(0);
   const taskStatusesRef = useRef<Record<string, UploadTaskStatus>>({});
+  // Upload uid -> project media id, so finished uploads are replaced by their server row.
+  const uploadedMediaIdsRef = useRef(new Map<string, string>());
   const [fileList, setFileList] = useState<ProjectMediaUploadFile[]>([]);
-  const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
   const [taskStatuses, setTaskStatuses] = useState<Record<string, UploadTaskStatus>>({});
   const media = useQuery({
     queryKey: mediaQueryKeys.project(projectId),
@@ -116,44 +115,16 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
         status: 'done',
         percent: 100,
         response: item,
-        ...(previewUrls[item.id] ? { thumbUrl: previewUrls[item.id] } : {}),
+        // The list shows the un-watermarked thumbnail (image or video frame).
+        ...(item.thumbnailUrl ? { thumbUrl: item.thumbnailUrl } : {}),
       })),
-    [items, previewUrls],
+    [items],
   );
 
   const updateTaskStatus = useCallback((uid: string, status: UploadTaskStatus) => {
     taskStatusesRef.current = { ...taskStatusesRef.current, [uid]: status };
     setTaskStatuses(taskStatusesRef.current);
   }, []);
-
-  useEffect(() => {
-    let disposed = false;
-    setPreviewUrls({});
-
-    const readyImages = (items ?? []).filter(
-      (item) => item.asset.assetType === 'image' && item.asset.processingStatus === 'ready',
-    );
-    void Promise.all(
-      readyImages.map(async (item) => {
-        try {
-          const url = await getAssetPreviewUrl(item.assetId);
-          return [item.id, url] as const;
-        } catch {
-          return undefined;
-        }
-      }),
-    ).then((entries) => {
-      const urls = entries.filter((entry): entry is readonly [string, string] => Boolean(entry));
-      if (disposed) {
-        return;
-      }
-      setPreviewUrls(Object.fromEntries(urls));
-    });
-
-    return () => {
-      disposed = true;
-    };
-  }, [items]);
 
   const invalidateProjectData = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: mediaQueryKeys.project(projectId) });
@@ -181,8 +152,7 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
     const serverMediaIds = new Set((items ?? []).map((item) => item.id));
     setFileList((current) => {
       const pendingOrFailedFiles = current.filter((file) => {
-        const responseId = file.response?.id;
-        const mediaId = responseId ?? file.uid;
+        const mediaId = file.response?.id ?? uploadedMediaIdsRef.current.get(file.uid) ?? file.uid;
         return file.status !== 'done' || !serverMediaIds.has(mediaId);
       });
       const serverUids = new Set(serverFileList.map((file) => file.uid));
@@ -216,10 +186,12 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
             globalThis.crypto.randomUUID(),
           );
           await uploadAssetContent(session, file, (percent) => options.onProgress?.({ percent }));
-          const asset = await completeUpload(session.assetId, session.uploadSessionId);
+          const completed = await completeUpload(session.assetId, session.uploadSessionId);
           uploadCompleted = true;
-          const projectMedia = await attachProjectMedia(projectId, { assetId: asset.id });
-          options.onSuccess?.(projectMedia);
+          if (completed.projectMediaId) {
+            uploadedMediaIdsRef.current.set(uid, completed.projectMediaId);
+          }
+          options.onSuccess?.(undefined);
           updateTaskStatus(uid, 'done');
           invalidateProjectData();
         } catch (error) {
@@ -259,14 +231,17 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
         return;
       }
 
-      const existingMedia = items?.find((item) => item.id === file.uid) ?? file.response;
-      if (!existingMedia) {
+      const existingMediaId =
+        items?.find((item) => item.id === file.uid)?.id ??
+        file.response?.id ??
+        uploadedMediaIdsRef.current.get(file.uid);
+      if (!existingMediaId) {
         setFileList((current) => current.filter((entry) => entry.uid !== file.uid));
         return;
       }
 
       try {
-        await removeProjectMedia(existingMedia.id);
+        await removeProjectMedia(existingMediaId);
         setFileList((current) => current.filter((entry) => entry.uid !== file.uid));
         invalidateProjectData();
       } catch (error) {
@@ -400,7 +375,11 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
                       width={40}
                       height={40}
                       style={{ objectFit: 'cover', borderRadius: 6 }}
-                      preview={{ mask: null }}
+                      // Enlarging an image shows the watermarked preview, not the thumbnail.
+                      preview={{
+                        mask: null,
+                        src: video ? undefined : (file.response?.previewUrl ?? undefined),
+                      }}
                     />
                   ) : (
                     <Avatar
