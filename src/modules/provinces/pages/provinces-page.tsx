@@ -4,7 +4,7 @@ import {
   type ActionType,
   type ProColumns,
 } from '@ant-design/pro-components';
-import { Alert, Button, Input, Space } from 'antd';
+import { Alert, Button, Flex, Input, Space, Typography } from 'antd';
 import { FileUp } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -59,16 +59,19 @@ export function ProvincesPage() {
       {
         title: t('catalogs.country'),
         width: 280,
+        ellipsis: true,
         render: (_, province) => (
-          <Space>
+          <Flex align="center" gap={8} style={{ minWidth: 0 }}>
             <CountryFlag
               flagUrl={province.country.flagUrl}
               code={province.country.code}
               name={province.country.name}
               height={18}
             />
-            <span>{province.country.name}</span>
-          </Space>
+            <Typography.Text ellipsis={{ tooltip: province.country.name }}>
+              {province.country.name}
+            </Typography.Text>
+          </Flex>
         ),
       },
     ],

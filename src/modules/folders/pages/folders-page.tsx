@@ -6,6 +6,7 @@ import {
   Breadcrumb,
   Button,
   Empty,
+  Flex,
   Popconfirm,
   Space,
   Tooltip,
@@ -135,10 +136,11 @@ export function FoldersPage() {
         <Button
           type="link"
           icon={<FolderIcon size={16} />}
-          style={{ padding: 0 }}
+          style={{ padding: 0, maxWidth: '100%' }}
+          title={folder.name}
           onClick={() => openFolder(folder.id)}
         >
-          {folder.name}
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{folder.name}</span>
         </Button>
       ),
     },
@@ -150,12 +152,14 @@ export function FoldersPage() {
       width: 220,
       ellipsis: true,
       render: (_, folder) => (
-        <Space size={6}>
-          <Avatar size={18} src={folder.createdByUser?.avatar}>
+        <Flex align="center" gap={6} style={{ minWidth: 0 }}>
+          <Avatar size={18} src={folder.createdByUser?.avatar} style={{ flexShrink: 0 }}>
             {folder.createdByUser?.name?.charAt(0)?.toUpperCase()}
           </Avatar>
-          <Typography.Text ellipsis>{ownerName(folder) || t('common.unknown')}</Typography.Text>
-        </Space>
+          <Typography.Text ellipsis={{ tooltip: ownerName(folder) }}>
+            {ownerName(folder) || t('common.unknown')}
+          </Typography.Text>
+        </Flex>
       ),
     },
     {

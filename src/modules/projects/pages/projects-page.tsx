@@ -8,6 +8,7 @@ import {
   Button,
   Col,
   Dropdown,
+  Flex,
   Image,
   Input,
   Pagination,
@@ -268,22 +269,29 @@ export function ProjectsPage() {
       fixed: 'left',
       ellipsis: true,
       render: (_, project) => (
-        <Space align="start">
+        <Flex align="start" gap={8} style={{ minWidth: 0 }}>
           <ProjectThumbnailCell assetId={project.thumbnailAssetId} />
-          <Space direction="vertical" size={2}>
-            <Typography.Link onClick={() => openProject(project.id, 'view')}>
+          <Flex vertical gap={2} style={{ minWidth: 0 }}>
+            <Typography.Link
+              ellipsis
+              title={project.name}
+              onClick={() => openProject(project.id, 'view')}
+            >
               {project.name}
             </Typography.Link>
-            <Space size={6}>
-              <Avatar size={18} src={project.ownerUser?.avatar}>
+            <Flex align="center" gap={6} style={{ minWidth: 0 }}>
+              <Avatar size={18} src={project.ownerUser?.avatar} style={{ flexShrink: 0 }}>
                 {project.ownerUser?.name?.charAt(0)?.toUpperCase()}
               </Avatar>
-              <Typography.Text type="secondary" ellipsis>
+              <Typography.Text
+                type="secondary"
+                ellipsis={{ tooltip: project.ownerUser?.name || project.ownerUser?.email }}
+              >
                 {project.ownerUser?.name || project.ownerUser?.email || t('common.unknown')}
               </Typography.Text>
-            </Space>
-          </Space>
-        </Space>
+            </Flex>
+          </Flex>
+        </Flex>
       ),
     },
     {
@@ -291,20 +299,25 @@ export function ProjectsPage() {
       dataIndex: 'countryName',
       key: 'location',
       width: 200,
+      ellipsis: true,
       render: (_, project) => (
-        <Space direction="vertical" size={0}>
-          <Space size={6} align="center">
+        <Flex vertical style={{ minWidth: 0 }}>
+          <Flex align="center" gap={6} style={{ minWidth: 0 }}>
             <CountryFlag
               flagUrl={project.countryFlagUrl || undefined}
               name={project.countryName || undefined}
               height={14}
             />
-            <Typography.Text>{project.countryName || '-'}</Typography.Text>
-          </Space>
+            <Typography.Text ellipsis={{ tooltip: project.countryName }}>
+              {project.countryName || '-'}
+            </Typography.Text>
+          </Flex>
           {project.provinceName ? (
-            <Typography.Text type="secondary">{project.provinceName}</Typography.Text>
+            <Typography.Text type="secondary" ellipsis={{ tooltip: project.provinceName }}>
+              {project.provinceName}
+            </Typography.Text>
           ) : null}
-        </Space>
+        </Flex>
       ),
     },
     {

@@ -37,6 +37,7 @@ export function RenderBatchTable({
           {
             key: 'scope',
             title: t('render.project'),
+            width: 260,
             render: (_: unknown, batch: RenderBatch) => <RenderBatchScope batch={batch} />,
           },
         ]),
@@ -44,6 +45,7 @@ export function RenderBatchTable({
       key: 'profile',
       title: t('render.profile'),
       width: 160,
+      ellipsis: true,
       render: (_, batch) =>
         batch.profileName ? (
           <Typography.Text>
@@ -87,6 +89,7 @@ export function RenderBatchTable({
       key: 'createdBy',
       title: t('render.createdBy'),
       width: 160,
+      ellipsis: true,
       render: (_, batch) => batch.createdByUser?.name ?? batch.createdByUser?.email ?? '-',
     },
     {
@@ -108,7 +111,7 @@ export function RenderBatchTable({
       loading={loading}
       columns={columns}
       dataSource={batches}
-      scroll={{ x: 1000, y: scrollY }}
+      scroll={{ x: hideScope ? 1000 : 1260, y: scrollY }}
       pagination={{ pageSize: 20, hideOnSinglePage: true, showSizeChanger: false }}
       onRow={(batch) => ({ onDoubleClick: () => onViewJobs(batch) })}
       locale={{ emptyText: t('render.noRenderHistory') }}

@@ -103,8 +103,8 @@ export function LogsPage() {
             render: (_, record) =>
               record.createdAt ? new Date(record.createdAt).toLocaleString('vi-VN') : '—',
           },
-          { title: t('logs.category'), dataIndex: 'category' },
-          { title: t('logs.action'), dataIndex: 'action' },
+          { title: t('logs.category'), dataIndex: 'category', ellipsis: true },
+          { title: t('logs.action'), dataIndex: 'action', ellipsis: true },
           {
             title: t('logs.level'),
             dataIndex: 'level',
@@ -121,6 +121,7 @@ export function LogsPage() {
           {
             title: t('logs.actor'),
             dataIndex: 'actorUser',
+            ellipsis: true,
             render: (_: unknown, record) =>
               record.actorUser?.name ?? record.actorUser?.email ?? record.userId ?? '-',
           },
