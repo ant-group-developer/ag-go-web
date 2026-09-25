@@ -1,7 +1,9 @@
 import { PageContainer } from '@ant-design/pro-components';
-import { Alert, Button, Card, Form, Input, Select, Space, Typography } from 'antd';
+import { Alert, Button, Card, Form, Input, Space, Typography } from 'antd';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Select } from '../../../shared/components/select';
+import { bilingualSearchText } from '../../../shared/lib/search-text';
 import { createDownload, type DownloadResult } from '../api/downloads';
 
 type FormValues = {
@@ -49,9 +51,21 @@ export function DownloadsPage() {
           <Form.Item name="scope" label={t('downloads.scope')}>
             <Select
               options={[
-                { value: 'single', label: t('downloads.scopeSingle') },
-                { value: 'multiple', label: t('downloads.scopeMultiple') },
-                { value: 'project', label: t('downloads.scopeProject') },
+                {
+                  value: 'single',
+                  label: t('downloads.scopeSingle'),
+                  searchText: bilingualSearchText('downloads.scopeSingle'),
+                },
+                {
+                  value: 'multiple',
+                  label: t('downloads.scopeMultiple'),
+                  searchText: bilingualSearchText('downloads.scopeMultiple'),
+                },
+                {
+                  value: 'project',
+                  label: t('downloads.scopeProject'),
+                  searchText: bilingualSearchText('downloads.scopeProject'),
+                },
               ]}
             />
           </Form.Item>
@@ -64,8 +78,16 @@ export function DownloadsPage() {
           <Form.Item name="downloadType" label={t('downloads.type')}>
             <Select
               options={[
-                { value: 'original', label: t('downloads.typeOriginal') },
-                { value: 'rendered', label: t('downloads.typeRendered') },
+                {
+                  value: 'original',
+                  label: t('downloads.typeOriginal'),
+                  searchText: bilingualSearchText('downloads.typeOriginal'),
+                },
+                {
+                  value: 'rendered',
+                  label: t('downloads.typeRendered'),
+                  searchText: bilingualSearchText('downloads.typeRendered'),
+                },
               ]}
             />
           </Form.Item>

@@ -1,5 +1,7 @@
-import { Select, Space, Typography } from 'antd';
+import { Space, Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { Select } from '../../../shared/components/select';
+import { bilingualSearchText } from '../../../shared/lib/search-text';
 import type { AccessLevelSelectProps } from '../types/access-level-select-props.type';
 import type { AccessLevel } from '../types/access-level.type';
 
@@ -25,6 +27,7 @@ export function AccessLevelSelect({
       options={accessLevels.map((level) => ({
         value: level,
         label: t(`folderAccess.levels.${level}`),
+        searchText: bilingualSearchText(`folderAccess.levels.${level}`),
       }))}
       optionRender={(option) => (
         <Space direction="vertical" size={0}>

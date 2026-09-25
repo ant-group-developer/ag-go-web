@@ -12,7 +12,6 @@ import {
   Input,
   InputNumber,
   Row,
-  Select,
   Slider,
   Spin,
   Switch,
@@ -24,6 +23,7 @@ import type { RcFile } from 'antd/es/upload';
 import { ImagePlus, RotateCcw, UploadCloud } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Select } from '../../../shared/components/select';
 import {
   getRenderProfiles,
   getWatermarkLogoUrl,

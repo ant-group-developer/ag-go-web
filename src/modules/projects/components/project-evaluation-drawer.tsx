@@ -9,7 +9,6 @@ import {
   Form,
   Input,
   List,
-  Select,
   Space,
   Spin,
   Tag,
@@ -17,6 +16,8 @@ import {
 } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Select } from '../../../shared/components/select';
+import { bilingualSearchText } from '../../../shared/lib/search-text';
 import {
   getProjectMedia,
   getProjectMediaEvaluationHistory,
@@ -167,9 +168,21 @@ export function ProjectEvaluationDrawer({ open, projectId, onClose }: Props) {
               >
                 <Select
                   options={[
-                    { label: t('projects.evaluationPending'), value: 'pending' },
-                    { label: t('projects.evaluationApproved'), value: 'approved' },
-                    { label: t('projects.evaluationRejected'), value: 'rejected' },
+                    {
+                      label: t('projects.evaluationPending'),
+                      value: 'pending',
+                      searchText: bilingualSearchText('projects.evaluationPending'),
+                    },
+                    {
+                      label: t('projects.evaluationApproved'),
+                      value: 'approved',
+                      searchText: bilingualSearchText('projects.evaluationApproved'),
+                    },
+                    {
+                      label: t('projects.evaluationRejected'),
+                      value: 'rejected',
+                      searchText: bilingualSearchText('projects.evaluationRejected'),
+                    },
                   ]}
                 />
               </Form.Item>

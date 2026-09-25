@@ -1,20 +1,13 @@
 import type { SelectProps } from 'antd';
-import { Select, Space } from 'antd';
+import { Space } from 'antd';
 import type { ReactNode } from 'react';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Select } from '../../../shared/components/select';
+import { matchesSearch } from '../../../shared/lib/search-text';
 import { useCountries } from '../hooks/use-countries';
 import type { Country } from '../types/country.type';
 import { CountryFlag } from './country-flag';
-
-function removeAccents(str: string): string {
-  return str
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/đ/g, 'd')
-    .replace(/Đ/g, 'd');
-}
 
 export interface CountrySelectOption {
   value: string;
@@ -37,22 +30,7 @@ export interface CountrySelectProps extends Omit<
 }
 
 function defaultFilterOption(input: string, option?: CountrySelectOption): boolean {
-  if (!input) return true;
-  const rawInput = input.trim().toLowerCase();
-  const normInput = removeAccents(rawInput);
-  const cleanInput = normInput.replace(/\s+/g, '');
-
-  const rawLabel = option?.searchLabel?.toLowerCase() ?? '';
-  const normLabel = removeAccents(rawLabel);
-  const cleanLabel = normLabel.replace(/\s+/g, '');
-  const rawCode = option?.code?.toLowerCase() ?? '';
-
-  return (
-    rawLabel.includes(rawInput) ||
-    normLabel.includes(normInput) ||
-    cleanLabel.includes(cleanInput) ||
-    rawCode.includes(rawInput)
-  );
+  return matchesSearch(input, option?.searchLabel, option?.code);
 }
 
 export function CountrySelect({

@@ -1,6 +1,7 @@
-import { Select, Spin, Typography } from 'antd';
+import { Spin, Typography } from 'antd';
 import { useMemo, useState, type UIEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Select } from '../../../shared/components/select';
 import { ApiError } from '../../../shared/lib/api-client';
 import { useDebouncedValue } from '../hooks/use-debounced-value';
 import { useUserSearch } from '../hooks/use-folder-access';

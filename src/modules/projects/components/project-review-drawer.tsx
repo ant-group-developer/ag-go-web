@@ -4,7 +4,7 @@ import {
   FileOutlined,
   ReloadOutlined,
 } from '@ant-design/icons';
-import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Alert,
   App as AntApp,
@@ -19,7 +19,9 @@ import {
   Empty,
   Flex,
   Image,
+  Input,
   List,
+  Radio,
   Row,
   Space,
   Spin,
@@ -37,6 +39,7 @@ import {
   getProjectMedia,
   getProjectMediaEvaluationHistory,
   retryAssetProcessing,
+  updateProjectMedia,
   type ProjectMedia,
   type ProjectMediaEvaluation,
 } from '../../media/api/media';
@@ -44,6 +47,7 @@ import { RenditionPicker } from '../../media/components/rendition-picker';
 import { useAssetPreviewUrl } from '../../media/hooks/use-asset-preview-url';
 import { useRenditionSelection } from '../../media/hooks/use-rendition-selection';
 import { mediaQueryKeys } from '../../media/queries/media-query-keys';
+import { GO_PERMISSIONS } from '../../../shared/auth/permissions';
 import { getProject } from '../api/projects';
 import { projectQueryKeys } from '../queries/project-query-keys';
 import type { Project } from '../types/project.type';
@@ -52,6 +56,10 @@ import type { Project } from '../types/project.type';
 export type ProjectDrawerMode = 'view' | 'evaluate';
 
 type MediaSource = 'preview' | 'original';
+
+type EvaluationDecision = 'approved' | 'rejected';
+
+const MIN_COMMENT_LENGTH = 2;
 
 const ORIGINAL_URL_STALE_MS = 5 * 60 * 1000;
 const ORIGINAL_PERMISSIONS = ['go.project.evaluate', 'go.project.download_original'];
@@ -424,19 +432,59 @@ function ProjectOverview({ project }: { project: Project }) {
 
 function MediaDetails({
   media,
+  canEvaluate,
   retryLoading,
   onRetry,
 }: {
   media: ProjectMedia;
+  canEvaluate: boolean;
   retryLoading: boolean;
   onRetry: () => void;
 }) {
   const { t } = useTranslation();
-  const evaluation = getEvaluationStatus(media.evaluationStatus, t);
+  const { message } = AntApp.useApp();
+  const queryClient = useQueryClient();
+  const [comment, setComment] = useState('');
+  const [decision, setDecision] = useState<EvaluationDecision>();
+  const [commentTouched, setCommentTouched] = useState(false);
+  const commentValid = comment.trim().length >= MIN_COMMENT_LENGTH;
+  const showCommentError = commentTouched && !commentValid;
   const history = useQuery({
     queryKey: mediaQueryKeys.evaluationHistory(media.id),
     queryFn: () => getProjectMediaEvaluationHistory(media.id),
   });
+  const evaluate = useMutation({
+    mutationFn: (evaluationStatus: EvaluationDecision) =>
+      updateProjectMedia(media.id, { evaluationStatus, comment: comment.trim() }),
+    onSuccess: (_, evaluationStatus) => {
+      setComment('');
+      setDecision(undefined);
+      setCommentTouched(false);
+      void queryClient.invalidateQueries({ queryKey: mediaQueryKeys.evaluationHistory(media.id) });
+      void queryClient.invalidateQueries({
+        queryKey: mediaQueryKeys.projectReview(media.projectId),
+      });
+      void queryClient.invalidateQueries({ queryKey: mediaQueryKeys.project(media.projectId) });
+      void queryClient.invalidateQueries({ queryKey: projectQueryKeys.detail(media.projectId) });
+      void queryClient.invalidateQueries({ queryKey: projectQueryKeys.list() });
+      void message.success(
+        t(
+          evaluationStatus === 'approved'
+            ? 'projects.evaluationApprovedSuccess'
+            : 'projects.evaluationRejectedSuccess',
+        ),
+      );
+    },
+    onError: (error) => {
+      void message.error(error instanceof Error ? error.message : t('projects.evaluationFailed'));
+    },
+  });
+
+  useEffect(() => {
+    setComment('');
+    setDecision(undefined);
+    setCommentTouched(false);
+  }, [media.id]);
 
   return (
     <Card title={t('projects.fileInformation')} size="small">
@@ -479,11 +527,51 @@ function MediaDetails({
         ) : null}
         <Descriptions.Item label={t('media.caption')}>{media.caption || '-'}</Descriptions.Item>
       </Descriptions>
-      <Divider />
-      <Typography.Text strong>{t('projects.fileEvaluation')}</Typography.Text>
-      <div style={{ marginTop: 12 }}>
-        <Tag color={evaluation.color}>{evaluation.label}</Tag>
-      </div>
+      {canEvaluate ? (
+        <>
+          <Divider />
+          <Typography.Text strong>{t('projects.fileEvaluation')}</Typography.Text>
+          <Flex vertical gap={8} style={{ marginTop: 12 }}>
+            <Radio.Group
+              disabled={evaluate.isPending}
+              value={decision}
+              onChange={(event) => setDecision(event.target.value as EvaluationDecision)}
+            >
+              <Radio value="approved">{t('projects.evaluationApproved')}</Radio>
+              <Radio value="rejected">{t('projects.evaluationRejected')}</Radio>
+            </Radio.Group>
+            <div>
+              <Input.TextArea
+                autoSize={{ minRows: 3, maxRows: 6 }}
+                disabled={evaluate.isPending}
+                placeholder={t('projects.evaluationCommentPlaceholder')}
+                status={showCommentError ? 'error' : undefined}
+                value={comment}
+                onBlur={() => setCommentTouched(true)}
+                onChange={(event) => {
+                  setComment(event.target.value);
+                  setCommentTouched(true);
+                }}
+              />
+              {showCommentError ? (
+                <Typography.Text type="danger" style={{ fontSize: 12 }}>
+                  {t('projects.evaluationCommentMinLength', { min: MIN_COMMENT_LENGTH })}
+                </Typography.Text>
+              ) : null}
+            </div>
+            <Flex justify="flex-end">
+              <Button
+                disabled={!decision || !commentValid}
+                loading={evaluate.isPending}
+                type="primary"
+                onClick={() => decision && evaluate.mutate(decision)}
+              >
+                {t('projects.review')}
+              </Button>
+            </Flex>
+          </Flex>
+        </>
+      ) : null}
       <Divider />
       <Typography.Text strong>{t('projects.evaluationHistory')}</Typography.Text>
       <List
@@ -521,9 +609,10 @@ export function ProjectDetailDrawer({
   onClose,
 }: ProjectReviewDrawerProps) {
   const { t } = useTranslation();
-  const { canAny } = usePermissions();
+  const { can, canAny } = usePermissions();
   const mediaSource: MediaSource =
     mode === 'evaluate' && canAny(ORIGINAL_PERMISSIONS) ? 'original' : 'preview';
+  const canEvaluate = mode === 'evaluate' && can(GO_PERMISSIONS.PROJECT_EVALUATE);
   const { token } = theme.useToken();
   const { message } = AntApp.useApp();
   const [selectedMediaId, setSelectedMediaId] = useState<string>();
@@ -829,6 +918,7 @@ export function ProjectDetailDrawer({
               {selectedMedia ? (
                 <MediaDetails
                   media={selectedMedia}
+                  canEvaluate={canEvaluate}
                   retryLoading={retry.isPending}
                   onRetry={() => retry.mutate()}
                 />

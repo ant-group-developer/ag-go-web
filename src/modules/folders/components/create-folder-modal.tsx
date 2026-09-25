@@ -1,6 +1,7 @@
 import { Alert, Cascader, Form, Input, Modal } from 'antd';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { cascaderSearchFilter } from '../../../shared/lib/select-search';
 import { useCreateFolder, useFolders } from '../hooks/use-folders';
 import type { CreateFolderModalProps } from '../types/create-folder-modal-props.type';
 import type { FolderFormValues } from '../types/folder-form-values.type';
@@ -84,7 +85,7 @@ export function CreateFolderModal({
           <Cascader
             allowClear
             options={options}
-            showSearch
+            showSearch={{ filter: cascaderSearchFilter }}
             placeholder={t('folders.parentPlaceholder')}
           />
         </Form.Item>
