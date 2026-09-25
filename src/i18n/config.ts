@@ -711,6 +711,8 @@ const resources = {
         siteDescription: 'Mô tả website',
         logoUrl: 'Logo URL',
         faviconUrl: 'Favicon URL',
+        loginBackgroundUrl: 'Ảnh nền trang đăng nhập',
+        loginBackgroundUrlHint: 'Nên dùng ảnh ngang tỉ lệ 16:9. Để trống để dùng ảnh mặc định.',
         supportEmail: 'Email hỗ trợ',
         supportUrl: 'Trang hỗ trợ',
         primaryColor: 'Màu chủ đạo',

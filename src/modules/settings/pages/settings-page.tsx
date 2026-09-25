@@ -517,6 +517,13 @@ export function SettingsPage() {
                   <Form.Item name="faviconUrl" label={t('settings.faviconUrl')}>
                     <Input placeholder="https://..." />
                   </Form.Item>
+                  <Form.Item
+                    name="loginBackgroundUrl"
+                    label={t('settings.loginBackgroundUrl')}
+                    extra={t('settings.loginBackgroundUrlHint')}
+                  >
+                    <Input placeholder="https://..." />
+                  </Form.Item>
                   <Form.Item name="supportEmail" label={t('settings.supportEmail')}>
                     <Input type="email" />
                   </Form.Item>

@@ -5,6 +5,8 @@ export type WebSettings = {
   siteDescription?: string | null;
   logoUrl?: string | null;
   faviconUrl?: string | null;
+  /** Full-screen image behind the login screen; falls back to the bundled default when empty. */
+  loginBackgroundUrl?: string | null;
   supportEmail?: string | null;
   supportUrl?: string | null;
   primaryColor?: string | null;
