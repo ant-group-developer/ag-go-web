@@ -54,8 +54,15 @@ const resources = {
       },
       auth: {
         authenticating: 'Đang xác thực...',
-        loginPrompt: 'Vui lòng đăng nhập bằng tài khoản Auth0 để tiếp tục.',
+        loginPrompt: 'Đăng nhập bằng tài khoản công ty để tiếp tục.',
         login: 'Đăng nhập',
+        welcome: 'Chào mừng trở lại',
+        tagline: 'Không gian làm việc media nội bộ.',
+        pointSecure: 'Xác thực bảo mật qua Auth0',
+        pointInternal: 'Dành riêng cho thành viên nội bộ',
+        secureNote: 'Bạn sẽ được chuyển đến trang đăng nhập an toàn.',
+        needHelp: 'Cần hỗ trợ?',
+        supportCenter: 'Trung tâm hỗ trợ',
         missingConfig: 'Thiếu cấu hình Auth0',
         missingConfigDesc:
           'Cần thiết lập VITE_AUTH0_DOMAIN, VITE_AUTH0_CLIENT_ID và VITE_AUTH0_AUDIENCE.',
@@ -859,8 +866,15 @@ const resources = {
       },
       auth: {
         authenticating: 'Authenticating...',
-        loginPrompt: 'Please log in with your Auth0 account to continue.',
+        loginPrompt: 'Sign in with your company account to continue.',
         login: 'Log in',
+        welcome: 'Welcome back',
+        tagline: 'Internal media workspace.',
+        pointSecure: 'Secure sign-in powered by Auth0',
+        pointInternal: 'For internal team members only',
+        secureNote: 'You will be redirected to a secure sign-in page.',
+        needHelp: 'Need help?',
+        supportCenter: 'Support center',
         missingConfig: 'Missing Auth0 configuration',
         missingConfigDesc:
           'Need to configure VITE_AUTH0_DOMAIN, VITE_AUTH0_CLIENT_ID, and VITE_AUTH0_AUDIENCE.',
