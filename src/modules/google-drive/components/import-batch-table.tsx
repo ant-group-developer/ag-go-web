@@ -123,6 +123,7 @@ export function ImportBatchTable({
       key: 'createdBy',
       title: t('render.createdBy'),
       width: 160,
+      ellipsis: true,
       render: (_, batch) => batch.createdByUser?.name ?? batch.createdByUser?.email ?? '-',
     },
     {

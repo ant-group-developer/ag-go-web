@@ -57,6 +57,7 @@ export function FolderAccessUsersTable({ onOpenUser }: FolderAccessUsersTablePro
       title: t('folderAccess.user'),
       ...sortProps('user'),
       width: 280,
+      ellipsis: true,
       render: (_, row) => <UserCell user={row.user} fallbackId={row.userId} />,
     },
     {
@@ -73,8 +74,20 @@ export function FolderAccessUsersTable({ onOpenUser }: FolderAccessUsersTablePro
         return (
           <Space size={[4, 4]} wrap>
             {row.folders.slice(0, MAX_FOLDER_TAGS).map((folder) => (
-              <Tooltip key={folder.id} title={t(`folderAccess.levels.${folder.accessLevel}`)}>
-                <Tag color={levelColors[folder.accessLevel]} style={{ marginInlineEnd: 0 }}>
+              <Tooltip
+                key={folder.id}
+                title={`${folder.pathText} · ${t(`folderAccess.levels.${folder.accessLevel}`)}`}
+              >
+                <Tag
+                  color={levelColors[folder.accessLevel]}
+                  style={{
+                    marginInlineEnd: 0,
+                    maxWidth: 240,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    verticalAlign: 'top',
+                  }}
+                >
                   {folder.pathText}
                 </Tag>
               </Tooltip>
