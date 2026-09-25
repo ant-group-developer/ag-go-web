@@ -5,6 +5,8 @@ export type WebSettings = {
   siteDescription?: string | null;
   logoUrl?: string | null;
   faviconUrl?: string | null;
+  /** Full-screen image behind the login screen; falls back to the bundled default when empty. */
+  loginBackgroundUrl?: string | null;
   supportEmail?: string | null;
   supportUrl?: string | null;
   primaryColor?: string | null;
@@ -14,8 +16,9 @@ export function getSettings(): Promise<WebSettings> {
   return apiClient<WebSettings>('/settings');
 }
 
+/** Public branding (name, logo, colours). Reachable before login, so no token is sent. */
 export function getPublicSettings(): Promise<WebSettings> {
-  return apiClient<WebSettings>('/settings/public');
+  return apiClient<WebSettings>('/settings/public', { auth: false });
 }
 
 export function updateSettings(input: WebSettings): Promise<WebSettings> {

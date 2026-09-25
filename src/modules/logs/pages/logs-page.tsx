@@ -1,13 +1,15 @@
-import { PageContainer } from '@ant-design/pro-components';
+import { PageContainer, ProTable } from '@ant-design/pro-components';
 import { useQuery } from '@tanstack/react-query';
-import { Alert, DatePicker, Descriptions, Drawer, Input, Select, Space, Table, Tag } from 'antd';
 import type { TablePaginationConfig } from 'antd';
+import { Alert, DatePicker, Descriptions, Drawer, Input, Select, Space, Tag } from 'antd';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getLogs, type SystemLog } from '../api/logs';
 
 const { RangePicker } = DatePicker;
 
 export function LogsPage() {
+  const { t } = useTranslation();
   const [page, setPage] = useState(1);
   const [category, setCategory] = useState<string>();
   const [action, setAction] = useState<string>();
@@ -33,12 +35,12 @@ export function LogsPage() {
   };
 
   return (
-    <PageContainer title="Logs">
+    <PageContainer title={t('logs.title')}>
       {query.isError ? <Alert type="error" showIcon message={query.error.message} /> : null}
       <Space wrap style={{ marginBottom: 16 }}>
         <Input
           allowClear
-          placeholder="Category"
+          placeholder={t('logs.category')}
           value={category}
           onChange={(event) => {
             setPage(1);
@@ -47,7 +49,7 @@ export function LogsPage() {
         />
         <Input
           allowClear
-          placeholder="Action"
+          placeholder={t('logs.action')}
           value={action}
           onChange={(event) => {
             setPage(1);
@@ -66,12 +68,13 @@ export function LogsPage() {
         />
         <Select
           allowClear
-          placeholder="Level"
+          placeholder={t('logs.level')}
           options={[
-            { label: 'Info', value: 'info' },
-            { label: 'Warning', value: 'warn' },
-            { label: 'Error', value: 'error' },
+            { label: t('logs.levelInfo'), value: 'info' },
+            { label: t('logs.levelWarn'), value: 'warn' },
+            { label: t('logs.levelError'), value: 'error' },
           ]}
+          style={{ width: 100 }}
           value={level}
           onChange={(value) => {
             setPage(1);
@@ -79,8 +82,10 @@ export function LogsPage() {
           }}
         />
       </Space>
-      <Table<SystemLog>
+      <ProTable<SystemLog>
         rowKey="id"
+        sticky={{ offsetHeader: 64 }}
+        search={false}
         loading={query.isLoading}
         dataSource={query.data?.items ?? []}
         pagination={{
@@ -88,42 +93,54 @@ export function LogsPage() {
           pageSize: query.data?.pageSize ?? 25,
           total: query.data?.total ?? 0,
         }}
+        bordered
         onChange={onTableChange}
         onRow={(record) => ({ onClick: () => setSelected(record), style: { cursor: 'pointer' } })}
         columns={[
           {
-            title: 'Thời gian',
+            title: t('logs.time'),
             dataIndex: 'createdAt',
-            render: (value: string) => new Date(value).toLocaleString('vi-VN'),
+            render: (_, record) =>
+              record.createdAt ? new Date(record.createdAt).toLocaleString('vi-VN') : '—',
           },
-          { title: 'Category', dataIndex: 'category' },
-          { title: 'Action', dataIndex: 'action' },
+          { title: t('logs.category'), dataIndex: 'category' },
+          { title: t('logs.action'), dataIndex: 'action' },
           {
-            title: 'Mức',
+            title: t('logs.level'),
             dataIndex: 'level',
-            render: (value: SystemLog['level']) => (
-              <Tag color={value === 'error' ? 'red' : value === 'warn' ? 'orange' : 'blue'}>
-                {value}
+            render: (_, record) => (
+              <Tag
+                color={
+                  record.level === 'error' ? 'red' : record.level === 'warn' ? 'orange' : 'blue'
+                }
+              >
+                {record.level}
               </Tag>
             ),
           },
           {
-            title: 'Actor',
+            title: t('logs.actor'),
             dataIndex: 'actorUser',
             render: (_: unknown, record) =>
-              record.actorUser?.name ?? record.actorUser?.email ?? record.userId ?? '—',
+              record.actorUser?.name ?? record.actorUser?.email ?? record.userId ?? '-',
           },
-          { title: 'Message', dataIndex: 'message', ellipsis: true },
+          { title: t('logs.message'), dataIndex: 'message', ellipsis: true },
         ]}
       />
-      <Drawer title="Chi tiết log" open={Boolean(selected)} onClose={() => setSelected(undefined)}>
+      <Drawer
+        title={t('logs.details')}
+        open={Boolean(selected)}
+        onClose={() => setSelected(undefined)}
+      >
         {selected ? (
           <Descriptions column={1} bordered size="small">
             <Descriptions.Item label="ID">{selected.id}</Descriptions.Item>
-            <Descriptions.Item label="Action">{selected.action}</Descriptions.Item>
-            <Descriptions.Item label="Message">{selected.message}</Descriptions.Item>
-            <Descriptions.Item label="Project">{selected.projectId ?? '—'}</Descriptions.Item>
-            <Descriptions.Item label="Metadata">
+            <Descriptions.Item label={t('logs.action')}>{selected.action}</Descriptions.Item>
+            <Descriptions.Item label={t('logs.message')}>{selected.message}</Descriptions.Item>
+            <Descriptions.Item label={t('logs.project')}>
+              {selected.projectId ?? '-'}
+            </Descriptions.Item>
+            <Descriptions.Item label={t('logs.metadata')}>
               <pre style={{ whiteSpace: 'pre-wrap' }}>
                 {JSON.stringify(selected.metadata ?? {}, null, 2)}
               </pre>

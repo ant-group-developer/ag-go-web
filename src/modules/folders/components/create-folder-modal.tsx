@@ -1,16 +1,28 @@
 import { Alert, Cascader, Form, Input, Modal } from 'antd';
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useCreateFolder, useFolders } from '../hooks/use-folders';
 import type { CreateFolderModalProps } from '../types/create-folder-modal-props.type';
 import type { FolderFormValues } from '../types/folder-form-values.type';
 import { buildFolderCascaderOptions } from '../utils/build-folder-cascader-options';
 
-export function CreateFolderModal({ open, onClose }: CreateFolderModalProps) {
+export function CreateFolderModal({
+  open,
+  onClose,
+  defaultParentPath,
+  onCreated,
+}: CreateFolderModalProps) {
   const { t } = useTranslation();
   const [form] = Form.useForm<FolderFormValues>();
   const folders = useFolders(open);
   const create = useCreateFolder();
   const options = buildFolderCascaderOptions(folders.data ?? []);
+
+  useEffect(() => {
+    if (open) {
+      form.setFieldValue('parentPath', defaultParentPath?.length ? defaultParentPath : undefined);
+    }
+  }, [open, defaultParentPath, form]);
 
   const resetAndClose = () => {
     form.resetFields();
@@ -42,7 +54,12 @@ export function CreateFolderModal({ open, onClose }: CreateFolderModalProps) {
               name: values.name.trim(),
               parentId: values.parentPath?.at(-1),
             },
-            { onSuccess: resetAndClose },
+            {
+              onSuccess: (folder) => {
+                resetAndClose();
+                onCreated?.(folder);
+              },
+            },
           );
         }}
       >

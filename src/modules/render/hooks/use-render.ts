@@ -2,8 +2,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   cancelRenderBatch,
   createRenderBatch,
+  getAllRenderBatches,
+  getAutoRenderJobs,
+  getProjectRenderBatches,
   getRenderBatch,
+  getRenderBatchJobs,
   getRenderProfiles,
+  retryRenderJob,
   updateRenderProfile,
 } from '../api/render';
 
@@ -11,6 +16,10 @@ const keys = {
   all: ['render'] as const,
   profiles: () => [...keys.all, 'profiles'] as const,
   batch: (id: string) => [...keys.all, 'batch', id] as const,
+  projectBatches: (id: string) => [...keys.all, 'project-batches', id] as const,
+  allBatches: () => [...keys.all, 'all-batches'] as const,
+  jobs: (id: string) => [...keys.all, 'jobs', id] as const,
+  autoJobs: (projectId?: string) => [...keys.all, 'auto-jobs', projectId ?? 'all'] as const,
 };
 
 export function useRenderProfiles() {
@@ -40,12 +49,74 @@ export function useRenderBatch(id: string) {
   });
 }
 
+const TERMINAL_STATUSES = ['completed', 'partial', 'failed', 'cancelled'];
+const POLL_INTERVAL_MS = 5_000;
+
+/** Poll while anything in the list is still queued or processing. */
+function pollWhileActive<T extends { status: string }>(items: T[] | undefined) {
+  return items?.some((item) => !TERMINAL_STATUSES.includes(item.status)) ? POLL_INTERVAL_MS : false;
+}
+
+export function useProjectRenderBatches(projectId: string) {
+  return useQuery({
+    queryKey: keys.projectBatches(projectId),
+    queryFn: () => getProjectRenderBatches(projectId),
+    enabled: Boolean(projectId),
+    refetchInterval: (query) => pollWhileActive(query.state.data),
+  });
+}
+
+export function useAllRenderBatches() {
+  return useQuery({
+    queryKey: keys.allBatches(),
+    queryFn: getAllRenderBatches,
+    refetchInterval: (query) => pollWhileActive(query.state.data),
+  });
+}
+
+export function useRenderBatchJobs(batchId: string) {
+  return useQuery({
+    queryKey: keys.jobs(batchId),
+    queryFn: () => getRenderBatchJobs(batchId),
+    enabled: Boolean(batchId),
+    refetchInterval: (query) => pollWhileActive(query.state.data),
+  });
+}
+
+/** Render jobs queued by uploads and Drive imports (outside any batch). */
+export function useAutoRenderJobs(projectId?: string, enabled = true) {
+  return useQuery({
+    queryKey: keys.autoJobs(projectId),
+    queryFn: () => getAutoRenderJobs(projectId),
+    enabled,
+    refetchInterval: (query) => pollWhileActive(query.state.data),
+  });
+}
+
+export function useRetryRenderJob() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: retryRenderJob,
+    onSuccess: (job) => {
+      if (job.renderBatchId) {
+        void client.invalidateQueries({ queryKey: keys.jobs(job.renderBatchId) });
+        void client.invalidateQueries({ queryKey: keys.batch(job.renderBatchId) });
+        void client.invalidateQueries({ queryKey: keys.allBatches() });
+      } else {
+        void client.invalidateQueries({ queryKey: [...keys.all, 'auto-jobs'] });
+      }
+    },
+  });
+}
+
 export function useCreateRenderBatch() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: createRenderBatch,
     onSuccess: (batch) => {
       void client.invalidateQueries({ queryKey: keys.batch(batch.id) });
+      void client.invalidateQueries({ queryKey: keys.projectBatches(batch.projectId ?? '') });
+      void client.invalidateQueries({ queryKey: keys.allBatches() });
     },
   });
 }

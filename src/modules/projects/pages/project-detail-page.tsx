@@ -1,47 +1,66 @@
 import { PictureOutlined } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-components';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import type { UploadFile } from 'antd';
 import {
+  Affix,
   Alert,
+  Anchor,
   App as AntApp,
   Button,
   Card,
-  Cascader,
   Col,
+  Flex,
   Form,
   Input,
   Row,
   Select,
   Space,
+  Typography,
   Upload,
 } from 'antd';
 import { ArrowLeft } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useCategories } from '../../categories/hooks/use-categories';
-import { useCountries } from '../../countries/hooks/use-countries';
+import { CategorySelect } from '../../categories/components/category-select';
+import { CountrySelect } from '../../countries/components/country-select';
+import { FolderCascader } from '../../folders/components/folder-cascader';
 import { useFolders } from '../../folders/hooks/use-folders';
-import { buildFolderCascaderOptions } from '../../folders/utils/build-folder-cascader-options';
+import { ProjectGoogleDriveImportPanel } from '../../google-drive/components/project-google-drive-import-panel';
 import {
   abortUpload,
-  attachProjectMedia,
   completeUpload,
   createUploadSession,
   getAssetPreviewUrl,
-  getProjectMedia,
   setProjectThumbnail,
   uploadAssetContent,
 } from '../../media/api/media';
 import { ProjectMediaPanel } from '../../media/components/project-media-panel';
 import { mediaQueryKeys } from '../../media/queries/media-query-keys';
 import { useProvinces } from '../../provinces/hooks/use-provinces';
+import {
+  ProjectAutoRenderJobsCard,
+  ProjectImportHistoryCard,
+  ProjectRenderBatchesCard,
+} from '../../render/components/project-processing-history-cards';
 import { useTags } from '../../tags/hooks/use-tags';
-import { ProjectGoogleDriveImportPanel } from '../../google-drive/components/project-google-drive-import-panel';
 import { useProject, useUpdateProject } from '../hooks/use-projects';
 import { projectQueryKeys } from '../queries/project-query-keys';
 import type { ProjectDetailFormValues } from '../types/project-detail-form-values.type';
+
+const SECTION_IDS = {
+  details: 'project-details',
+  driveImport: 'project-drive-import',
+  media: 'project-media',
+  importHistory: 'project-import-history',
+  autoRenders: 'project-auto-renders',
+  renderBatches: 'project-render-batches',
+} as const;
+
+/** Fixed header (56px) plus breathing room, so anchored sections are not hidden under it. */
+const ANCHOR_OFFSET = 72;
+const TABLE_SCROLL_Y = 400;
 
 export function ProjectDetailPage() {
   const { projectId = '' } = useParams();
@@ -59,16 +78,8 @@ export function ProjectDetailPage() {
   const [thumbnailError, setThumbnailError] = useState<string>();
   const project = useProject(projectId);
   const update = useUpdateProject(projectId);
-  const projectMedia = useQuery({
-    queryKey: mediaQueryKeys.project(projectId),
-    queryFn: () => getProjectMedia(projectId),
-    enabled: Boolean(projectId),
-  });
   const folders = useFolders();
-  const categories = useCategories();
-  const countries = useCountries();
   const tags = useTags();
-  const folderOptions = buildFolderCascaderOptions(folders.data ?? []);
   const countryId = Form.useWatch('countryId', form);
   const provinces = useProvinces(
     { page: 1, pageSize: 100, countryId: countryId || undefined },
@@ -109,38 +120,40 @@ export function ProjectDetailPage() {
     if (
       !project.data ||
       project.data.id !== projectId ||
-      initializedThumbnailProjectId.current === projectId ||
-      (project.data.thumbnailProjectMediaId && projectMedia.isPending)
+      initializedThumbnailProjectId.current === projectId
     ) {
       return;
     }
 
-    const thumbnailMedia = projectMedia.data?.items.find(
-      (item) => item.id === project.data?.thumbnailProjectMediaId,
-    );
     initializedThumbnailProjectId.current = projectId;
-    if (!thumbnailMedia || form.isFieldTouched('thumbnail')) {
+    const { thumbnailProjectMediaId, thumbnailAssetId, thumbnailSource } = project.data;
+    if (
+      !thumbnailProjectMediaId ||
+      !thumbnailAssetId ||
+      thumbnailSource !== 'manual' ||
+      form.isFieldTouched('thumbnail')
+    ) {
       return;
     }
 
     const initialFile: UploadFile = {
-      uid: thumbnailMedia.id,
-      name: thumbnailMedia.asset.originalFilename,
+      uid: thumbnailProjectMediaId,
+      name: t('projects.projectThumbnail'),
       status: 'done',
     };
     form.setFieldValue('thumbnail', [initialFile]);
 
     let disposed = false;
-    void getAssetPreviewUrl(thumbnailMedia.assetId)
+    void getAssetPreviewUrl(thumbnailAssetId)
       .then((url) => {
         if (disposed) {
           return;
         }
         const currentFiles: UploadFile[] = form.getFieldValue('thumbnail') ?? [];
-        if (currentFiles.some((file) => file.uid === thumbnailMedia.id)) {
+        if (currentFiles.some((file) => file.uid === thumbnailProjectMediaId)) {
           form.setFieldValue('thumbnail', [
             ...currentFiles.map((file) =>
-              file.uid === thumbnailMedia.id ? { ...file, thumbUrl: url, url } : file,
+              file.uid === thumbnailProjectMediaId ? { ...file, thumbUrl: url, url } : file,
             ),
           ]);
         }
@@ -150,7 +163,7 @@ export function ProjectDetailPage() {
     return () => {
       disposed = true;
     };
-  }, [form, project.data, projectId, projectMedia.data, projectMedia.isPending]);
+  }, [form, project.data, projectId, t]);
 
   const handleSubmit = async (values: ProjectDetailFormValues) => {
     const folderId = values.folderPath.at(-1);
@@ -195,14 +208,17 @@ export function ProjectDetailPage() {
                   originalFilename: file.name,
                   mimeType: file.type || 'application/octet-stream',
                   fileSizeBytes: file.size,
+                  targetProjectId: projectId,
                 },
                 globalThis.crypto.randomUUID(),
               );
               await uploadAssetContent(session, file, () => undefined);
-              const asset = await completeUpload(session.assetId, session.uploadSessionId);
+              const completed = await completeUpload(session.assetId, session.uploadSessionId);
               uploadCompleted = true;
-              const attachedMedia = await attachProjectMedia(projectId, { assetId: asset.id });
-              projectMediaId = attachedMedia.id;
+              if (!completed.projectMediaId) {
+                throw new Error(t('projects.thumbnailFailed'));
+              }
+              projectMediaId = completed.projectMediaId;
               uploadedThumbnailRef.current = { uid: selectedThumbnail.uid, projectMediaId };
             } catch (error) {
               if (session && !uploadCompleted) {
@@ -255,156 +271,206 @@ export function ProjectDetailPage() {
       ]}
     >
       {project.data ? (
-        <Row gutter={[16, 16]} align="top">
-          <Col xs={24} lg={10}>
-            <Card title={t('projects.updateDetails')}>
-              <Form<ProjectDetailFormValues>
-                form={form}
-                layout="vertical"
-                onFinish={(values) => void handleSubmit(values)}
-              >
-                <Form.Item
-                  name="name"
-                  label={t('projects.name')}
-                  rules={[
-                    { required: true, whitespace: true, message: t('projects.nameRequired') },
-                    { max: 200, message: t('projects.nameTooLong') },
-                  ]}
+        <Row gutter={[16, 16]} align="top" wrap={false}>
+          <Col flex="auto" style={{ minWidth: 0 }}>
+            <Flex vertical gap={16}>
+              <Card id={SECTION_IDS.details} title={t('projects.updateDetails')}>
+                <Form<ProjectDetailFormValues>
+                  form={form}
+                  layout="vertical"
+                  onFinish={(values) => void handleSubmit(values)}
                 >
-                  <Input maxLength={200} showCount />
-                </Form.Item>
-
-                <Form.Item
-                  name="folderPath"
-                  label={t('projects.folder')}
-                  rules={[{ required: true, message: t('projects.folderRequired') }]}
-                  extra={folders.isError ? folders.error.message : undefined}
-                >
-                  <Cascader
-                    options={folderOptions}
-                    showSearch
-                    changeOnSelect
-                    placeholder={t('projects.folderPlaceholder')}
-                  />
-                </Form.Item>
-
-                <Form.Item name="categoryId" label={t('projects.category')}>
-                  <Select
-                    allowClear
-                    showSearch
-                    optionFilterProp="label"
-                    loading={categories.isPending}
-                    options={categories.data?.map((category) => ({
-                      value: category.id,
-                      label: category.name,
-                    }))}
-                    placeholder={t('projects.categoryPlaceholder')}
-                  />
-                </Form.Item>
-
-                <Form.Item name="countryId" label={t('projects.country')}>
-                  <Select
-                    allowClear
-                    showSearch
-                    optionFilterProp="label"
-                    loading={countries.isPending}
-                    options={countries.data?.map((country) => ({
-                      value: country.id,
-                      label: country.name,
-                    }))}
-                    placeholder={t('projects.countryPlaceholder')}
-                    onChange={() => form.setFieldValue('provinceId', undefined)}
-                  />
-                </Form.Item>
-
-                <Form.Item name="provinceId" label={t('projects.province')}>
-                  <Select
-                    allowClear
-                    showSearch
-                    optionFilterProp="label"
-                    disabled={!countryId}
-                    loading={provinces.isPending}
-                    options={provinces.data?.items.map((province) => ({
-                      value: province.id,
-                      label: province.name,
-                    }))}
-                    placeholder={t('projects.provincePlaceholder')}
-                  />
-                </Form.Item>
-
-                <Form.Item name="description" label={t('projects.description')}>
-                  <Input.TextArea rows={5} placeholder={t('projects.descriptionPlaceholder')} />
-                </Form.Item>
-
-                <Form.Item name="tags" label={t('projects.tags')}>
-                  <Select
-                    mode="tags"
-                    showSearch
-                    loading={tags.isPending}
-                    options={tags.data?.map((tag) => ({ value: tag.name, label: tag.name }))}
-                    placeholder={t('projects.tagsPlaceholder')}
-                    tokenSeparators={[',']}
-                  />
-                </Form.Item>
-
-                <Form.Item
-                  name="thumbnail"
-                  label={t('projects.thumbnail')}
-                  valuePropName="fileList"
-                  getValueFromEvent={(event) => event?.fileList}
-                >
-                  <Upload
-                    accept="image/*"
-                    listType="picture"
-                    maxCount={1}
-                    beforeUpload={(file) => {
-                      if (!file.type.startsWith('image/')) {
-                        void message.error(t('projects.thumbnailImageOnly'));
-                        return Upload.LIST_IGNORE;
-                      }
-                      return false;
-                    }}
+                  <Form.Item
+                    name="name"
+                    label={t('projects.name')}
+                    rules={[
+                      { required: true, whitespace: true, message: t('projects.nameRequired') },
+                      { max: 200, message: t('projects.nameTooLong') },
+                    ]}
                   >
-                    <Button icon={<PictureOutlined />}>{t('projects.selectThumbnail')}</Button>
-                  </Upload>
-                </Form.Item>
+                    <Input maxLength={200} showCount />
+                  </Form.Item>
 
-                {thumbnailError ? (
-                  <Alert
-                    type="error"
-                    showIcon
-                    message={t('projects.thumbnailFailed')}
-                    description={thumbnailError}
-                    style={{ marginBottom: 16 }}
-                  />
-                ) : null}
-
-                {update.isError ? (
-                  <Alert
-                    type="error"
-                    showIcon
-                    message={update.error.message}
-                    style={{ marginBottom: 16 }}
-                  />
-                ) : null}
-
-                <Space style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <Button
-                    type="primary"
-                    loading={isSaving || update.isPending}
-                    disabled={folders.isPending || folders.isError}
-                    onClick={() => form.submit()}
+                  <Form.Item
+                    name="folderPath"
+                    label={t('projects.folder')}
+                    rules={[{ required: true, message: t('projects.folderRequired') }]}
+                    extra={folders.isError ? folders.error.message : undefined}
                   >
-                    {t('projects.saveChanges')}
-                  </Button>
-                </Space>
-              </Form>
-            </Card>
+                    <FolderCascader changeOnSelect />
+                  </Form.Item>
+
+                  <Form.Item
+                    name="categoryId"
+                    label={t('projects.category')}
+                    rules={[{ required: true, message: t('projects.categoryRequired') }]}
+                  >
+                    <CategorySelect />
+                  </Form.Item>
+
+                  <Form.Item name="countryId" label={t('projects.country')}>
+                    <CountrySelect onChange={() => form.setFieldValue('provinceId', undefined)} />
+                  </Form.Item>
+
+                  <Form.Item name="provinceId" label={t('projects.province')}>
+                    <Select
+                      allowClear
+                      showSearch
+                      optionFilterProp="label"
+                      disabled={!countryId}
+                      loading={provinces.isPending}
+                      options={provinces.data?.items.map((province) => ({
+                        value: province.id,
+                        label: province.name,
+                      }))}
+                      placeholder={t('projects.provincePlaceholder')}
+                    />
+                  </Form.Item>
+
+                  <Form.Item name="description" label={t('projects.description')}>
+                    <Input.TextArea rows={5} placeholder={t('projects.descriptionPlaceholder')} />
+                  </Form.Item>
+
+                  <Form.Item name="tags" label={t('projects.tags')}>
+                    <Select
+                      mode="tags"
+                      showSearch
+                      loading={tags.isPending}
+                      options={tags.data?.map((tag) => ({ value: tag.name, label: tag.name }))}
+                      placeholder={t('projects.tagsPlaceholder')}
+                      tokenSeparators={[',']}
+                    />
+                  </Form.Item>
+
+                  <Form.Item
+                    name="thumbnail"
+                    label={t('projects.thumbnail')}
+                    extra={
+                      project.data?.thumbnailSource === 'auto'
+                        ? t('projects.thumbnailAutoHint')
+                        : undefined
+                    }
+                    valuePropName="fileList"
+                    getValueFromEvent={(event) => event?.fileList}
+                  >
+                    <Upload
+                      accept="image/*"
+                      listType="picture"
+                      maxCount={1}
+                      beforeUpload={(file) => {
+                        if (!file.type.startsWith('image/')) {
+                          void message.error(t('projects.thumbnailImageOnly'));
+                          return Upload.LIST_IGNORE;
+                        }
+                        return false;
+                      }}
+                    >
+                      <Button icon={<PictureOutlined />}>{t('projects.selectThumbnail')}</Button>
+                    </Upload>
+                  </Form.Item>
+
+                  {thumbnailError ? (
+                    <Alert
+                      type="error"
+                      showIcon
+                      message={t('projects.thumbnailFailed')}
+                      description={thumbnailError}
+                      style={{ marginBottom: 16 }}
+                    />
+                  ) : null}
+
+                  {update.isError ? (
+                    <Alert
+                      type="error"
+                      showIcon
+                      message={update.error.message}
+                      style={{ marginBottom: 16 }}
+                    />
+                  ) : null}
+
+                  <Space style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <Button
+                      type="primary"
+                      loading={isSaving || update.isPending}
+                      disabled={folders.isPending || folders.isError}
+                      onClick={() => form.submit()}
+                    >
+                      {t('projects.saveChanges')}
+                    </Button>
+                  </Space>
+                </Form>
+              </Card>
+              <div id={SECTION_IDS.driveImport}>
+                <ProjectGoogleDriveImportPanel projectId={project.data.id} />
+              </div>
+              <div id={SECTION_IDS.media}>
+                <ProjectMediaPanel projectId={project.data.id} />
+              </div>
+              <ProjectImportHistoryCard
+                id={SECTION_IDS.importHistory}
+                projectId={project.data.id}
+                scrollY={TABLE_SCROLL_Y}
+              />
+              <ProjectAutoRenderJobsCard
+                id={SECTION_IDS.autoRenders}
+                projectId={project.data.id}
+                scrollY={TABLE_SCROLL_Y}
+              />
+              <ProjectRenderBatchesCard
+                id={SECTION_IDS.renderBatches}
+                projectId={project.data.id}
+                scrollY={TABLE_SCROLL_Y}
+              />
+            </Flex>
           </Col>
-          <Col xs={24} lg={14}>
-            <ProjectGoogleDriveImportPanel projectId={project.data.id} />
-            <div style={{ height: 16 }} />
-            <ProjectMediaPanel projectId={project.data.id} />
+          <Col xs={0} lg={5} xxl={4}>
+            <Affix offsetTop={ANCHOR_OFFSET}>
+              <div>
+                <Typography.Text type="secondary" strong>
+                  {t('projects.pageSections')}
+                </Typography.Text>
+                <Anchor
+                  affix={false}
+                  targetOffset={ANCHOR_OFFSET}
+                  style={{ marginTop: 8 }}
+                  items={[
+                    {
+                      key: 'details',
+                      href: `#${SECTION_IDS.details}`,
+                      title: t('projects.updateDetails'),
+                    },
+                    {
+                      key: 'driveImport',
+                      href: `#${SECTION_IDS.driveImport}`,
+                      title: t('googleDrive.importTitle'),
+                    },
+                    { key: 'media', href: `#${SECTION_IDS.media}`, title: t('media.projectMedia') },
+                    {
+                      key: 'history',
+                      href: `#${SECTION_IDS.importHistory}`,
+                      title: t('render.projectProcessingHistory'),
+                      children: [
+                        {
+                          key: 'importHistory',
+                          href: `#${SECTION_IDS.importHistory}`,
+                          title: t('render.importFilesTitle'),
+                        },
+                        {
+                          key: 'autoRenders',
+                          href: `#${SECTION_IDS.autoRenders}`,
+                          title: t('render.autoJobsTab'),
+                        },
+                        {
+                          key: 'renderBatches',
+                          href: `#${SECTION_IDS.renderBatches}`,
+                          title: t('render.batchesTab'),
+                        },
+                      ],
+                    },
+                  ]}
+                />
+              </div>
+            </Affix>
           </Col>
         </Row>
       ) : null}

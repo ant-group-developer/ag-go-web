@@ -1,16 +1,40 @@
-import { InboxOutlined, ReloadOutlined } from '@ant-design/icons';
+import {
+  CheckCircleFilled,
+  ClockCircleOutlined,
+  CloseCircleFilled,
+  DeleteOutlined,
+  FileImageOutlined,
+  InboxOutlined,
+  LoadingOutlined,
+  ReloadOutlined,
+  VideoCameraOutlined,
+} from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { UploadFile, UploadProps } from 'antd';
-import { Alert, App as AntApp, Button, Card, Space, Tag, Typography, Upload } from 'antd';
+import {
+  Alert,
+  App as AntApp,
+  Avatar,
+  Button,
+  Card,
+  Image,
+  Progress,
+  Space,
+  Table,
+  Tag,
+  Tooltip,
+  Typography,
+  Upload,
+} from 'antd';
+import type { ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { formatFileSize } from '../../../shared/lib/format-file-size';
 import { projectQueryKeys } from '../../projects/queries/project-query-keys';
 import {
   abortUpload,
-  attachProjectMedia,
   completeUpload,
   createUploadSession,
-  getAssetPreviewUrl,
   getProjectMedia,
   removeProjectMedia,
   uploadAssetContent,
@@ -27,6 +51,41 @@ type UploadTask = {
 
 const MAX_CONCURRENT_UPLOADS = 3;
 
+function displayFilename(name: string, mimeType?: string | null): string {
+  if (name.lastIndexOf('.') > 0) {
+    return name;
+  }
+  const extensions: Record<string, string> = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp',
+    'video/mp4': 'mp4',
+    'video/quicktime': 'mp4',
+    'video/webm': 'webm',
+  };
+  const extension = mimeType ? extensions[mimeType.toLowerCase()] : undefined;
+  return extension ? `${name}.${extension}` : name;
+}
+
+function formatDimensions(
+  width: number | null | undefined,
+  height: number | null | undefined,
+): string {
+  return width && height ? `${width} × ${height}` : '-';
+}
+
+function formatDuration(value: number | null | undefined): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) {
+    return '-';
+  }
+  const total = Math.round(value);
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+}
+
+function formatDate(value: string | null | undefined): string {
+  return value ? new Date(value).toLocaleString('vi-VN') : '-';
+}
+
 type ProjectMediaPanelProps = {
   projectId: string;
 };
@@ -38,8 +97,9 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
   const uploadQueueRef = useRef<UploadTask[]>([]);
   const activeUploadsRef = useRef(0);
   const taskStatusesRef = useRef<Record<string, UploadTaskStatus>>({});
+  // Upload uid -> project media id, so finished uploads are replaced by their server row.
+  const uploadedMediaIdsRef = useRef(new Map<string, string>());
   const [fileList, setFileList] = useState<ProjectMediaUploadFile[]>([]);
-  const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
   const [taskStatuses, setTaskStatuses] = useState<Record<string, UploadTaskStatus>>({});
   const media = useQuery({
     queryKey: mediaQueryKeys.project(projectId),
@@ -51,48 +111,20 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
     () =>
       (items ?? []).map((item) => ({
         uid: item.id,
-        name: item.asset.originalFilename,
+        name: displayFilename(item.asset.originalFilename, item.asset.mimeType),
         status: 'done',
         percent: 100,
         response: item,
-        ...(previewUrls[item.id] ? { thumbUrl: previewUrls[item.id] } : {}),
+        // The list shows the un-watermarked thumbnail (image or video frame).
+        ...(item.thumbnailUrl ? { thumbUrl: item.thumbnailUrl } : {}),
       })),
-    [items, previewUrls],
+    [items],
   );
 
   const updateTaskStatus = useCallback((uid: string, status: UploadTaskStatus) => {
     taskStatusesRef.current = { ...taskStatusesRef.current, [uid]: status };
     setTaskStatuses(taskStatusesRef.current);
   }, []);
-
-  useEffect(() => {
-    let disposed = false;
-    setPreviewUrls({});
-
-    const readyImages = (items ?? []).filter(
-      (item) => item.asset.assetType === 'image' && item.asset.processingStatus === 'ready',
-    );
-    void Promise.all(
-      readyImages.map(async (item) => {
-        try {
-          const url = await getAssetPreviewUrl(item.assetId);
-          return [item.id, url] as const;
-        } catch {
-          return undefined;
-        }
-      }),
-    ).then((entries) => {
-      const urls = entries.filter((entry): entry is readonly [string, string] => Boolean(entry));
-      if (disposed) {
-        return;
-      }
-      setPreviewUrls(Object.fromEntries(urls));
-    });
-
-    return () => {
-      disposed = true;
-    };
-  }, [items]);
 
   const invalidateProjectData = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: mediaQueryKeys.project(projectId) });
@@ -120,8 +152,7 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
     const serverMediaIds = new Set((items ?? []).map((item) => item.id));
     setFileList((current) => {
       const pendingOrFailedFiles = current.filter((file) => {
-        const responseId = file.response?.id;
-        const mediaId = responseId ?? file.uid;
+        const mediaId = file.response?.id ?? uploadedMediaIdsRef.current.get(file.uid) ?? file.uid;
         return file.status !== 'done' || !serverMediaIds.has(mediaId);
       });
       const serverUids = new Set(serverFileList.map((file) => file.uid));
@@ -150,14 +181,17 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
               originalFilename: file.name,
               mimeType: file.type || 'application/octet-stream',
               fileSizeBytes: file.size,
+              targetProjectId: projectId,
             },
             globalThis.crypto.randomUUID(),
           );
           await uploadAssetContent(session, file, (percent) => options.onProgress?.({ percent }));
-          const asset = await completeUpload(session.assetId, session.uploadSessionId);
+          const completed = await completeUpload(session.assetId, session.uploadSessionId);
           uploadCompleted = true;
-          const projectMedia = await attachProjectMedia(projectId, { assetId: asset.id });
-          options.onSuccess?.(projectMedia);
+          if (completed.projectMediaId) {
+            uploadedMediaIdsRef.current.set(uid, completed.projectMediaId);
+          }
+          options.onSuccess?.(undefined);
           updateTaskStatus(uid, 'done');
           invalidateProjectData();
         } catch (error) {
@@ -180,37 +214,45 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
     return true;
   };
 
-  const handleRemove: UploadProps['onRemove'] = async (file) => {
-    const taskStatus = taskStatusesRef.current[file.uid];
-    if (taskStatus === 'uploading' || (file.status === 'uploading' && taskStatus !== 'queued')) {
-      return false;
-    }
+  const removeFile = useCallback(
+    async (file: ProjectMediaUploadFile) => {
+      const taskStatus = taskStatusesRef.current[file.uid];
+      if (taskStatus === 'uploading' || (file.status === 'uploading' && taskStatus !== 'queued')) {
+        return;
+      }
 
-    if (taskStatus === 'queued') {
-      uploadQueueRef.current = uploadQueueRef.current.filter((task) => task.uid !== file.uid);
-      const nextStatuses = { ...taskStatusesRef.current };
-      delete nextStatuses[file.uid];
-      taskStatusesRef.current = nextStatuses;
-      setTaskStatuses(nextStatuses);
-      return true;
-    }
+      if (taskStatus === 'queued') {
+        uploadQueueRef.current = uploadQueueRef.current.filter((task) => task.uid !== file.uid);
+        const nextStatuses = { ...taskStatusesRef.current };
+        delete nextStatuses[file.uid];
+        taskStatusesRef.current = nextStatuses;
+        setTaskStatuses(nextStatuses);
+        setFileList((current) => current.filter((entry) => entry.uid !== file.uid));
+        return;
+      }
 
-    const existingMedia =
-      items?.find((item) => item.id === file.uid) ?? (file as ProjectMediaUploadFile).response;
-    if (!existingMedia) {
-      setFileList((current) => current.filter((entry) => entry.uid !== file.uid));
-      return true;
-    }
+      const existingMediaId =
+        items?.find((item) => item.id === file.uid)?.id ??
+        file.response?.id ??
+        uploadedMediaIdsRef.current.get(file.uid);
+      if (!existingMediaId) {
+        setFileList((current) => current.filter((entry) => entry.uid !== file.uid));
+        return;
+      }
 
-    try {
-      await removeProjectMedia(existingMedia.id);
-      invalidateProjectData();
-      return true;
-    } catch (error) {
-      void message.error(error instanceof Error ? error.message : t('media.removeFailed'));
-      return false;
-    }
-  };
+      try {
+        await removeProjectMedia(existingMediaId);
+        setFileList((current) => current.filter((entry) => entry.uid !== file.uid));
+        invalidateProjectData();
+      } catch (error) {
+        void message.error(error instanceof Error ? error.message : t('media.removeFailed'));
+      }
+    },
+    [items, invalidateProjectData, message, t],
+  );
+
+  const isVideoFile = (file: ProjectMediaUploadFile): boolean =>
+    file.response?.asset.assetType === 'video' || Boolean(file.type?.startsWith('video/'));
 
   const statusForFile = (file: ProjectMediaUploadFile): UploadTaskStatus => {
     const taskStatus = taskStatuses[file.uid];
@@ -238,6 +280,12 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
     done: 'success',
     error: 'error',
   };
+  const statusIcons: Record<UploadTaskStatus, ReactNode> = {
+    queued: <ClockCircleOutlined />,
+    uploading: <LoadingOutlined />,
+    done: <CheckCircleFilled />,
+    error: <CloseCircleFilled />,
+  };
   const statusCounts = fileList.reduce<Record<UploadTaskStatus, number>>(
     (counts, file) => {
       counts[statusForFile(file)] += 1;
@@ -245,18 +293,6 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
     },
     { queued: 0, uploading: 0, done: 0, error: 0 },
   );
-
-  const itemRender: NonNullable<UploadProps['itemRender']> = (originNode, file) => {
-    const uploadFile = file as ProjectMediaUploadFile;
-    const status = statusForFile(uploadFile);
-
-    return (
-      <Space align="center" style={{ width: '100%', justifyContent: 'space-between' }} wrap>
-        {originNode}
-        <Tag color={statusColors[status]}>{statusLabels[status]}</Tag>
-      </Space>
-    );
-  };
 
   return (
     <Card
@@ -276,16 +312,16 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
       ) : null}
       <Space size={[8, 8]} wrap style={{ marginBottom: 16 }}>
         <Tag>{t('media.fileCount', { count: fileList.length })}</Tag>
-        <Tag color={statusColors.queued}>
+        <Tag icon={statusIcons.queued} color={statusColors.queued}>
           {statusLabels.queued}: {statusCounts.queued}
         </Tag>
-        <Tag color={statusColors.uploading}>
+        <Tag icon={statusIcons.uploading} color={statusColors.uploading}>
           {statusLabels.uploading}: {statusCounts.uploading}
         </Tag>
-        <Tag color={statusColors.done}>
+        <Tag icon={statusIcons.done} color={statusColors.done}>
           {statusLabels.done}: {statusCounts.done}
         </Tag>
-        <Tag color={statusColors.error}>
+        <Tag icon={statusIcons.error} color={statusColors.error}>
           {statusLabels.error}: {statusCounts.error}
         </Tag>
         <Typography.Text type="secondary">
@@ -295,17 +331,13 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
       <Upload.Dragger
         accept="image/*,video/*"
         multiple
-        listType="picture"
         fileList={fileList}
         customRequest={customRequest}
         beforeUpload={beforeUpload}
         onChange={({ fileList: nextFileList }) =>
           setFileList(nextFileList as ProjectMediaUploadFile[])
         }
-        onRemove={handleRemove}
-        itemRender={itemRender}
-        progress={{ strokeWidth: 2, showInfo: true }}
-        showUploadList={{ showPreviewIcon: true, showDownloadIcon: false, showRemoveIcon: true }}
+        showUploadList={false}
       >
         <p className="ant-upload-drag-icon">
           <InboxOutlined />
@@ -313,9 +345,182 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
         <p className="ant-upload-text">{t('media.dropFiles')}</p>
         <p className="ant-upload-hint">{t('media.dropFilesHint')}</p>
       </Upload.Dragger>
-      {items?.length === 0 && !media.isError ? (
-        <Typography.Text type="secondary">{t('media.empty')}</Typography.Text>
-      ) : null}
+      <Table<ProjectMediaUploadFile>
+        style={{ marginTop: 24 }}
+        size="small"
+        rowKey="uid"
+        scroll={{ x: 1130, y: 400 }}
+        pagination={false}
+        locale={{ emptyText: t('media.empty') }}
+        dataSource={fileList}
+        columns={[
+          {
+            key: 'file',
+            title: t('common.file'),
+            dataIndex: 'name',
+            width: 280,
+            fixed: 'left',
+            render: (name: string, file) => {
+              const video = isVideoFile(file);
+              const filename = displayFilename(
+                name,
+                file.response?.asset.mimeType ?? file.type ?? undefined,
+              );
+              return (
+                <Space align="center" size={12}>
+                  {file.thumbUrl ? (
+                    <Image
+                      src={file.thumbUrl}
+                      alt={filename}
+                      width={40}
+                      height={40}
+                      style={{ objectFit: 'cover', borderRadius: 6 }}
+                      // Enlarging an image shows the watermarked preview, not the thumbnail.
+                      preview={{
+                        mask: null,
+                        src: video ? undefined : (file.response?.previewUrl ?? undefined),
+                      }}
+                    />
+                  ) : (
+                    <Avatar
+                      shape="square"
+                      size={40}
+                      icon={video ? <VideoCameraOutlined /> : <FileImageOutlined />}
+                      style={{
+                        backgroundColor: video ? '#722ed1' : '#1677ff',
+                        borderRadius: 6,
+                        flexShrink: 0,
+                      }}
+                    />
+                  )}
+                  <Tooltip title={filename} placement="topLeft">
+                    <Typography.Text ellipsis style={{ maxWidth: 200, fontWeight: 500 }}>
+                      {filename}
+                    </Typography.Text>
+                  </Tooltip>
+                </Space>
+              );
+            },
+          },
+          {
+            key: 'status',
+            title: t('common.status'),
+            width: 140,
+            render: (_, file) => {
+              const status = statusForFile(file);
+              return (
+                <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                  <Tag
+                    icon={statusIcons[status]}
+                    color={statusColors[status]}
+                    style={{ margin: 0 }}
+                  >
+                    {statusLabels[status]}
+                  </Tag>
+                  {status === 'uploading' ? (
+                    <Progress
+                      percent={Math.round(file.percent ?? 0)}
+                      size="small"
+                      style={{ margin: 0, width: 100 }}
+                    />
+                  ) : null}
+                </Space>
+              );
+            },
+          },
+          {
+            key: 'size',
+            title: t('media.size'),
+            width: 100,
+            render: (_, file) => (
+              <Typography.Text type="secondary">
+                {formatFileSize(file.response?.asset.fileSizeBytes ?? file.size)}
+              </Typography.Text>
+            ),
+          },
+          {
+            key: 'resolution',
+            title: t('media.resolution'),
+            width: 120,
+            align: 'center',
+            render: (_, file) => {
+              const dimensions = formatDimensions(file.response?.width, file.response?.height);
+              return (
+                <Typography.Text type={dimensions === '-' ? 'secondary' : undefined}>
+                  {dimensions}
+                </Typography.Text>
+              );
+            },
+          },
+          {
+            key: 'duration',
+            title: t('media.duration'),
+            width: 100,
+            align: 'center',
+            render: (_, file) => {
+              const duration = formatDuration(file.response?.durationSeconds);
+              return (
+                <Typography.Text type={duration === '-' ? 'secondary' : undefined}>
+                  {duration}
+                </Typography.Text>
+              );
+            },
+          },
+          {
+            key: 'author',
+            title: t('common.author'),
+            width: 150,
+            ellipsis: true,
+            render: (_, file) => {
+              const author =
+                file.response?.creatorName ||
+                file.response?.createdByUser?.name ||
+                file.response?.createdByUser?.email ||
+                '-';
+              return (
+                <Tooltip title={author} placement="topLeft">
+                  <Typography.Text ellipsis style={{ maxWidth: 130 }}>
+                    {author}
+                  </Typography.Text>
+                </Tooltip>
+              );
+            },
+          },
+          {
+            key: 'updatedAt',
+            title: t('projects.updatedAt'),
+            width: 160,
+            render: (_, file) => (
+              <Typography.Text type="secondary">
+                {formatDate(file.response?.modifiedAt ?? file.response?.updatedAt)}
+              </Typography.Text>
+            ),
+          },
+          {
+            key: 'actions',
+            title: t('common.actions'),
+            width: 80,
+            align: 'center',
+            fixed: 'right',
+            render: (_, file) => {
+              const status = statusForFile(file);
+              return (
+                <Tooltip title={t('common.delete')}>
+                  <Button
+                    type="text"
+                    danger
+                    size="small"
+                    aria-label={t('common.delete')}
+                    icon={<DeleteOutlined />}
+                    disabled={status === 'uploading'}
+                    onClick={() => void removeFile(file)}
+                  />
+                </Tooltip>
+              );
+            },
+          },
+        ]}
+      />
     </Card>
   );
 }

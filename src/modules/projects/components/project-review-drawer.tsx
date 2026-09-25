@@ -8,6 +8,7 @@ import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
 import {
   Alert,
   App as AntApp,
+  Avatar,
   Button,
   Card,
   Checkbox,
@@ -16,6 +17,7 @@ import {
   Divider,
   Drawer,
   Empty,
+  Flex,
   Image,
   List,
   Row,
@@ -23,37 +25,47 @@ import {
   Spin,
   Tag,
   Typography,
+  theme,
 } from 'antd';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  createDownload,
-  getDownload,
-  type DownloadResult,
-} from '../../downloads/api/downloads';
+import { usePermissions } from '../../account/hooks/use-current-account';
 import { getProjectAudit, type AuditLog } from '../../audit/api/audit';
+import { createDownload, getDownload, type DownloadResult } from '../../downloads/api/downloads';
 import {
-  getAssetPreviewUrl,
+  getAssetOriginalUrl,
   getProjectMedia,
   getProjectMediaEvaluationHistory,
   retryAssetProcessing,
   type ProjectMedia,
   type ProjectMediaEvaluation,
 } from '../../media/api/media';
+import { RenditionPicker } from '../../media/components/rendition-picker';
+import { useAssetPreviewUrl } from '../../media/hooks/use-asset-preview-url';
+import { useRenditionSelection } from '../../media/hooks/use-rendition-selection';
 import { mediaQueryKeys } from '../../media/queries/media-query-keys';
 import { getProject } from '../api/projects';
 import { projectQueryKeys } from '../queries/project-query-keys';
 import type { Project } from '../types/project.type';
 
+/** 'evaluate' shows the original files; 'view' shows the watermarked previews. */
+export type ProjectDrawerMode = 'view' | 'evaluate';
+
+type MediaSource = 'preview' | 'original';
+
+const ORIGINAL_URL_STALE_MS = 5 * 60 * 1000;
+const ORIGINAL_PERMISSIONS = ['go.project.evaluate', 'go.project.download_original'];
+
 type ProjectReviewDrawerProps = {
   open: boolean;
   projectId?: string;
+  mode?: ProjectDrawerMode;
   onClose: () => void;
 };
 
 function formatDateTime(value: string | undefined): string {
   if (!value) {
-    return '—';
+    return '-';
   }
   return new Intl.DateTimeFormat('vi-VN', {
     dateStyle: 'medium',
@@ -64,7 +76,7 @@ function formatDateTime(value: string | undefined): string {
 function formatFileSize(value: string | undefined): string {
   const bytes = Number(value ?? 0);
   if (!bytes) {
-    return '—';
+    return '-';
   }
   const units = ['B', 'KB', 'MB', 'GB'];
   const unitIndex = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
@@ -73,7 +85,7 @@ function formatFileSize(value: string | undefined): string {
 
 function formatDuration(value: number | null | undefined): string {
   if (value === null || value === undefined || !Number.isFinite(value)) {
-    return '—';
+    return '-';
   }
   const totalSeconds = Math.max(0, Math.round(value));
   const hours = Math.floor(totalSeconds / 3600);
@@ -85,7 +97,7 @@ function formatDuration(value: number | null | undefined): string {
 }
 
 function formatResolution(media: ProjectMedia): string {
-  return media.width && media.height ? `${media.width} × ${media.height}` : '—';
+  return media.width && media.height ? `${media.width} × ${media.height}` : '-';
 }
 
 function getProjectStatus(status: string, t: (key: string) => string) {
@@ -111,71 +123,174 @@ function getEvaluationStatus(status: ProjectMedia['evaluationStatus'], t: (key: 
   return statuses[status];
 }
 
-function MediaPreview({ media }: { media: ProjectMedia }) {
+const previewPlaceholderStyle = {
+  alignItems: 'center',
+  background: '#f5f5f5',
+  color: '#8c8c8c',
+  display: 'flex',
+  minHeight: 420,
+  justifyContent: 'center',
+} as const;
+
+/**
+ * Evaluation shows the original file at full quality. Formats the browser cannot display
+ * (e.g. HEIC, TIFF, some video codecs) fall back to the watermarked preview.
+ */
+function MediaPreview({ media, source }: { media: ProjectMedia; source: MediaSource }) {
   const { t } = useTranslation();
-  const [previewUrl, setPreviewUrl] = useState<string>();
-  const isReady = media.asset.processingStatus === 'ready';
+  const [originalFailed, setOriginalFailed] = useState(false);
 
   useEffect(() => {
-    if (media.previewUrl) {
-      setPreviewUrl(media.previewUrl);
-      return undefined;
+    setOriginalFailed(false);
+  }, [media.id]);
+
+  if (source === 'original' && !originalFailed) {
+    return <OriginalMediaPreview media={media} onUnavailable={() => setOriginalFailed(true)} />;
+  }
+  return (
+    <>
+      {source === 'original' ? (
+        <Alert
+          type="warning"
+          showIcon
+          message={t('projects.originalUnavailable')}
+          style={{ marginBottom: 8 }}
+        />
+      ) : null}
+      <RenderedMediaPreview media={media} />
+    </>
+  );
+}
+
+function OriginalMediaPreview({
+  media,
+  onUnavailable,
+}: {
+  media: ProjectMedia;
+  onUnavailable: () => void;
+}) {
+  const { t } = useTranslation();
+  // The original exists as soon as the upload completed, before any render.
+  const uploaded = !['uploading', 'cancelled'].includes(media.asset.processingStatus);
+  const original = useQuery({
+    queryKey: mediaQueryKeys.assetOriginalUrl(media.assetId),
+    queryFn: () => getAssetOriginalUrl(media.assetId),
+    enabled: uploaded,
+    staleTime: ORIGINAL_URL_STALE_MS,
+    gcTime: ORIGINAL_URL_STALE_MS * 2,
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (original.isError) {
+      onUnavailable();
     }
-    if (!isReady) {
-      setPreviewUrl(undefined);
-      return undefined;
-    }
+  }, [original.isError, onUnavailable]);
 
-    let disposed = false;
-    void getAssetPreviewUrl(media.assetId, 'preview')
-      .then((url) => {
-        if (disposed) {
-          return;
-        }
-        setPreviewUrl(url);
-      })
-      .catch(() => setPreviewUrl(undefined));
-
-    return () => {
-      disposed = true;
-    };
-  }, [isReady, media.assetId, media.previewUrl]);
-
-  if (!previewUrl) {
+  if (!uploaded || !original.data) {
     return (
-      <div
-        style={{
-          alignItems: 'center',
-          background: '#f5f5f5',
-          color: '#8c8c8c',
-          display: 'flex',
-          minHeight: 420,
-          justifyContent: 'center',
-        }}
-      >
-        {isReady ? <Spin size="small" /> : t('projects.previewUnavailable')}
+      <div style={previewPlaceholderStyle}>
+        {uploaded ? <Spin size="small" /> : t('projects.previewUnavailable')}
       </div>
     );
   }
 
-  if (media.asset.assetType === 'video') {
-    return (
-      <video
-        controls
-        preload="metadata"
-        src={previewUrl}
-        style={{
-          background: '#000',
-          display: 'block',
-          maxHeight: 560,
-          objectFit: 'contain',
-          width: '100%',
-        }}
-      />
-    );
-  }
-
   return (
+    <Flex vertical gap={8}>
+      <Space size={4} wrap>
+        <Tag color="gold">{t('projects.originalFile')}</Tag>
+        <Typography.Text type="secondary">{formatResolution(media)}</Typography.Text>
+        <Typography.Text type="secondary">
+          {formatFileSize(media.asset.fileSizeBytes)}
+        </Typography.Text>
+      </Space>
+      {media.asset.assetType === 'video' ? (
+        <video
+          controls
+          preload="metadata"
+          src={original.data}
+          onError={onUnavailable}
+          style={{
+            background: '#000',
+            display: 'block',
+            maxHeight: 560,
+            objectFit: 'contain',
+            width: '100%',
+          }}
+        />
+      ) : (
+        <Image
+          alt={media.asset.originalFilename}
+          preview
+          src={original.data}
+          onError={onUnavailable}
+          style={{ maxHeight: 560, objectFit: 'contain', width: '100%' }}
+          wrapperStyle={{ display: 'block', textAlign: 'center' }}
+        />
+      )}
+    </Flex>
+  );
+}
+
+function RenderedMediaPreview({ media }: { media: ProjectMedia }) {
+  const { t } = useTranslation();
+  const frameRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  // Playback position survives switching to another size (manually or when the frame resizes).
+  const playbackRef = useRef({ time: 0, playing: false });
+  const isReady = media.asset.processingStatus === 'ready';
+  const isVideo = media.asset.assetType === 'video';
+  const variants = useMemo(() => media.previewVariants ?? [], [media.previewVariants]);
+  const { quality, autoVariant, selected, setQuality } = useRenditionSelection(variants, frameRef);
+  const selectedUrl = useAssetPreviewUrl(
+    isReady && selected ? media.assetId : null,
+    selected?.variantCode ?? 'preview',
+  );
+  // Older API responses without preview sizes still carry a single preview URL.
+  const previewUrl = variants.length > 0 ? selectedUrl : (media.previewUrl ?? undefined);
+
+  useEffect(() => {
+    playbackRef.current = { time: 0, playing: false };
+  }, [media.id]);
+
+  const content = !previewUrl ? (
+    <div style={previewPlaceholderStyle}>
+      {isReady ? <Spin size="small" /> : t('projects.previewUnavailable')}
+    </div>
+  ) : isVideo ? (
+    <video
+      ref={videoRef}
+      controls
+      preload="metadata"
+      src={previewUrl}
+      onTimeUpdate={(event) => {
+        playbackRef.current.time = event.currentTarget.currentTime;
+      }}
+      onPlay={() => {
+        playbackRef.current.playing = true;
+      }}
+      onPause={() => {
+        playbackRef.current.playing = false;
+      }}
+      onLoadedMetadata={(event) => {
+        const video = event.currentTarget;
+        const { time, playing } = playbackRef.current;
+        if (time > 0) {
+          video.currentTime = time;
+        }
+        if (playing) {
+          void video.play().catch(() => undefined);
+        }
+      }}
+      style={{
+        background: '#000',
+        display: 'block',
+        maxHeight: 560,
+        objectFit: 'contain',
+        width: '100%',
+      }}
+    />
+  ) : (
     <Image
       alt={media.asset.originalFilename}
       preview
@@ -184,31 +299,31 @@ function MediaPreview({ media }: { media: ProjectMedia }) {
       wrapperStyle={{ display: 'block', textAlign: 'center' }}
     />
   );
+
+  return (
+    <div ref={frameRef}>
+      {content}
+      {variants.length > 1 ? (
+        <Flex justify="flex-end" style={{ marginTop: 8 }}>
+          <RenditionPicker
+            variants={variants}
+            value={quality}
+            autoVariant={autoVariant}
+            isVideo={isVideo}
+            onChange={setQuality}
+          />
+        </Flex>
+      ) : null}
+    </div>
+  );
 }
 
 function MediaThumbnail({ media }: { media: ProjectMedia }) {
-  const [previewUrl, setPreviewUrl] = useState<string>();
-
-  useEffect(() => {
-    if (media.asset.processingStatus !== 'ready') {
-      setPreviewUrl(undefined);
-      return undefined;
-    }
-
-    let disposed = false;
-    void getAssetPreviewUrl(media.assetId)
-      .then((url) => {
-        if (disposed) {
-          return;
-        }
-        setPreviewUrl(url);
-      })
-      .catch(() => setPreviewUrl(undefined));
-
-    return () => {
-      disposed = true;
-    };
-  }, [media.asset.processingStatus, media.assetId]);
+  // The list response carries the un-watermarked thumbnail; fetch it only for older responses.
+  const fetchedUrl = useAssetPreviewUrl(
+    media.thumbnailUrl || media.asset.processingStatus !== 'ready' ? null : media.assetId,
+  );
+  const previewUrl = media.thumbnailUrl ?? fetchedUrl;
 
   return previewUrl ? (
     <Image
@@ -251,10 +366,10 @@ function ProjectOverview({ project }: { project: Project }) {
           {project.folderPath || project.folderId}
         </Descriptions.Item>
         <Descriptions.Item label={t('projects.location')}>
-          {[project.countryName, project.provinceName].filter(Boolean).join(' / ') || '—'}
+          {[project.countryName, project.provinceName].filter(Boolean).join(' / ') || '-'}
         </Descriptions.Item>
         <Descriptions.Item label={t('projects.category')}>
-          {project.categoryName || '—'}
+          {project.categoryName || '-'}
         </Descriptions.Item>
         <Descriptions.Item label={t('projects.fileCounts')}>
           <Space wrap>
@@ -272,11 +387,17 @@ function ProjectOverview({ project }: { project: Project }) {
         {project.tags?.length ? (
           project.tags.map((tag) => <Tag key={tag}>{tag}</Tag>)
         ) : (
-          <Typography.Text type="secondary">—</Typography.Text>
+          <Typography.Text type="secondary">-</Typography.Text>
         )}
-        <Typography.Text type="secondary">
-          {t('projects.ownerUserId')}: {project.ownerUserId || '—'}
-        </Typography.Text>
+        <Space size={4}>
+          <Avatar size={18} src={project.ownerUser?.avatar}>
+            {project.ownerUser?.name?.charAt(0)?.toUpperCase()}
+          </Avatar>
+          <Typography.Text type="secondary">
+            {t('common.author')}:{' '}
+            {project.ownerUser?.name || project.ownerUser?.email || t('common.unknown')}
+          </Typography.Text>
+        </Space>
         <Typography.Text type="secondary">
           {t('projects.createdAt')}: {formatDateTime(project.createdAt)}
         </Typography.Text>
@@ -295,7 +416,7 @@ function ProjectOverview({ project }: { project: Project }) {
         style={{ margin: '8px 0 0' }}
       >
         <Typography.Text type="secondary">{t('projects.description')}: </Typography.Text>
-        {project.description || '—'}
+        {project.description || '-'}
       </Typography.Paragraph>
     </Card>
   );
@@ -356,7 +477,7 @@ function MediaDetails({
             </Button>
           </Descriptions.Item>
         ) : null}
-        <Descriptions.Item label={t('media.caption')}>{media.caption || '—'}</Descriptions.Item>
+        <Descriptions.Item label={t('media.caption')}>{media.caption || '-'}</Descriptions.Item>
       </Descriptions>
       <Divider />
       <Typography.Text strong>{t('projects.fileEvaluation')}</Typography.Text>
@@ -376,7 +497,7 @@ function MediaDetails({
               <List.Item.Meta
                 description={
                   <Space direction="vertical" size={2}>
-                    <Typography.Text>{item.comment || '—'}</Typography.Text>
+                    <Typography.Text>{item.comment || '-'}</Typography.Text>
                     <Typography.Text type="secondary">
                       {item.evaluatedBy} · {formatDateTime(item.createdAt)}
                     </Typography.Text>
@@ -393,8 +514,17 @@ function MediaDetails({
   );
 }
 
-export function ProjectDetailDrawer({ open, projectId, onClose }: ProjectReviewDrawerProps) {
+export function ProjectDetailDrawer({
+  open,
+  projectId,
+  mode = 'view',
+  onClose,
+}: ProjectReviewDrawerProps) {
   const { t } = useTranslation();
+  const { canAny } = usePermissions();
+  const mediaSource: MediaSource =
+    mode === 'evaluate' && canAny(ORIGINAL_PERMISSIONS) ? 'original' : 'preview';
+  const { token } = theme.useToken();
   const { message } = AntApp.useApp();
   const [selectedMediaId, setSelectedMediaId] = useState<string>();
   const [selectedMediaIds, setSelectedMediaIds] = useState<string[]>([]);
@@ -444,10 +574,10 @@ export function ProjectDetailDrawer({ open, projectId, onClose }: ProjectReviewD
         return;
       }
       setDownloadJobId(result.downloadJobId);
-      void message.success('Đã tạo download job');
+      void message.success(t('projects.downloadJobCreated'));
     },
     onError: (error) => {
-      void message.error(error instanceof Error ? error.message : 'Không thể tạo download');
+      void message.error(error instanceof Error ? error.message : t('projects.downloadFailed'));
     },
   });
   const retry = useMutation({
@@ -482,7 +612,7 @@ export function ProjectDetailDrawer({ open, projectId, onClose }: ProjectReviewD
       return;
     }
     if (scope === 'multiple' && selectedMediaIds.length === 0) {
-      void message.warning('Hãy chọn ít nhất một file');
+      void message.warning(t('projects.selectAtLeastOneFile'));
       return;
     }
     download.mutate({
@@ -499,7 +629,11 @@ export function ProjectDetailDrawer({ open, projectId, onClose }: ProjectReviewD
       height="100vh"
       open={open}
       placement="top"
-      title={project.data?.name ?? t('projects.reviewTitle')}
+      title={
+        mode === 'evaluate'
+          ? `${t('projects.review')} · ${project.data?.name ?? ''}`
+          : (project.data?.name ?? t('projects.reviewTitle'))
+      }
       width="100vw"
       onClose={close}
       extra={
@@ -514,7 +648,7 @@ export function ProjectDetailDrawer({ open, projectId, onClose }: ProjectReviewD
           {t('common.refresh')}
         </Button>
       }
-      styles={{ body: { overflow: 'auto', padding: 20 } }}
+      styles={{ body: { overflow: 'auto', padding: 20, backgroundColor: token.colorBgLayout } }}
     >
       {project.isError ? <Alert type="error" showIcon message={project.error.message} /> : null}
       {project.isPending ? (
@@ -539,7 +673,7 @@ export function ProjectDetailDrawer({ open, projectId, onClose }: ProjectReviewD
                       size="small"
                       onClick={() => requestDownload('multiple')}
                     >
-                      Tải file đã chọn
+                      {t('projects.downloadSelected')}
                     </Button>
                     <Button
                       icon={<DownloadOutlined />}
@@ -548,7 +682,7 @@ export function ProjectDetailDrawer({ open, projectId, onClose }: ProjectReviewD
                       type="primary"
                       onClick={() => requestDownload('project')}
                     >
-                      Tải toàn bộ
+                      {t('projects.downloadAll')}
                     </Button>
                     {media.hasNextPage ? (
                       <Button
@@ -588,27 +722,47 @@ export function ProjectDetailDrawer({ open, projectId, onClose }: ProjectReviewD
                             cursor: 'pointer',
                             marginBottom: 4,
                             padding: 8,
+                            width: '100%',
+                            boxSizing: 'border-box',
                           }}
                           onClick={() => setSelectedMediaId(item.id)}
                         >
-                          <List.Item.Meta
-                            avatar={<MediaThumbnail media={item} />}
-                            description={
-                              <Space size={4} wrap>
-                                <Typography.Text type="secondary">
-                                  {formatDuration(item.durationSeconds)}
-                                </Typography.Text>
-                                <Typography.Text type="secondary">
-                                  {formatResolution(item)}
-                                </Typography.Text>
-                                <Typography.Text type="secondary">
-                                  {formatDateTime(item.createdAt)}
-                                </Typography.Text>
-                                <Tag color={status.color}>{status.label}</Tag>
-                              </Space>
-                            }
-                            title={
-                              <Space>
+                          <Flex
+                            gap={8}
+                            align="start"
+                            style={{
+                              width: '100%',
+                              minWidth: 0,
+                            }}
+                          >
+                            {/* Thumbnail */}
+                            <div
+                              style={{
+                                flexShrink: 0,
+                              }}
+                            >
+                              <MediaThumbnail media={item} />
+                            </div>
+
+                            {/* Content */}
+                            <Flex
+                              vertical
+                              gap={4}
+                              style={{
+                                flex: 1,
+                                minWidth: 0,
+                                width: 0,
+                              }}
+                            >
+                              {/* Filename */}
+                              <Flex
+                                align="center"
+                                gap={8}
+                                style={{
+                                  width: '100%',
+                                  minWidth: 0,
+                                }}
+                              >
                                 <Checkbox
                                   checked={selectedMediaIds.includes(item.id)}
                                   onClick={(event) => event.stopPropagation()}
@@ -620,15 +774,38 @@ export function ProjectDetailDrawer({ open, projectId, onClose }: ProjectReviewD
                                     );
                                   }}
                                 />
+
                                 <Typography.Text
-                                  ellipsis
-                                  style={{ display: 'block', maxWidth: 180 }}
+                                  ellipsis={{ tooltip: item.asset.originalFilename }}
+                                  style={{
+                                    flex: 1,
+                                    minWidth: 0,
+                                    overflow: 'hidden',
+                                    fontWeight: 700,
+                                  }}
                                 >
                                   {item.asset.originalFilename}
                                 </Typography.Text>
+                              </Flex>
+
+                              {/* Metadata */}
+                              <Space size={4} wrap>
+                                <Typography.Text type="secondary">
+                                  {formatDuration(item.durationSeconds)}
+                                </Typography.Text>
+
+                                <Typography.Text type="secondary">
+                                  {formatResolution(item)}
+                                </Typography.Text>
+
+                                <Typography.Text type="secondary">
+                                  {formatDateTime(item.createdAt)}
+                                </Typography.Text>
+
+                                <Tag color={status.color}>{status.label}</Tag>
                               </Space>
-                            }
-                          />
+                            </Flex>
+                          </Flex>
                         </List.Item>
                       );
                     }}
@@ -642,7 +819,7 @@ export function ProjectDetailDrawer({ open, projectId, onClose }: ProjectReviewD
                 styles={{ body: { background: '#fafafa', padding: 12 } }}
               >
                 {selectedMedia ? (
-                  <MediaPreview media={selectedMedia} />
+                  <MediaPreview media={selectedMedia} source={mediaSource} />
                 ) : (
                   <Empty description={t('projects.selectFileToPreview')} />
                 )}
@@ -660,12 +837,12 @@ export function ProjectDetailDrawer({ open, projectId, onClose }: ProjectReviewD
               )}
             </Col>
           </Row>
-          <Card title="Audit log" style={{ marginTop: 16 }}>
-            {audit.isError ? <Alert type="error" message="Không thể tải audit log" /> : null}
+          <Card title={t('projects.auditLog')} style={{ marginTop: 16 }}>
+            {audit.isError ? <Alert type="error" message={t('projects.auditLogError')} /> : null}
             <List
               dataSource={audit.data?.items ?? []}
               loading={audit.isPending}
-              locale={{ emptyText: 'Chưa có audit log' }}
+              locale={{ emptyText: t('projects.auditLogEmpty') }}
               renderItem={(item: AuditLog) => (
                 <List.Item>
                   <List.Item.Meta
@@ -680,11 +857,13 @@ export function ProjectDetailDrawer({ open, projectId, onClose }: ProjectReviewD
             <Alert
               style={{ marginTop: 16 }}
               type={downloadJob.data?.status === 'failed' ? 'error' : 'info'}
-              message={`Download: ${downloadJob.data?.status ?? 'queued'}`}
+              message={t('projects.downloadStatus', {
+                status: downloadJob.data?.status ?? 'queued',
+              })}
               description={
                 downloadJob.data?.url ? (
                   <Button type="link" href={downloadJob.data.url} target="_blank">
-                    Mở file ZIP
+                    {t('projects.openZipFile')}
                   </Button>
                 ) : undefined
               }

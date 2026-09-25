@@ -41,17 +41,17 @@ Allowed Web Origins.
 
 ## Cấu hình môi trường
 
-| Biến | Bắt buộc | Mô tả |
-|---|---:|---|
-| `VITE_API_BASE_URL` | Có | Base URL của AG Go API, gồm cả prefix `/api`. |
-| `VITE_AUTH0_DOMAIN` | Có | Auth0 tenant domain. |
-| `VITE_AUTH0_CLIENT_ID` | Có | Client ID của Auth0 Single-Page Application. |
-| `VITE_AUTH0_AUDIENCE` | Có | API identifier đã cấu hình trong Auth0. |
-| `VITE_GOOGLE_PICKER_CLIENT_ID` | Khi dùng Drive | OAuth client ID cho Google Picker. |
-| `VITE_GOOGLE_PICKER_APP_ID` | Khi dùng Drive | Google Cloud project number/App ID. |
-| `VITE_GOOGLE_PICKER_API_KEY` | Khi dùng Drive | API key được phép dùng Google Picker API. |
-| `WEB_PORT` | Không | Port host khi chạy Docker, mặc định `5173`. |
-| `WEB_MEMORY_LIMIT`, `WEB_CPUS` | Không | Giới hạn tài nguyên Docker. |
+| Biến                           |       Bắt buộc | Mô tả                                         |
+| ------------------------------ | -------------: | --------------------------------------------- |
+| `VITE_API_BASE_URL`            |             Có | Base URL của AG Go API, gồm cả prefix `/api`. |
+| `VITE_AUTH0_DOMAIN`            |             Có | Auth0 tenant domain.                          |
+| `VITE_AUTH0_CLIENT_ID`         |             Có | Client ID của Auth0 Single-Page Application.  |
+| `VITE_AUTH0_AUDIENCE`          |             Có | API identifier đã cấu hình trong Auth0.       |
+| `VITE_GOOGLE_PICKER_CLIENT_ID` | Khi dùng Drive | OAuth client ID cho Google Picker.            |
+| `VITE_GOOGLE_PICKER_APP_ID`    | Khi dùng Drive | Google Cloud project number/App ID.           |
+| `VITE_GOOGLE_PICKER_API_KEY`   | Khi dùng Drive | API key được phép dùng Google Picker API.     |
+| `WEB_PORT`                     |          Không | Port host khi chạy Docker, mặc định `5173`.   |
+| `WEB_MEMORY_LIMIT`, `WEB_CPUS` |          Không | Giới hạn tài nguyên Docker.                   |
 
 Các biến `VITE_*` là cấu hình public được nhúng vào bundle frontend. Không đặt
 secret, API key server-side hay thông tin nhạy cảm trong chúng.

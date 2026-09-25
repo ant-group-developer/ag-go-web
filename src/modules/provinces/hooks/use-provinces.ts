@@ -9,6 +9,7 @@ export function useProvinces(params: ProvinceQueryParams, enabled = true) {
     queryFn: () => getProvinces(params),
     enabled,
     placeholderData: (previousData) => previousData,
+    refetchOnWindowFocus: true,
   });
 }
 

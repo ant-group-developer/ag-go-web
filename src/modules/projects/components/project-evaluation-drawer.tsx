@@ -16,6 +16,7 @@ import {
   Typography,
 } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   getProjectMedia,
   getProjectMediaEvaluationHistory,
@@ -43,6 +44,7 @@ function formatDate(value: string) {
 }
 
 export function ProjectEvaluationDrawer({ open, projectId, onClose }: Props) {
+  const { t } = useTranslation();
   const { message } = AntApp.useApp();
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<string>();
@@ -67,14 +69,16 @@ export function ProjectEvaluationDrawer({ open, projectId, onClose }: Props) {
   const update = useMutation({
     mutationFn: (values: EvaluationForm) => updateProjectMedia(selected?.id ?? '', values),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: mediaQueryKeys.projectReview(projectId ?? '') });
+      void queryClient.invalidateQueries({
+        queryKey: mediaQueryKeys.projectReview(projectId ?? ''),
+      });
       void queryClient.invalidateQueries({ queryKey: mediaQueryKeys.project(projectId ?? '') });
       void queryClient.invalidateQueries({ queryKey: projectQueryKeys.detail(projectId ?? '') });
       void queryClient.invalidateQueries({ queryKey: projectQueryKeys.list() });
-      void message.success('Đã cập nhật đánh giá');
+      void message.success(t('evaluations.updateSuccess'));
     },
     onError: (error) => {
-      void message.error(error instanceof Error ? error.message : 'Không thể cập nhật đánh giá');
+      void message.error(error instanceof Error ? error.message : t('evaluations.updateFailed'));
     },
   });
 
@@ -93,23 +97,29 @@ export function ProjectEvaluationDrawer({ open, projectId, onClose }: Props) {
     setSelectedId(undefined);
   }, [projectId, open]);
 
+  const evaluationStatusLabels: Record<string, string> = {
+    pending: t('projects.evaluationPending'),
+    approved: t('projects.evaluationApproved'),
+    rejected: t('projects.evaluationRejected'),
+  };
+
   return (
     <Drawer
       destroyOnClose
       open={open}
       placement="right"
       width={720}
-      title={`Đánh giá${project.data?.name ? ` — ${project.data.name}` : ''}`}
+      title={`${t('evaluations.title')}${project.data?.name ? ` - ${project.data.name}` : ''}`}
       onClose={onClose}
     >
       {project.isError || media.isError ? (
-        <Alert type="error" showIcon message="Không thể tải dữ liệu đánh giá" />
+        <Alert type="error" showIcon message={t('evaluations.loadFailed')} />
       ) : null}
       {project.isLoading || media.isLoading ? <Spin /> : null}
-      {!items.length && !media.isLoading ? <Empty description="Project chưa có media" /> : null}
+      {!items.length && !media.isLoading ? <Empty description={t('evaluations.noMedia')} /> : null}
       {selected ? (
         <>
-          <Card title="Danh sách file" size="small">
+          <Card title={t('evaluations.fileList')} size="small">
             <List
               dataSource={items}
               renderItem={(item) => (
@@ -135,7 +145,7 @@ export function ProjectEvaluationDrawer({ open, projectId, onClose }: Props) {
                                 : 'processing'
                           }
                         >
-                          {item.evaluationStatus}
+                          {evaluationStatusLabels[item.evaluationStatus] ?? item.evaluationStatus}
                         </Tag>
                       </Space>
                     }
@@ -144,7 +154,7 @@ export function ProjectEvaluationDrawer({ open, projectId, onClose }: Props) {
               )}
             />
           </Card>
-          <Card title="Cập nhật đánh giá" style={{ marginTop: 16 }}>
+          <Card title={t('evaluations.updateTitle')} style={{ marginTop: 16 }}>
             <Form<EvaluationForm>
               form={form}
               layout="vertical"
@@ -152,42 +162,52 @@ export function ProjectEvaluationDrawer({ open, projectId, onClose }: Props) {
             >
               <Form.Item
                 name="evaluationStatus"
-                label="Trạng thái"
+                label={t('evaluations.status')}
                 rules={[{ required: true }]}
               >
                 <Select
                   options={[
-                    { label: 'Pending', value: 'pending' },
-                    { label: 'Approved', value: 'approved' },
-                    { label: 'Rejected', value: 'rejected' },
+                    { label: t('projects.evaluationPending'), value: 'pending' },
+                    { label: t('projects.evaluationApproved'), value: 'approved' },
+                    { label: t('projects.evaluationRejected'), value: 'rejected' },
                   ]}
                 />
               </Form.Item>
-              <Form.Item name="comment" label="Nhận xét">
-                <Input.TextArea rows={5} placeholder="Nhập nhận xét cho file" />
+              <Form.Item name="comment" label={t('evaluations.comment')}>
+                <Input.TextArea rows={5} placeholder={t('evaluations.commentPlaceholder')} />
               </Form.Item>
               <Button type="primary" htmlType="submit" loading={update.isPending}>
-                Lưu đánh giá
+                {t('evaluations.save')}
               </Button>
             </Form>
           </Card>
-          <Card title="Lịch sử đánh giá" style={{ marginTop: 16 }}>
+          <Card title={t('evaluations.historyTitle')} style={{ marginTop: 16 }}>
             <List
               loading={history.isLoading}
               dataSource={history.data ?? []}
-              locale={{ emptyText: 'Chưa có lịch sử' }}
+              locale={{ emptyText: t('evaluations.noHistory') }}
               renderItem={(item: ProjectMediaEvaluation) => (
                 <List.Item>
                   <List.Item.Meta
-                    title={<Tag>{item.evaluationStatus}</Tag>}
-                    description={`${item.comment || '—'} · ${item.evaluatedBy} · ${formatDate(item.createdAt)}`}
+                    title={
+                      <Tag
+                        color={
+                          item.evaluationStatus === 'approved'
+                            ? 'success'
+                            : item.evaluationStatus === 'rejected'
+                              ? 'error'
+                              : 'processing'
+                        }
+                      >
+                        {evaluationStatusLabels[item.evaluationStatus] ?? item.evaluationStatus}
+                      </Tag>
+                    }
+                    description={`${item.comment || '-'} · ${item.evaluatedBy} · ${formatDate(item.createdAt)}`}
                   />
                 </List.Item>
               )}
             />
-            <Typography.Text type="secondary">
-              Đánh giá được kiểm tra permission ở backend; drawer này chỉ là giao diện thao tác.
-            </Typography.Text>
+            <Typography.Text type="secondary">{t('evaluations.permissionNote')}</Typography.Text>
           </Card>
         </>
       ) : null}

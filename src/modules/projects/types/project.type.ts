@@ -1,6 +1,12 @@
 export type Project = {
   id: string;
   ownerUserId?: string;
+  ownerUser?: {
+    id: string;
+    name?: string;
+    email?: string;
+    avatar?: string;
+  } | null;
   name: string;
   folderId: string;
   categoryId: string | null;
@@ -17,6 +23,8 @@ export type Project = {
   provinceName?: string | null;
   categoryName?: string | null;
   thumbnailAssetId?: string | null;
+  /** 'auto' when the thumbnail is picked from the project media because none was chosen. */
+  thumbnailSource?: 'manual' | 'auto' | null;
   originalBytes?: string;
   renderedBytes?: string;
   createdAt: string;
