@@ -1,9 +1,10 @@
 import type { SelectProps } from 'antd';
-import { Button, Divider, Select } from 'antd';
+import { Button, Divider } from 'antd';
 import { Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GO_PERMISSIONS } from '../../../shared/auth/permissions';
+import { Select } from '../../../shared/components/select';
 import { usePermissions } from '../../account/hooks/use-current-account';
 import { useCategories } from '../hooks/use-categories';
 import { CategoryFormModal } from './category-form-modal';
@@ -20,7 +21,6 @@ export function CategorySelect({
   allowCreate = true,
   allowClear = true,
   showSearch = true,
-  optionFilterProp = 'label',
   placeholder,
   loading,
   onChange,
@@ -55,7 +55,6 @@ export function CategorySelect({
       <Select<string>
         allowClear={allowClear}
         showSearch={showSearch}
-        optionFilterProp={optionFilterProp}
         loading={loading ?? categories.isPending}
         placeholder={placeholder ?? t('projects.categoryPlaceholder')}
         options={options}

@@ -1,4 +1,4 @@
-import { Button, Empty, Input, Popover, Select, Spin, Tree, Typography } from 'antd';
+import { Button, Empty, Input, Popover, Spin, Tree, Typography } from 'antd';
 import type { DataNode } from 'antd/es/tree';
 import { t } from 'i18next';
 import {
@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Select } from '../../../shared/components/select';
 import { CategorySelect } from '../../categories/components/category-select';
 import { CountrySelect } from '../../countries/components/country-select';
 import { useFolders } from '../../folders/hooks/use-folders';
@@ -397,7 +398,6 @@ function FilterContent({
               allowClear
               mode="multiple"
               size="middle"
-              optionFilterProp="label"
               options={tags.data?.map((tag) => ({ value: tag.id, label: tag.name }))}
               placeholder={t('projects.tagsFilterPlaceholder')}
               showSearch
@@ -440,7 +440,6 @@ function FilterContent({
                 size="middle"
                 disabled={!countryId}
                 loading={provinces.isPending}
-                optionFilterProp="label"
                 options={provinces.data?.items.map((p) => ({ value: p.id, label: p.name }))}
                 placeholder={t('projects.provincePlaceholder')}
                 showSearch

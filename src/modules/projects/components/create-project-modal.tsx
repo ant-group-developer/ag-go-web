@@ -1,20 +1,10 @@
 import { PictureOutlined } from '@ant-design/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import type { UploadFile, UploadProps } from 'antd';
-import {
-  Alert,
-  App as AntApp,
-  Button,
-  Drawer,
-  Form,
-  Input,
-  Select,
-  Space,
-  Typography,
-  Upload,
-} from 'antd';
+import { Alert, App as AntApp, Button, Drawer, Form, Input, Space, Typography, Upload } from 'antd';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Select } from '../../../shared/components/select';
 import { CategorySelect } from '../../categories/components/category-select';
 import { CountrySelect } from '../../countries/components/country-select';
 import { FolderCascader } from '../../folders/components/folder-cascader';
@@ -230,7 +220,6 @@ export function CreateProjectModal({ open, onClose, onComplete }: CreateProjectM
           <Select
             allowClear
             showSearch
-            optionFilterProp="label"
             disabled={!countryId}
             loading={provinces.isPending}
             options={provinces.data?.items.map((province) => ({
