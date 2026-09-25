@@ -10,9 +10,16 @@ type ImportBatchTableProps = {
   batches: ImportHistoryItem[];
   loading?: boolean;
   onViewItems: (batch: ImportHistoryItem) => void;
+  /** Fixed body height; rows scroll inside the table. */
+  scrollY?: number;
 };
 
-export function ImportBatchTable({ batches, loading, onViewItems }: ImportBatchTableProps) {
+export function ImportBatchTable({
+  batches,
+  loading,
+  onViewItems,
+  scrollY,
+}: ImportBatchTableProps) {
   const { t } = useTranslation();
   const columns: ColumnsType<ImportHistoryItem> = [
     {
@@ -137,7 +144,7 @@ export function ImportBatchTable({ batches, loading, onViewItems }: ImportBatchT
       loading={loading}
       columns={columns}
       dataSource={batches}
-      scroll={{ x: 1400 }}
+      scroll={{ x: 1400, y: scrollY }}
       pagination={{ pageSize: 10, hideOnSinglePage: true, showSizeChanger: false }}
       onRow={(batch) => ({ onDoubleClick: () => onViewItems(batch) })}
       locale={{ emptyText: t('render.noImportHistory') }}

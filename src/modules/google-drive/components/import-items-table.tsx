@@ -19,9 +19,11 @@ type ImportItemsTableProps = {
   loading?: boolean;
   /** Paginate long lists (history drawer); the live progress card shows every row. */
   paginate?: boolean;
+  /** Fixed body height; rows scroll inside the table. */
+  scrollY?: number;
 };
 
-export function ImportItemsTable({ items, loading, paginate }: ImportItemsTableProps) {
+export function ImportItemsTable({ items, loading, paginate, scrollY }: ImportItemsTableProps) {
   const { t } = useTranslation();
   const retryItem = useRetryDriveImportItem();
   const columns: ColumnsType<ImportItem> = [
@@ -112,7 +114,7 @@ export function ImportItemsTable({ items, loading, paginate }: ImportItemsTableP
       size="small"
       rowKey="id"
       loading={loading}
-      scroll={{ x: 1100 }}
+      scroll={{ x: 1100, y: scrollY }}
       columns={columns}
       dataSource={items}
       pagination={

@@ -320,6 +320,7 @@ const resources = {
       projects: {
         projectDetails: 'Thông tin dự án',
         updateDetails: 'Cập nhật thông tin dự án',
+        pageSections: 'Mục lục',
         saveChanges: 'Lưu thay đổi',
         updateSuccess: 'Đã cập nhật dự án.',
         category: 'Danh mục',
@@ -1159,6 +1160,7 @@ const resources = {
       projects: {
         projectDetails: 'Project Details',
         updateDetails: 'Update Project Details',
+        pageSections: 'On this page',
         saveChanges: 'Save Changes',
         updateSuccess: 'Project updated successfully.',
         category: 'Category',

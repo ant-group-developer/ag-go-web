@@ -439,6 +439,7 @@ export function ProjectGoogleDriveImportPanel({ projectId }: { projectId: string
               </Space>
               <ImportItemsTable
                 items={(batch.data?.items ?? []).filter((item) => !isFolderItem(item))}
+                scrollY={400}
               />
             </Card>
           ) : null}

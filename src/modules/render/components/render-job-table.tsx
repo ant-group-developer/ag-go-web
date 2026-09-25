@@ -48,6 +48,8 @@ type RenderJobTableProps = {
   showCreated?: boolean;
   /** Hide the project column, e.g. inside a project page. */
   hideProject?: boolean;
+  /** Fixed body height; rows scroll inside the table. */
+  scrollY?: number;
 };
 
 function OutputsTable({ outputs }: { outputs: RenderJobOutput[] }) {
@@ -113,6 +115,7 @@ export function RenderJobTable({
   showSource,
   showCreated,
   hideProject,
+  scrollY,
 }: RenderJobTableProps) {
   const { t } = useTranslation();
   const retryJob = useRetryRenderJob();
@@ -362,7 +365,7 @@ export function RenderJobTable({
         loading={loading}
         columns={columns}
         dataSource={filteredJobs}
-        scroll={{ x: 1260 + (showSource ? 120 : 0) + (showCreated ? 170 : 0) }}
+        scroll={{ x: 1260 + (showSource ? 120 : 0) + (showCreated ? 170 : 0), y: scrollY }}
         pagination={{ pageSize: 20, hideOnSinglePage: true, showSizeChanger: false }}
         expandable={{
           expandedRowRender: (job) => <OutputsTable outputs={job.outputs ?? []} />,
