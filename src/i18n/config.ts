@@ -63,6 +63,9 @@ const resources = {
         secureNote: 'Bạn sẽ được chuyển đến trang đăng nhập an toàn.',
         needHelp: 'Cần hỗ trợ?',
         supportCenter: 'Trung tâm hỗ trợ',
+        about: 'Giới thiệu',
+        privacy: 'Chính sách quyền riêng tư',
+        terms: 'Điều khoản sử dụng',
         missingConfig: 'Thiếu cấu hình Auth0',
         missingConfigDesc:
           'Cần thiết lập VITE_AUTH0_DOMAIN, VITE_AUTH0_CLIENT_ID và VITE_AUTH0_AUDIENCE.',
@@ -902,6 +905,9 @@ const resources = {
         secureNote: 'You will be redirected to a secure sign-in page.',
         needHelp: 'Need help?',
         supportCenter: 'Support center',
+        about: 'About',
+        privacy: 'Privacy Policy',
+        terms: 'Terms of Service',
         missingConfig: 'Missing Auth0 configuration',
         missingConfigDesc:
           'Need to configure VITE_AUTH0_DOMAIN, VITE_AUTH0_CLIENT_ID, and VITE_AUTH0_AUDIENCE.',
