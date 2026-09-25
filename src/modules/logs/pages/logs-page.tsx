@@ -1,9 +1,11 @@
 import { PageContainer, ProTable } from '@ant-design/pro-components';
 import { useQuery } from '@tanstack/react-query';
 import type { TablePaginationConfig } from 'antd';
-import { Alert, DatePicker, Descriptions, Drawer, Input, Select, Space, Tag } from 'antd';
+import { Alert, DatePicker, Descriptions, Drawer, Input, Space, Tag } from 'antd';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Select } from '../../../shared/components/select';
+import { bilingualSearchText } from '../../../shared/lib/search-text';
 import { getLogs, type SystemLog } from '../api/logs';
 
 const { RangePicker } = DatePicker;
@@ -70,9 +72,21 @@ export function LogsPage() {
           allowClear
           placeholder={t('logs.level')}
           options={[
-            { label: t('logs.levelInfo'), value: 'info' },
-            { label: t('logs.levelWarn'), value: 'warn' },
-            { label: t('logs.levelError'), value: 'error' },
+            {
+              label: t('logs.levelInfo'),
+              value: 'info',
+              searchText: bilingualSearchText('logs.levelInfo'),
+            },
+            {
+              label: t('logs.levelWarn'),
+              value: 'warn',
+              searchText: bilingualSearchText('logs.levelWarn'),
+            },
+            {
+              label: t('logs.levelError'),
+              value: 'error',
+              searchText: bilingualSearchText('logs.levelError'),
+            },
           ]}
           style={{ width: 100 }}
           value={level}

@@ -14,7 +14,6 @@ import {
   Form,
   Input,
   Row,
-  Select,
   Space,
   Typography,
   Upload,
@@ -23,6 +22,7 @@ import { ArrowLeft } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
+import { Select } from '../../../shared/components/select';
 import { CategorySelect } from '../../categories/components/category-select';
 import { CountrySelect } from '../../countries/components/country-select';
 import { FolderCascader } from '../../folders/components/folder-cascader';
@@ -316,7 +316,6 @@ export function ProjectDetailPage() {
                     <Select
                       allowClear
                       showSearch
-                      optionFilterProp="label"
                       disabled={!countryId}
                       loading={provinces.isPending}
                       options={provinces.data?.items.map((province) => ({

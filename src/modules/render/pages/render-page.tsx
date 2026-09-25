@@ -1,9 +1,10 @@
 import { SettingOutlined } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-components';
-import { Alert, Button, Card, Descriptions, Form, Input, Select, Space, Tabs, Tag } from 'antd';
+import { Alert, Button, Card, Descriptions, Form, Input, Space, Tabs, Tag } from 'antd';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { Select } from '../../../shared/components/select';
 import type { RenderBatch } from '../api/render';
 import { RenderBatchTable } from '../components/render-batch-table';
 import { RenderJobTable } from '../components/render-job-table';

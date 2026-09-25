@@ -1,6 +1,7 @@
-import { Alert, Button, Card, Select, Space } from 'antd';
+import { Alert, Button, Card, Space } from 'antd';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Select } from '../../../shared/components/select';
 import { ImportBatchDrawer } from '../../google-drive/components/import-batch-drawer';
 import { ImportBatchTable } from '../../google-drive/components/import-batch-table';
 import { useProjectImports } from '../../google-drive/hooks/use-google-drive';

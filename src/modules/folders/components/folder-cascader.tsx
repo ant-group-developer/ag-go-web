@@ -4,6 +4,7 @@ import { Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GO_PERMISSIONS } from '../../../shared/auth/permissions';
+import { cascaderSearchFilter } from '../../../shared/lib/select-search';
 import { usePermissions } from '../../account/hooks/use-current-account';
 import { useFolders } from '../hooks/use-folders';
 import type { FolderCascaderOption } from '../types/folder-cascader-option.type';
@@ -60,7 +61,14 @@ export function FolderCascader({
         options={options}
         value={value}
         onChange={(nextValue) => onChange?.(nextValue as string[] | undefined)}
-        showSearch={showSearch}
+        showSearch={
+          showSearch
+            ? {
+                filter: cascaderSearchFilter,
+                ...(typeof showSearch === 'object' ? showSearch : {}),
+              }
+            : false
+        }
         placeholder={placeholder ?? t('projects.folderPlaceholder')}
         open={open}
         onOpenChange={(nextOpen) => {
