@@ -1,4 +1,3 @@
-import { AppstoreOutlined, BarsOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { PageContainer, ProTable } from '@ant-design/pro-components';
 import { useIsFetching, useQueryClient } from '@tanstack/react-query';
@@ -8,6 +7,7 @@ import {
   Avatar,
   Button,
   Col,
+  Dropdown,
   Image,
   Input,
   Pagination,
@@ -21,13 +21,24 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
-import { ClipboardCheck, Pencil, Plus, Trash2 } from 'lucide-react';
+import {
+  ArrowDownWideNarrow,
+  ArrowUpNarrowWide,
+  Check,
+  ClipboardCheck,
+  LayoutGrid,
+  List,
+  Pencil,
+  Plus,
+  Trash2,
+} from 'lucide-react';
 
 import {
   parseAsArrayOf,
   parseAsBoolean,
   parseAsInteger,
   parseAsString,
+  parseAsStringLiteral,
   useQueryState,
   useQueryStates,
 } from 'nuqs';
@@ -35,16 +46,20 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { CountryFlag } from '../../countries/components';
-import { getAssetPreviewUrl } from '../../media/api/media';
+import { useAssetPreviewUrl } from '../../media/hooks/use-asset-preview-url';
 import { getProjects } from '../api/projects';
 import { CreateProjectModal } from '../components/create-project-modal';
 import type { ProjectFilterValues } from '../components/project-filter-popover';
 import { ProjectFilterPopover } from '../components/project-filter-popover';
 
-import { ProjectReviewDrawer } from '../components/project-review-drawer';
+import { ProjectReviewDrawer, type ProjectDrawerMode } from '../components/project-review-drawer';
 import { useDeleteProject } from '../hooks/use-projects';
 import { projectQueryKeys } from '../queries/project-query-keys';
-import type { ProjectListParams } from '../types/project-list-params.type';
+import type {
+  ProjectListParams,
+  ProjectSortField,
+  ProjectSortOrder,
+} from '../types/project-list-params.type';
 import type { Project } from '../types/project.type';
 import { formatDate } from '../utils/date.util';
 import { getProjectStatus } from '../utils/project-status.util';
@@ -52,6 +67,9 @@ import { getProjectStatus } from '../utils/project-status.util';
 const ProjectGridView = lazy(() =>
   import('../components/project-grid-view').then((m) => ({ default: m.ProjectGridView })),
 );
+
+const PROJECT_SORT_FIELDS = ['name', 'createdAt', 'updatedAt'] as const satisfies readonly ProjectSortField[];
+const PROJECT_SORT_ORDERS = ['asc', 'desc'] as const satisfies readonly ProjectSortOrder[];
 
 const projectUrlParams = {
   keyword: parseAsString,
@@ -63,40 +81,15 @@ const projectUrlParams = {
   categoryId: parseAsString,
   page: parseAsInteger.withDefault(1),
   pageSize: parseAsInteger.withDefault(20),
+  sortBy: parseAsStringLiteral(PROJECT_SORT_FIELDS).withDefault('updatedAt'),
+  sortOrder: parseAsStringLiteral(PROJECT_SORT_ORDERS).withDefault('desc'),
 };
 
 const PROJECTS_VIEW_MODE_STORAGE_KEY = 'ag-go.projects.viewMode';
 
 function ProjectThumbnailCell({ assetId }: { assetId?: string | null }) {
   const { t } = useTranslation();
-  const [previewUrl, setPreviewUrl] = useState<string>();
-
-  useEffect(() => {
-    if (!assetId) {
-      setPreviewUrl(undefined);
-      return undefined;
-    }
-
-    let disposed = false;
-    let createdUrl: string | undefined;
-    void getAssetPreviewUrl(assetId)
-      .then((url) => {
-        if (disposed) {
-          URL.revokeObjectURL(url);
-          return;
-        }
-        createdUrl = url;
-        setPreviewUrl(url);
-      })
-      .catch(() => setPreviewUrl(undefined));
-
-    return () => {
-      disposed = true;
-      if (createdUrl) {
-        URL.revokeObjectURL(createdUrl);
-      }
-    };
-  }, [assetId]);
+  const previewUrl = useAssetPreviewUrl(assetId);
 
   return (
     <Image
@@ -124,7 +117,13 @@ export function ProjectsPage() {
     history: 'replace',
   });
   const [createOpen, setCreateOpen] = useState(false);
+  const [sortOpen, setSortOpen] = useState(false);
   const [reviewProjectId, setReviewProjectId] = useState<string>();
+  const [reviewMode, setReviewMode] = useState<ProjectDrawerMode>('view');
+  const openProject = (projectId: string, mode: ProjectDrawerMode) => {
+    setReviewMode(mode);
+    setReviewProjectId(projectId);
+  };
   // `?create=true` (e.g. from the dashboard quick action) opens the create drawer once.
   const [createParam, setCreateParam] = useQueryState(
     'create',
@@ -140,6 +139,7 @@ export function ProjectsPage() {
 
   useEffect(() => {
     if (routeProjectId) {
+      setReviewMode('view');
       setReviewProjectId(routeProjectId);
     }
   }, [routeProjectId]);
@@ -235,6 +235,16 @@ export function ProjectsPage() {
     void applyFilter(newValues);
   };
 
+  const sortFieldLabels: Record<ProjectSortField, string> = {
+    name: t('projects.sortName'),
+    createdAt: t('projects.createdAt'),
+    updatedAt: t('projects.updatedAt'),
+  };
+
+  const handleSortChange = (sort: { sortBy?: ProjectSortField; sortOrder?: ProjectSortOrder }) => {
+    void setUrlState({ ...sort, page: 1 });
+  };
+
   const handleDelete = async (projectId: string) => {
     try {
       await projectsDelete.mutateAsync(projectId);
@@ -257,7 +267,7 @@ export function ProjectsPage() {
         <Space align="start">
           <ProjectThumbnailCell assetId={project.thumbnailAssetId} />
           <Space direction="vertical" size={2}>
-            <Typography.Link onClick={() => setReviewProjectId(project.id)}>
+            <Typography.Link onClick={() => openProject(project.id, 'view')}>
               {project.name}
             </Typography.Link>
             <Space size={6}>
@@ -358,7 +368,7 @@ export function ProjectsPage() {
               aria-label={t('projects.review')}
               icon={<ClipboardCheck size={16} />}
               type="text"
-              onClick={() => setReviewProjectId(project.id)}
+              onClick={() => openProject(project.id, 'evaluate')}
             />
           </Tooltip>
           <Tooltip title={t('projects.edit')}>
@@ -478,6 +488,8 @@ export function ProjectsPage() {
               ...(urlState.countryId ? { countryId: urlState.countryId } : {}),
               ...(urlState.provinceId ? { provinceId: urlState.provinceId } : {}),
               ...(urlState.categoryId ? { categoryId: urlState.categoryId } : {}),
+              sortBy: urlState.sortBy,
+              sortOrder: urlState.sortOrder,
               page: current ?? 1,
               pageSize: pageSize ?? 20,
             };
@@ -543,7 +555,7 @@ export function ProjectsPage() {
                         evaluation_status: p.evaluationStatus,
                         createdAt: p.createdAt,
                         updatedAt: p.updatedAt,
-                        cover: null,
+                        thumbnailAssetId: p.thumbnailAssetId ?? null,
                         stats: { views: 0, likes: 0, comments: 0 },
                         folder: p.folderPath ? { id: p.folderId, name: p.folderPath } : undefined,
                         province: p.provinceName
@@ -564,10 +576,10 @@ export function ProjectsPage() {
                           : null,
                       }))}
                       isLoading={isLoading || isFetching}
-                      onView={(id) => setReviewProjectId(id)}
+                      onView={(id) => openProject(id, 'view')}
                       onEdit={(id) => navigate(`/projects/${id}/edit`)}
                       onDelete={(item) => void handleDelete(item.id)}
-                      onEvaluate={(item) => setReviewProjectId(item.id)}
+                      onEvaluate={(item) => openProject(item.id, 'evaluate')}
                       canEvaluate
                     />
                   </Suspense>
@@ -604,32 +616,68 @@ export function ProjectsPage() {
             </>
           )}
           toolBarRender={() => [
+            <Dropdown
+              key="sort"
+              trigger={['click']}
+              open={sortOpen}
+              // Keep the menu open while picking field/order; close only via trigger or outside click.
+              onOpenChange={(nextOpen, info) => {
+                if (info.source === 'trigger') {
+                  setSortOpen(nextOpen);
+                }
+              }}
+              menu={{
+                items: [
+                  {
+                    type: 'group',
+                    label: t('projects.sort'),
+                    children: PROJECT_SORT_FIELDS.map((field) => ({
+                      key: `sortBy:${field}`,
+                      label: sortFieldLabels[field],
+                      extra: urlState.sortBy === field ? <Check size={14} /> : null,
+                      onClick: () => handleSortChange({ sortBy: field }),
+                    })),
+                  },
+                  { type: 'divider' },
+                  ...PROJECT_SORT_ORDERS.map((order) => ({
+                    key: `sortOrder:${order}`,
+                    icon:
+                      order === 'asc' ? (
+                        <ArrowUpNarrowWide size={14} />
+                      ) : (
+                        <ArrowDownWideNarrow size={14} />
+                      ),
+                    label: t(order === 'asc' ? 'projects.sortAsc' : 'projects.sortDesc'),
+                    extra: urlState.sortOrder === order ? <Check size={14} /> : null,
+                    onClick: () => handleSortChange({ sortOrder: order }),
+                  })),
+                ],
+              }}
+            >
+              <Button
+                icon={
+                  urlState.sortOrder === 'asc' ? (
+                    <ArrowUpNarrowWide size={16} />
+                  ) : (
+                    <ArrowDownWideNarrow size={16} />
+                  )
+                }
+              >
+                {sortFieldLabels[urlState.sortBy]}
+              </Button>
+            </Dropdown>,
             <Radio.Group
               key="view-mode"
               value={viewMode}
               onChange={(e) => setViewMode(e.target.value)}
               buttonStyle="solid"
             >
-              <Radio.Button
-                value="list"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <BarsOutlined />
+              <Radio.Button value="list" className="icon-radio-button">
+                <List size={16} />
               </Radio.Button>
 
-              <Radio.Button
-                value="grid"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <AppstoreOutlined />
+              <Radio.Button value="grid" className="icon-radio-button">
+                <LayoutGrid size={16} />
               </Radio.Button>
             </Radio.Group>,
           ]}
@@ -653,6 +701,7 @@ export function ProjectsPage() {
       <ProjectReviewDrawer
         open={Boolean(reviewProjectId)}
         projectId={reviewProjectId}
+        mode={reviewMode}
         onClose={() => {
           setReviewProjectId(undefined);
           if (routeProjectId) {

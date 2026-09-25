@@ -30,6 +30,12 @@ export function getProjects(params: ProjectListParams = {}): Promise<ProjectPage
   if (params.tagIds?.length) {
     query.set('tagIds', params.tagIds.join(','));
   }
+  if (params.sortBy) {
+    query.set('sortBy', params.sortBy);
+  }
+  if (params.sortOrder) {
+    query.set('sortOrder', params.sortOrder);
+  }
   const queryString = query.toString();
   return apiClient<ProjectPage>(`/projects${queryString ? `?${queryString}` : ''}`);
 }

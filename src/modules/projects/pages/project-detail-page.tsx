@@ -1,6 +1,6 @@
 import { PictureOutlined } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-components';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import type { UploadFile } from 'antd';
 import {
   Alert,
@@ -26,11 +26,9 @@ import { useFolders } from '../../folders/hooks/use-folders';
 import { ProjectGoogleDriveImportPanel } from '../../google-drive/components/project-google-drive-import-panel';
 import {
   abortUpload,
-  attachProjectMedia,
   completeUpload,
   createUploadSession,
   getAssetPreviewUrl,
-  getProjectMedia,
   setProjectThumbnail,
   uploadAssetContent,
 } from '../../media/api/media';
@@ -59,11 +57,6 @@ export function ProjectDetailPage() {
   const [thumbnailError, setThumbnailError] = useState<string>();
   const project = useProject(projectId);
   const update = useUpdateProject(projectId);
-  const projectMedia = useQuery({
-    queryKey: mediaQueryKeys.project(projectId),
-    queryFn: () => getProjectMedia(projectId),
-    enabled: Boolean(projectId),
-  });
   const folders = useFolders();
   const tags = useTags();
   const countryId = Form.useWatch('countryId', form);
@@ -106,38 +99,40 @@ export function ProjectDetailPage() {
     if (
       !project.data ||
       project.data.id !== projectId ||
-      initializedThumbnailProjectId.current === projectId ||
-      (project.data.thumbnailProjectMediaId && projectMedia.isPending)
+      initializedThumbnailProjectId.current === projectId
     ) {
       return;
     }
 
-    const thumbnailMedia = projectMedia.data?.items.find(
-      (item) => item.id === project.data?.thumbnailProjectMediaId,
-    );
     initializedThumbnailProjectId.current = projectId;
-    if (!thumbnailMedia || form.isFieldTouched('thumbnail')) {
+    const { thumbnailProjectMediaId, thumbnailAssetId, thumbnailSource } = project.data;
+    if (
+      !thumbnailProjectMediaId ||
+      !thumbnailAssetId ||
+      thumbnailSource !== 'manual' ||
+      form.isFieldTouched('thumbnail')
+    ) {
       return;
     }
 
     const initialFile: UploadFile = {
-      uid: thumbnailMedia.id,
-      name: thumbnailMedia.asset.originalFilename,
+      uid: thumbnailProjectMediaId,
+      name: t('projects.projectThumbnail'),
       status: 'done',
     };
     form.setFieldValue('thumbnail', [initialFile]);
 
     let disposed = false;
-    void getAssetPreviewUrl(thumbnailMedia.assetId)
+    void getAssetPreviewUrl(thumbnailAssetId)
       .then((url) => {
         if (disposed) {
           return;
         }
         const currentFiles: UploadFile[] = form.getFieldValue('thumbnail') ?? [];
-        if (currentFiles.some((file) => file.uid === thumbnailMedia.id)) {
+        if (currentFiles.some((file) => file.uid === thumbnailProjectMediaId)) {
           form.setFieldValue('thumbnail', [
             ...currentFiles.map((file) =>
-              file.uid === thumbnailMedia.id ? { ...file, thumbUrl: url, url } : file,
+              file.uid === thumbnailProjectMediaId ? { ...file, thumbUrl: url, url } : file,
             ),
           ]);
         }
@@ -147,7 +142,7 @@ export function ProjectDetailPage() {
     return () => {
       disposed = true;
     };
-  }, [form, project.data, projectId, projectMedia.data, projectMedia.isPending]);
+  }, [form, project.data, projectId, t]);
 
   const handleSubmit = async (values: ProjectDetailFormValues) => {
     const folderId = values.folderPath.at(-1);
@@ -197,10 +192,12 @@ export function ProjectDetailPage() {
                 globalThis.crypto.randomUUID(),
               );
               await uploadAssetContent(session, file, () => undefined);
-              const asset = await completeUpload(session.assetId, session.uploadSessionId);
+              const completed = await completeUpload(session.assetId, session.uploadSessionId);
               uploadCompleted = true;
-              const attachedMedia = await attachProjectMedia(projectId, { assetId: asset.id });
-              projectMediaId = attachedMedia.id;
+              if (!completed.projectMediaId) {
+                throw new Error(t('projects.thumbnailFailed'));
+              }
+              projectMediaId = completed.projectMediaId;
               uploadedThumbnailRef.current = { uid: selectedThumbnail.uid, projectMediaId };
             } catch (error) {
               if (session && !uploadCompleted) {
@@ -281,7 +278,11 @@ export function ProjectDetailPage() {
                   <FolderCascader changeOnSelect />
                 </Form.Item>
 
-                <Form.Item name="categoryId" label={t('projects.category')}>
+                <Form.Item
+                  name="categoryId"
+                  label={t('projects.category')}
+                  rules={[{ required: true, message: t('projects.categoryRequired') }]}
+                >
                   <CategorySelect />
                 </Form.Item>
 
@@ -322,6 +323,11 @@ export function ProjectDetailPage() {
                 <Form.Item
                   name="thumbnail"
                   label={t('projects.thumbnail')}
+                  extra={
+                    project.data?.thumbnailSource === 'auto'
+                      ? t('projects.thumbnailAutoHint')
+                      : undefined
+                  }
                   valuePropName="fileList"
                   getValueFromEvent={(event) => event?.fileList}
                 >

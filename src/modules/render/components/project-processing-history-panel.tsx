@@ -11,10 +11,10 @@ import {
 import {
   useCreateRenderBatch,
   useProjectRenderBatches,
-  useRenderBatchJobs,
   useRenderProfiles,
-  useRetryRenderJob,
 } from '../hooks/use-render';
+import { RenderBatchTable } from './render-batch-table';
+import { RenderJobsDrawer } from './render-jobs-drawer';
 
 function statusLabel(status: string, t: (key: string) => string): string {
   return (
@@ -48,11 +48,9 @@ export function ProjectProcessingHistoryPanel({ projectId }: { projectId: string
   const profiles = useRenderProfiles();
   const createBatch = useCreateRenderBatch();
   const retryImport = useRetryDriveImportItem();
-  const retryRender = useRetryRenderJob();
   const [selectedImportId, setSelectedImportId] = useState('');
   const [selectedBatchId, setSelectedBatchId] = useState('');
   const importDetail = useDriveImport(selectedImportId);
-  const jobs = useRenderBatchJobs(selectedBatchId);
   const [profileId, setProfileId] = useState<string>();
 
   return (
@@ -184,80 +182,17 @@ export function ProjectProcessingHistoryPanel({ projectId }: { projectId: string
       <Typography.Title level={5} style={{ marginTop: 20 }}>
         {t('render.renderTitle')}
       </Typography.Title>
-      {renderBatches.data?.length ? (
-        <List
-          size="small"
-          bordered
-          dataSource={renderBatches.data}
-          renderItem={(batch) => (
-            <List.Item
-              actions={[
-                <Button key="view" type="link" onClick={() => setSelectedBatchId(batch.id)}>
-                  {t('common.viewJobs')}
-                </Button>,
-              ]}
-            >
-              <Space>
-                <Typography.Text>
-                  {new Date(batch.createdAt).toLocaleString('vi-VN')}
-                </Typography.Text>
-                <Tag
-                  color={
-                    batch.status === 'completed'
-                      ? 'success'
-                      : batch.status === 'failed' || batch.status === 'partial'
-                        ? 'error'
-                        : 'processing'
-                  }
-                >
-                  {statusLabel(batch.status, t)}
-                </Tag>
-                <Typography.Text type="secondary">
-                  {batch.completedJobs}/{batch.totalJobs}
-                </Typography.Text>
-              </Space>
-            </List.Item>
-          )}
-        />
-      ) : (
-        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('render.noRenderHistory')} />
-      )}
-
-      {jobs.data ? (
-        <List
-          size="small"
-          header={<Typography.Text strong>{t('render.renderJobsTitle')}</Typography.Text>}
-          dataSource={jobs.data}
-          renderItem={(job) => (
-            <List.Item
-              actions={
-                job.status === 'failed'
-                  ? [
-                      <Button
-                        key="retry"
-                        size="small"
-                        loading={retryRender.isPending}
-                        icon={<ReloadOutlined />}
-                        onClick={() => retryRender.mutate(job.id)}
-                      >
-                        {t('common.retry')}
-                      </Button>,
-                    ]
-                  : undefined
-              }
-            >
-              <List.Item.Meta
-                title={`${job.assetId} · ${statusLabel(job.status, t)}`}
-                description={
-                  job.errorMessage ??
-                  job.progressMessage ??
-                  t('render.attempt', { count: job.attemptCount })
-                }
-              />
-            </List.Item>
-          )}
-        />
-      ) : null}
+      <RenderBatchTable
+        batches={renderBatches.data ?? []}
+        loading={renderBatches.isLoading}
+        hideScope
+        onViewJobs={(batch) => setSelectedBatchId(batch.id)}
+      />
+      <RenderJobsDrawer
+        batch={renderBatches.data?.find((batch) => batch.id === selectedBatchId)}
+        open={Boolean(selectedBatchId)}
+        onClose={() => setSelectedBatchId('')}
+      />
     </Card>
   );
 }

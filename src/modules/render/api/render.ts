@@ -28,6 +28,12 @@ export type WatermarkConfig = {
   margin: number;
 };
 
+/** Preview widths (watermarked) and thumbnail width (no watermark); heights follow the file. */
+export type RenderSizes = {
+  previewWidths: number[];
+  thumbnailWidth: number;
+};
+
 export type RenderProfile = {
   id: string;
   name: string;
@@ -40,6 +46,7 @@ export type RenderProfile = {
   videoBitrateBps: string | null;
   watermarkEnabled: boolean;
   watermarkConfig: WatermarkConfig;
+  renderSizes?: Partial<RenderSizes> | null;
 };
 
 export type RenderBatch = {
@@ -51,8 +58,28 @@ export type RenderBatch = {
   completedJobs: number;
   failedJobs: number;
   progressPercent: number;
+  errorMessage?: string | null;
   createdAt: string;
+  updatedAt?: string;
   renderProfileId: string;
+  /** Project of the batch; for batches spanning several projects, the first one by name. */
+  projectName?: string | null;
+  projectCount?: number;
+  folderPath?: string | null;
+  profileName?: string | null;
+  profileVersion?: number | null;
+  createdByUser?: { id: string; name?: string; email?: string } | null;
+};
+
+/** A rendered file of the job's asset (a preview size or the thumbnail). */
+export type RenderJobOutput = {
+  variantCode: string;
+  mimeType: string;
+  width: number | null;
+  height: number | null;
+  fileSizeBytes: string;
+  hasWatermark: boolean;
+  renderVersion: number;
 };
 
 export type RenderJob = {
@@ -66,7 +93,22 @@ export type RenderJob = {
   errorCode: string | null;
   errorMessage: string | null;
   createdAt: string;
+  startedAt?: string | null;
   finishedAt: string | null;
+  renderVersion?: number;
+  asset?: {
+    id: string;
+    assetType: 'image' | 'video';
+    originalFilename: string;
+    mimeType: string;
+    fileSizeBytes: string;
+    processingStatus: string;
+    width: number | null;
+    height: number | null;
+    durationSeconds: number | null;
+  } | null;
+  project?: { id: string; name: string } | null;
+  outputs?: RenderJobOutput[];
 };
 
 export function getRenderProfiles() {
@@ -84,7 +126,7 @@ export type UpdateRenderProfileInput = Partial<
     | 'videoBitrateBps'
     | 'watermarkEnabled'
     | 'watermarkConfig'
-  >
+  > & { renderSizes: RenderSizes }
 >;
 
 export function updateRenderProfile(id: string, input: UpdateRenderProfileInput) {
@@ -122,8 +164,14 @@ export function createWatermarkLogoUploadSession(input: {
 }) {
   return apiClient<UploadSession>('/render-watermark/upload-session', {
     method: 'POST',
-    body: JSON.stringify({ assetType: 'image', ...input }),
+    body: JSON.stringify(input),
   });
+}
+
+/** Presigned URL of the uploaded watermark logo (the original, not a watermarked variant). */
+export async function getWatermarkLogoUrl(assetId: string): Promise<string> {
+  const result = await apiClient<{ url: string }>(`/render-watermark/logos/${assetId}/url`);
+  return result.url;
 }
 
 export function completeWatermarkLogoUpload(assetId: string, uploadSessionId: string) {

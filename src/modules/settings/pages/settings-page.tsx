@@ -22,210 +22,30 @@ import {
 } from 'antd';
 import type { RcFile } from 'antd/es/upload';
 import { ImagePlus, RotateCcw, UploadCloud } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getAssetPreviewUrl } from '../../media/api/media';
 import {
   getRenderProfiles,
+  getWatermarkLogoUrl,
+  rerenderWatermark,
   uploadWatermarkLogo,
   WATERMARK_POSITIONS,
   type RenderProfile,
-  type WatermarkConfig,
 } from '../../render/api/render';
 import { useUpdateRenderProfile } from '../../render/hooks/use-render';
+import {
+  isValidPreviewWidth,
+  normalizePreviewWidths,
+  normalizeRenderSizes,
+  PREVIEW_WIDTH_MAX,
+  PREVIEW_WIDTH_MIN,
+  PREVIEW_WIDTHS_MAX_COUNT,
+  THUMBNAIL_WIDTH_MAX,
+  THUMBNAIL_WIDTH_MIN,
+} from '../../render/utils/render-sizes';
+import { normalizeWatermarkConfig } from '../../render/utils/watermark-config';
+import { WatermarkPreview } from '../components/watermark-preview';
 import { useSettings, useUpdateSettings } from '../hooks/use-settings';
-
-const DEFAULT_WATERMARK_CONFIG: WatermarkConfig = {
-  text: 'AG Go Preview',
-  logoAssetId: null,
-  color: '#FFFFFF',
-  fontFamily: 'Arial',
-  fontSize: 24,
-  repeat: false,
-  gapX: 220,
-  gapY: 100,
-  rotate: 0,
-  maxWidth: null,
-  position: 'bottom-right',
-  opacity: 0.75,
-  scale: 0.28,
-  margin: 24,
-};
-
-function normalizeWatermarkConfig(config: Partial<WatermarkConfig> | undefined): WatermarkConfig {
-  return {
-    text: typeof config?.text === 'string' ? config.text : DEFAULT_WATERMARK_CONFIG.text,
-    logoAssetId: config?.logoAssetId ?? null,
-    color: typeof config?.color === 'string' ? config.color : DEFAULT_WATERMARK_CONFIG.color,
-    fontFamily:
-      typeof config?.fontFamily === 'string'
-        ? config.fontFamily
-        : DEFAULT_WATERMARK_CONFIG.fontFamily,
-    fontSize:
-      typeof config?.fontSize === 'number' ? config.fontSize : DEFAULT_WATERMARK_CONFIG.fontSize,
-    repeat: typeof config?.repeat === 'boolean' ? config.repeat : DEFAULT_WATERMARK_CONFIG.repeat,
-    gapX: typeof config?.gapX === 'number' ? config.gapX : DEFAULT_WATERMARK_CONFIG.gapX,
-    gapY: typeof config?.gapY === 'number' ? config.gapY : DEFAULT_WATERMARK_CONFIG.gapY,
-    rotate: typeof config?.rotate === 'number' ? config.rotate : DEFAULT_WATERMARK_CONFIG.rotate,
-    maxWidth:
-      typeof config?.maxWidth === 'number' ? config.maxWidth : DEFAULT_WATERMARK_CONFIG.maxWidth,
-    position: WATERMARK_POSITIONS.includes(config?.position as WatermarkConfig['position'])
-      ? (config?.position as WatermarkConfig['position'])
-      : DEFAULT_WATERMARK_CONFIG.position,
-    opacity: typeof config?.opacity === 'number' ? Math.min(1, Math.max(0, config.opacity)) : 0.75,
-    scale: typeof config?.scale === 'number' ? Math.min(1, Math.max(0.05, config.scale)) : 0.28,
-    margin: typeof config?.margin === 'number' ? Math.max(0, config.margin) : 24,
-  };
-}
-
-type PreviewProps = {
-  sampleUrl?: string;
-  logoUrl?: string;
-  config: WatermarkConfig;
-  enabled: boolean;
-};
-
-function WatermarkPreview({ sampleUrl, logoUrl, config, enabled }: PreviewProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    let disposed = false;
-    const canvas = canvasRef.current;
-    if (!canvas) {
-      return undefined;
-    }
-    const context = canvas.getContext('2d');
-    if (!context) {
-      return undefined;
-    }
-
-    const draw = async () => {
-      const image = new window.Image();
-      image.crossOrigin = 'anonymous';
-      image.src =
-        sampleUrl ||
-        `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`
-          <svg xmlns="http://www.w3.org/2000/svg" width="960" height="540">
-            <defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1">
-              <stop offset="0" stop-color="#1677ff"/><stop offset="1" stop-color="#722ed1"/>
-            </linearGradient></defs>
-            <rect width="960" height="540" fill="url(#g)"/>
-            <circle cx="760" cy="120" r="160" fill="rgba(255,255,255,.14)"/>
-            <text x="48" y="480" fill="white" font-size="34" font-family="Arial">Watermark preview</text>
-          </svg>
-        `)}`;
-      await new Promise<void>((resolve) => {
-        image.onload = () => resolve();
-        image.onerror = () => resolve();
-      });
-      if (disposed) {
-        return;
-      }
-
-      const width = 960;
-      const height = 540;
-      canvas.width = width;
-      canvas.height = height;
-      context.clearRect(0, 0, width, height);
-      context.drawImage(image, 0, 0, width, height);
-
-      if (!enabled || (!config.text && !logoUrl)) {
-        return;
-      }
-
-      const logo = logoUrl ? new window.Image() : undefined;
-      if (logo) {
-        logo.crossOrigin = 'anonymous';
-        logo.src = logoUrl!;
-        await new Promise<void>((resolve) => {
-          logo.onload = () => resolve();
-          logo.onerror = () => resolve();
-        });
-      }
-
-      const fontSize = Math.max(8, config.fontSize);
-      context.font = `${fontSize}px ${config.fontFamily}`;
-      const logoSize = logo?.complete && logo.naturalWidth > 0 ? fontSize * 1.6 : 0;
-      const textWidth = config.text ? context.measureText(config.text.slice(0, 120)).width : 0;
-      const tileWidth = Math.max(fontSize, textWidth + (logoSize ? logoSize * 1.3 : 0));
-      const tileHeight = Math.max(fontSize * 1.5, logoSize);
-      const margin = config.margin;
-      if (config.repeat) {
-        context.globalAlpha = config.opacity;
-        for (let y = 0; y < height; y += tileHeight + config.gapY) {
-          for (let x = 0; x < width; x += tileWidth + config.gapX) {
-            context.save();
-            context.translate(x, y + tileHeight);
-            context.rotate((config.rotate * Math.PI) / 180);
-            if (logo && logoSize) context.drawImage(logo, 0, -tileHeight, logoSize, logoSize);
-            if (config.text) {
-              context.fillStyle = config.color;
-              context.font = `${fontSize}px ${config.fontFamily}`;
-              context.fillText(
-                config.text.slice(0, 120),
-                logoSize ? logoSize * 1.3 : 0,
-                -tileHeight / 2,
-              );
-            }
-            context.restore();
-          }
-        }
-        context.restore();
-        return;
-      }
-      const overlayWidth = Math.min(
-        width,
-        Math.max(1, tileWidth * Math.min(1, config.scale / 0.28)),
-      );
-      const overlayHeight = Math.min(height, Math.max(1, tileHeight * (overlayWidth / tileWidth)));
-      const positions = {
-        'top-left': { x: margin, y: margin },
-        'top-right': { x: width - overlayWidth - margin, y: margin },
-        'bottom-left': { x: margin, y: height - overlayHeight - margin },
-        'bottom-right': { x: width - overlayWidth - margin, y: height - overlayHeight - margin },
-        center: { x: (width - overlayWidth) / 2, y: (height - overlayHeight) / 2 },
-      };
-      const position = positions[config.position];
-
-      context.save();
-      context.globalAlpha = config.opacity;
-      if (logo?.complete && logo.naturalWidth > 0) {
-        context.drawImage(
-          logo,
-          position.x,
-          position.y + (overlayHeight - logoSize) / 2,
-          logoSize,
-          logoSize,
-        );
-      }
-      if (config.text) {
-        context.fillStyle = config.color;
-        context.font = `${fontSize}px ${config.fontFamily}`;
-        context.textBaseline = 'middle';
-        context.translate(position.x + overlayWidth / 2, position.y + overlayHeight / 2);
-        context.rotate((config.rotate * Math.PI) / 180);
-        context.fillText(
-          config.text.slice(0, 120),
-          -overlayWidth / 2 + (logoSize ? logoSize * 1.3 : 0),
-          0,
-        );
-      }
-      context.restore();
-    };
-
-    void draw();
-    return () => {
-      disposed = true;
-    };
-  }, [config, enabled, logoUrl, sampleUrl]);
-
-  return (
-    <canvas
-      ref={canvasRef}
-      style={{ display: 'block', width: '100%', borderRadius: 8, background: '#f5f5f5' }}
-    />
-  );
-}
 
 function RenderProfileEditor({
   profile,
@@ -236,7 +56,7 @@ function RenderProfileEditor({
 }) {
   const { t } = useTranslation();
   const [form] = Form.useForm();
-  const { message } = AntApp.useApp();
+  const { message, modal } = AntApp.useApp();
   const updateProfile = useUpdateRenderProfile();
   const [logoUrl, setLogoUrl] = useState<string>();
   const [sampleUrl, setSampleUrl] = useState<string>();
@@ -251,7 +71,7 @@ function RenderProfileEditor({
       return undefined;
     }
     let disposed = false;
-    void getAssetPreviewUrl(logoAssetId)
+    void getWatermarkLogoUrl(logoAssetId)
       .then((url) => {
         if (!disposed) {
           setLogoUrl(url);
@@ -271,6 +91,34 @@ function RenderProfileEditor({
     },
     [sampleUrl],
   );
+
+  const applyToExistingMedia = async () => {
+    try {
+      const result = await rerenderWatermark({ scope: 'FILTER', mediaType: 'ALL' });
+      void message.success(
+        result.enqueuedJobs > 0
+          ? t('settings.applyToExistingSuccess', {
+              enqueued: result.enqueuedJobs,
+              matched: result.matchedMedia,
+            })
+          : t('settings.applyToExistingNothing'),
+      );
+    } catch (error) {
+      void message.error(
+        error instanceof Error ? error.message : t('settings.applyToExistingFailed'),
+      );
+    }
+  };
+
+  const confirmApplyToExistingMedia = () => {
+    modal.confirm({
+      title: t('settings.applyToExistingTitle'),
+      content: t('settings.applyToExistingContent'),
+      okText: t('settings.applyToExistingOk'),
+      cancelText: t('settings.applyToExistingLater'),
+      onOk: applyToExistingMedia,
+    });
+  };
 
   const handleLogoUpload = async (file: RcFile) => {
     setLogoUploading(true);
@@ -293,9 +141,7 @@ function RenderProfileEditor({
         layout="vertical"
         initialValues={{
           name: profile.name,
-          outputFormat: profile.outputFormat,
-          maxWidth: profile.maxWidth,
-          maxHeight: profile.maxHeight,
+          renderSizes: normalizeRenderSizes(profile.renderSizes ?? { previewWidths: [] }),
           imageQuality: profile.imageQuality,
           videoBitrateBps: profile.videoBitrateBps ?? '',
           watermarkEnabled: profile.watermarkEnabled,
@@ -307,9 +153,10 @@ function RenderProfileEditor({
               id: profile.id,
               input: {
                 name: values.name,
-                outputFormat: values.outputFormat,
-                maxWidth: values.maxWidth ?? null,
-                maxHeight: values.maxHeight ?? null,
+                renderSizes: {
+                  previewWidths: normalizePreviewWidths(values.renderSizes?.previewWidths),
+                  thumbnailWidth: values.renderSizes?.thumbnailWidth,
+                },
                 imageQuality: values.imageQuality,
                 videoBitrateBps: values.videoBitrateBps || null,
                 watermarkEnabled: values.watermarkEnabled,
@@ -320,6 +167,7 @@ function RenderProfileEditor({
               onSuccess: () => {
                 void message.success(t('settings.profileUpdateSuccess'));
                 onSuccess();
+                confirmApplyToExistingMedia();
               },
               onError: (error) =>
                 void message.error(
@@ -341,26 +189,6 @@ function RenderProfileEditor({
                   <Input maxLength={100} />
                 </Form.Item>
               </Col>
-              <Col xs={24} md={12}>
-                <Form.Item name="outputFormat" label={t('settings.outputFormat')}>
-                  <Select
-                    options={['webp', 'jpeg', 'jpg', 'png', 'mp4', 'webm'].map((value) => ({
-                      label: value,
-                      value,
-                    }))}
-                  />
-                </Form.Item>
-              </Col>
-              <Col xs={12} md={6}>
-                <Form.Item name="maxWidth" label={t('settings.maxWidth')}>
-                  <InputNumber min={1} max={10000} style={{ width: '100%' }} />
-                </Form.Item>
-              </Col>
-              <Col xs={12} md={6}>
-                <Form.Item name="maxHeight" label={t('settings.maxHeight')}>
-                  <InputNumber min={1} max={10000} style={{ width: '100%' }} />
-                </Form.Item>
-              </Col>
               <Col xs={12} md={6}>
                 <Form.Item name="imageQuality" label={t('settings.imageQuality')}>
                   <InputNumber min={1} max={100} style={{ width: '100%' }} />
@@ -372,6 +200,77 @@ function RenderProfileEditor({
                 </Form.Item>
               </Col>
             </Row>
+
+            <Card size="small" title={t('settings.renderSizes')} style={{ marginBottom: 16 }}>
+              <Row gutter={16}>
+                <Col xs={24} md={16}>
+                  <Form.Item
+                    name={['renderSizes', 'previewWidths']}
+                    label={t('settings.previewWidths')}
+                    extra={t('settings.previewWidthsHint')}
+                    rules={[
+                      {
+                        validator: (_, value: unknown[] = []) => {
+                          if (value.length === 0) {
+                            return Promise.reject(new Error(t('settings.previewWidthsRequired')));
+                          }
+                          if (!value.every(isValidPreviewWidth)) {
+                            return Promise.reject(
+                              new Error(
+                                t('settings.previewWidthsInvalid', {
+                                  min: PREVIEW_WIDTH_MIN,
+                                  max: PREVIEW_WIDTH_MAX,
+                                }),
+                              ),
+                            );
+                          }
+                          if (new Set(value.map(Number)).size > PREVIEW_WIDTHS_MAX_COUNT) {
+                            return Promise.reject(
+                              new Error(
+                                t('settings.previewWidthsTooMany', {
+                                  count: PREVIEW_WIDTHS_MAX_COUNT,
+                                }),
+                              ),
+                            );
+                          }
+                          return Promise.resolve();
+                        },
+                      },
+                    ]}
+                    normalize={(value: unknown[]) =>
+                      value.every(isValidPreviewWidth) ? normalizePreviewWidths(value) : value
+                    }
+                  >
+                    <Select
+                      mode="tags"
+                      tokenSeparators={[',', ' ']}
+                      placeholder="480, 960, 1920"
+                      suffixIcon={<span>px</span>}
+                      options={[360, 480, 720, 960, 1280, 1920, 2560, 3840].map((width) => ({
+                        value: width,
+                        label: `${width}px`,
+                      }))}
+                    />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={8}>
+                  <Form.Item
+                    name={['renderSizes', 'thumbnailWidth']}
+                    label={t('settings.thumbnailWidth')}
+                    extra={t('settings.thumbnailWidthHint')}
+                    rules={[{ required: true }]}
+                  >
+                    <InputNumber
+                      min={THUMBNAIL_WIDTH_MIN}
+                      max={THUMBNAIL_WIDTH_MAX}
+                      precision={0}
+                      addonAfter="px"
+                      style={{ width: '100%' }}
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+            </Card>
 
             <Card size="small" title={t('settings.watermark')} style={{ marginBottom: 16 }}>
               <Row gutter={16}>
@@ -409,8 +308,12 @@ function RenderProfileEditor({
                     />
                   </Form.Item>
                 </Col>
-                <Col xs={12} md={8}>
-                  <Form.Item name={['watermarkConfig', 'fontSize']} label={t('settings.fontSize')}>
+                <Col xs={12} md={8} hidden={!config.repeat}>
+                  <Form.Item
+                    name={['watermarkConfig', 'fontSize']}
+                    label={t('settings.fontSize')}
+                    tooltip={t('settings.fontSizeRepeatHint')}
+                  >
                     <InputNumber min={8} max={240} style={{ width: '100%' }} />
                   </Form.Item>
                 </Col>
@@ -422,7 +325,7 @@ function RenderProfileEditor({
                 <Col xs={24} md={12}>
                   <Form.Item label={t('settings.logo')}>
                     <Upload
-                      accept="image/*"
+                      accept="image/png,image/jpeg,image/webp"
                       maxCount={1}
                       showUploadList={false}
                       beforeUpload={(file) => {
@@ -476,17 +379,12 @@ function RenderProfileEditor({
                     <Switch />
                   </Form.Item>
                 </Col>
-                <Col xs={12} md={6}>
-                  <Form.Item name={['watermarkConfig', 'maxWidth']} label={t('settings.maxWidth')}>
-                    <InputNumber min={1} max={10000} style={{ width: '100%' }} />
-                  </Form.Item>
-                </Col>
-                <Col xs={12} md={6}>
+                <Col xs={12} md={6} hidden={!config.repeat}>
                   <Form.Item name={['watermarkConfig', 'gapX']} label={t('settings.gapX')}>
                     <InputNumber min={40} max={2000} style={{ width: '100%' }} />
                   </Form.Item>
                 </Col>
-                <Col xs={12} md={6}>
+                <Col xs={12} md={6} hidden={!config.repeat}>
                   <Form.Item name={['watermarkConfig', 'gapY']} label={t('settings.gapY')}>
                     <InputNumber min={40} max={2000} style={{ width: '100%' }} />
                   </Form.Item>
@@ -496,8 +394,12 @@ function RenderProfileEditor({
                     <Slider min={0} max={1} step={0.05} />
                   </Form.Item>
                 </Col>
-                <Col xs={24} md={8}>
-                  <Form.Item name={['watermarkConfig', 'scale']} label={t('settings.scale')}>
+                <Col xs={24} md={8} hidden={config.repeat}>
+                  <Form.Item
+                    name={['watermarkConfig', 'scale']}
+                    label={t('settings.watermarkSize')}
+                    tooltip={t('settings.watermarkSizeHint')}
+                  >
                     <Slider min={0.05} max={1} step={0.01} />
                   </Form.Item>
                 </Col>
@@ -540,14 +442,18 @@ function RenderProfileEditor({
                   config={config}
                   enabled={watermarkEnabled}
                 />
+                <Typography.Text type="secondary">{t('settings.previewNote')}</Typography.Text>
               </Flex>
             </Card>
           </Col>
         </Row>
 
-        <Button type="primary" htmlType="submit" loading={updateProfile.isPending}>
-          {t('settings.saveProfile')}
-        </Button>
+        <Flex gap={8} wrap>
+          <Button type="primary" htmlType="submit" loading={updateProfile.isPending}>
+            {t('settings.saveProfile')}
+          </Button>
+          <Button onClick={confirmApplyToExistingMedia}>{t('settings.applyToExisting')}</Button>
+        </Flex>
       </Form>
     </Card>
   );

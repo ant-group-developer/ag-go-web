@@ -37,3 +37,25 @@ body {
   min-height: calc(100vh - 64px);
   background: #f5f7fa;
 } */
+
+/*
+ * antd wraps a Button's `icon` in a plain inline `span.ant-btn-icon`. antd's own icons
+ * (`.anticon`) bring `inline-flex` + `line-height: 0` with them, but a bare lucide <svg>
+ * is laid out on a text line box (line-height ~22px) sitting on the baseline, so it
+ * ends up off-centre from the label. Making the wrapper a flex box centres any svg.
+ */
+.ant-btn-icon {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Icon-only Radio.Button: same baseline issue inside the label's content span. */
+.ant-radio-button-wrapper.icon-radio-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ant-radio-button-wrapper.icon-radio-button > span:last-child {
+  display: inline-flex;
+}

@@ -11,6 +11,13 @@ export type Asset = {
   processingError?: string | null;
 };
 
+/** A watermarked preview size; heights follow the file's aspect ratio. */
+export type PreviewVariant = {
+  variantCode: string;
+  width: number | null;
+  height: number | null;
+};
+
 export type ProjectMedia = {
   id: string;
   projectId: string;
@@ -20,7 +27,11 @@ export type ProjectMedia = {
   evaluationStatus: 'pending' | 'approved' | 'rejected';
   createdAt: string;
   updatedAt: string;
+  /** Un-watermarked thumbnail, used wherever media is listed. */
+  thumbnailUrl?: string | null;
+  /** Largest watermarked preview. */
   previewUrl?: string | null;
+  previewVariants?: PreviewVariant[];
   previewVariantCode?: string | null;
   watermarkVariant?: string | null;
   durationSeconds: number | null;
@@ -131,14 +142,31 @@ export function setProjectThumbnail(projectId: string, projectMediaId: string | 
   });
 }
 
+/**
+ * Presigned URL of an asset variant. With `variantCode = 'preview'`, `width` picks the smallest
+ * watermarked preview at least that wide (the largest without it).
+ */
 export async function getAssetPreviewUrl(
   assetId: string,
   variantCode = 'thumbnail',
+  width?: number,
 ): Promise<string> {
   const query = new URLSearchParams({ variantCode });
+  if (width) {
+    query.set('width', String(Math.round(width)));
+  }
   const result = await apiClient<{ url: string }>(
     `/assets/${assetId}/preview-url?${query.toString()}`,
   );
+  return result.url;
+}
+
+/**
+ * Presigned URL of the original, un-watermarked file. Requires the evaluate or
+ * download-original permission.
+ */
+export async function getAssetOriginalUrl(assetId: string): Promise<string> {
+  const result = await apiClient<{ url: string }>(`/assets/${assetId}/original-url`);
   return result.url;
 }
 
@@ -197,12 +225,17 @@ export function uploadAssetContent(
     });
 }
 
+/**
+ * Completing an upload session that targets a project also attaches the asset to it;
+ * `projectMediaId` is the resulting project media row.
+ */
 export function completeUpload(assetId: string, uploadSessionId: string) {
   return apiClient<{
     id: string;
     processingStatus: string;
-    renderJobId: string | null;
-    outboxEventId: string | null;
+    renderJobId?: string | null;
+    outboxEventId?: string | null;
+    projectMediaId: string | null;
   }>(`/assets/${assetId}/complete`, {
     method: 'POST',
     body: JSON.stringify({ uploadSessionId }),

@@ -23,6 +23,8 @@ export type Project = {
   provinceName?: string | null;
   categoryName?: string | null;
   thumbnailAssetId?: string | null;
+  /** 'auto' when the thumbnail is picked from the project media because none was chosen. */
+  thumbnailSource?: 'manual' | 'auto' | null;
   originalBytes?: string;
   renderedBytes?: string;
   createdAt: string;

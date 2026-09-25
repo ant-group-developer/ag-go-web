@@ -47,11 +47,20 @@ export function useRenderBatch(id: string) {
   });
 }
 
+const TERMINAL_STATUSES = ['completed', 'partial', 'failed', 'cancelled'];
+const POLL_INTERVAL_MS = 5_000;
+
+/** Poll while anything in the list is still queued or processing. */
+function pollWhileActive<T extends { status: string }>(items: T[] | undefined) {
+  return items?.some((item) => !TERMINAL_STATUSES.includes(item.status)) ? POLL_INTERVAL_MS : false;
+}
+
 export function useProjectRenderBatches(projectId: string) {
   return useQuery({
     queryKey: keys.projectBatches(projectId),
     queryFn: () => getProjectRenderBatches(projectId),
     enabled: Boolean(projectId),
+    refetchInterval: (query) => pollWhileActive(query.state.data),
   });
 }
 
@@ -59,6 +68,7 @@ export function useAllRenderBatches() {
   return useQuery({
     queryKey: keys.allBatches(),
     queryFn: getAllRenderBatches,
+    refetchInterval: (query) => pollWhileActive(query.state.data),
   });
 }
 
@@ -67,6 +77,7 @@ export function useRenderBatchJobs(batchId: string) {
     queryKey: keys.jobs(batchId),
     queryFn: () => getRenderBatchJobs(batchId),
     enabled: Boolean(batchId),
+    refetchInterval: (query) => pollWhileActive(query.state.data),
   });
 }
 
@@ -78,6 +89,7 @@ export function useRetryRenderJob() {
       if (job.renderBatchId) {
         void client.invalidateQueries({ queryKey: keys.jobs(job.renderBatchId) });
         void client.invalidateQueries({ queryKey: keys.batch(job.renderBatchId) });
+        void client.invalidateQueries({ queryKey: keys.allBatches() });
       }
     },
   });
@@ -90,6 +102,7 @@ export function useCreateRenderBatch() {
     onSuccess: (batch) => {
       void client.invalidateQueries({ queryKey: keys.batch(batch.id) });
       void client.invalidateQueries({ queryKey: keys.projectBatches(batch.projectId ?? '') });
+      void client.invalidateQueries({ queryKey: keys.allBatches() });
     },
   });
 }

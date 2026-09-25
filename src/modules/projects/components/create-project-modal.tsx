@@ -21,7 +21,6 @@ import { FolderCascader } from '../../folders/components/folder-cascader';
 import { useFolders } from '../../folders/hooks/use-folders';
 import {
   abortUpload,
-  attachProjectMedia,
   completeUpload,
   createUploadSession,
   setProjectThumbnail,
@@ -117,12 +116,11 @@ export function CreateProjectModal({ open, onClose, onComplete }: CreateProjectM
             globalThis.crypto.randomUUID(),
           );
           await uploadAssetContent(session, rawFile);
-          const completedAsset = await completeUpload(session.assetId, session.uploadSessionId);
+          const completed = await completeUpload(session.assetId, session.uploadSessionId);
           uploadCompleted = true;
-          const attachedMedia = await attachProjectMedia(createdProject.id, {
-            assetId: completedAsset.id,
-          });
-          await setProjectThumbnail(createdProject.id, attachedMedia.id);
+          if (completed.projectMediaId) {
+            await setProjectThumbnail(createdProject.id, completed.projectMediaId);
+          }
           void queryClient.invalidateQueries({
             queryKey: mediaQueryKeys.project(createdProject.id),
           });
@@ -213,7 +211,11 @@ export function CreateProjectModal({ open, onClose, onComplete }: CreateProjectM
           <FolderCascader enabled={open} changeOnSelect />
         </Form.Item>
 
-        <Form.Item name="categoryId" label={t('projects.category')}>
+        <Form.Item
+          name="categoryId"
+          label={t('projects.category')}
+          rules={[{ required: true, message: t('projects.categoryRequired') }]}
+        >
           <CategorySelect enabled={open} />
         </Form.Item>
 
