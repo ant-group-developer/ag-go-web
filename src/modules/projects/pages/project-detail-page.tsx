@@ -278,7 +278,11 @@ export function ProjectDetailPage() {
                   <FolderCascader changeOnSelect />
                 </Form.Item>
 
-                <Form.Item name="categoryId" label={t('projects.category')}>
+                <Form.Item
+                  name="categoryId"
+                  label={t('projects.category')}
+                  rules={[{ required: true, message: t('projects.categoryRequired') }]}
+                >
                   <CategorySelect />
                 </Form.Item>
 

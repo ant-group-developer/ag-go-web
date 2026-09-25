@@ -211,7 +211,11 @@ export function CreateProjectModal({ open, onClose, onComplete }: CreateProjectM
           <FolderCascader enabled={open} changeOnSelect />
         </Form.Item>
 
-        <Form.Item name="categoryId" label={t('projects.category')}>
+        <Form.Item
+          name="categoryId"
+          label={t('projects.category')}
+          rules={[{ required: true, message: t('projects.categoryRequired') }]}
+        >
           <CategorySelect enabled={open} />
         </Form.Item>
 
