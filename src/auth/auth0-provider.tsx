@@ -1,11 +1,10 @@
 import { Auth0Provider, useAuth0 } from '@auth0/auth0-react';
-import { Alert, Button, Flex, Spin, Typography } from 'antd';
+import { Alert, Spin } from 'antd';
 import type { PropsWithChildren } from 'react';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { clearAccessTokenGetter, setAccessTokenGetter } from './auth-client';
-
-const { Title, Text } = Typography;
+import { LoginScreen } from './login-screen';
 
 const domain = import.meta.env.VITE_AUTH0_DOMAIN;
 const clientId = import.meta.env.VITE_AUTH0_CLIENT_ID;
@@ -40,80 +39,7 @@ function AuthenticatedApp({ children }: PropsWithChildren) {
   }
 
   if (!isAuthenticated) {
-    return (
-      <Flex
-        align="center"
-        justify="center"
-        style={{
-          position: 'fixed',
-          inset: 0,
-          backgroundImage: 'url(/images/background-login-16x9.jpg)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }}
-      >
-        <Flex
-          vertical
-          align="center"
-          style={{
-            position: 'relative',
-            zIndex: 1,
-            width: 400,
-            padding: '30px 20px',
-            borderRadius: 16,
-            background: 'rgba(255, 255, 255, 0.10)',
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)',
-            border: '1px solid rgba(255, 255, 255, 0.22)',
-            boxShadow: '0 8px 40px rgba(0, 0, 0, 0.35)',
-          }}
-        >
-          <Title
-            level={2}
-            style={{
-              margin: '0 0 8px',
-              color: '#000',
-              letterSpacing: '-0.5px',
-              textAlign: 'center',
-            }}
-          >
-            AG Go V2
-          </Title>
-
-          <Text
-            style={{
-              display: 'block',
-              marginBottom: 20,
-              fontSize: 14,
-              color: 'rgba(0, 0, 0, 0.7)',
-              lineHeight: 1.6,
-              textAlign: 'center',
-            }}
-          >
-            {t('auth.loginPrompt')}
-          </Text>
-
-          <Button
-            type="primary"
-            size="large"
-            block
-            onClick={() => void loginWithRedirect()}
-            style={{
-              height: 48,
-              fontSize: 15,
-              fontWeight: 600,
-              borderRadius: 10,
-              background: 'linear-gradient(135deg, #1677ff 0%, #635DFF 100%)',
-              border: 'none',
-              boxShadow: '0 4px 16px rgba(22, 119, 255, 0.40)',
-              letterSpacing: '0.3px',
-            }}
-          >
-            {t('auth.login')}
-          </Button>
-        </Flex>
-      </Flex>
-    );
+    return <LoginScreen onLogin={() => void loginWithRedirect()} />;
   }
 
   return <>{children}</>;

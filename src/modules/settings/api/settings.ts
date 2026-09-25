@@ -14,8 +14,9 @@ export function getSettings(): Promise<WebSettings> {
   return apiClient<WebSettings>('/settings');
 }
 
+/** Public branding (name, logo, colours). Reachable before login, so no token is sent. */
 export function getPublicSettings(): Promise<WebSettings> {
-  return apiClient<WebSettings>('/settings/public');
+  return apiClient<WebSettings>('/settings/public', { auth: false });
 }
 
 export function updateSettings(input: WebSettings): Promise<WebSettings> {

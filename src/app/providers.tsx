@@ -45,35 +45,36 @@ export function AppProviders({ children }: PropsWithChildren) {
   const { t } = useTranslation();
 
   return (
-    <Auth0AppProvider>
-      <QueryClientProvider client={queryClient}>
-        <ConfigProvider
-          locale={viVN}
-          theme={theme}
-          form={{
-            validateMessages: {
-              required: t('required'),
-              types: {
-                email: t('types.email'),
-                number: t('types.number'),
-              },
-              number: {
-                range: t('number.range'),
-              },
-              string: {
-                range: t('string.range'),
-                min: t('string.min'),
-                max: t('string.max'),
-              },
+    <QueryClientProvider client={queryClient}>
+      <ConfigProvider
+        locale={viVN}
+        theme={theme}
+        form={{
+          validateMessages: {
+            required: t('required'),
+            types: {
+              email: t('types.email'),
+              number: t('types.number'),
             },
-            requiredMark: (label, info) => (
-              <CustomRequiredMark label={label} required={Boolean(info.required)} />
-            ),
-          }}
-        >
-          <AntApp>{children}</AntApp>
-        </ConfigProvider>
-      </QueryClientProvider>
-    </Auth0AppProvider>
+            number: {
+              range: t('number.range'),
+            },
+            string: {
+              range: t('string.range'),
+              min: t('string.min'),
+              max: t('string.max'),
+            },
+          },
+          requiredMark: (label, info) => (
+            <CustomRequiredMark label={label} required={Boolean(info.required)} />
+          ),
+        }}
+      >
+        <AntApp>
+          {/* Auth0 sits inside the query/theme providers so the login screen can load public branding. */}
+          <Auth0AppProvider>{children}</Auth0AppProvider>
+        </AntApp>
+      </ConfigProvider>
+    </QueryClientProvider>
   );
 }

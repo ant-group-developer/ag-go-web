@@ -3,6 +3,16 @@ import { getAccessToken } from '../../auth/auth-client';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api';
 
+declare module 'axios' {
+  export interface AxiosRequestConfig {
+    /** Skip attaching the Auth0 bearer token (for `@Public()` endpoints reachable before login). */
+    skipAuth?: boolean;
+  }
+}
+
+/** `RequestInit` plus `auth: false` to call a public endpoint without an access token. */
+export type ApiRequestInit = RequestInit & { auth?: boolean };
+
 export type ApiErrorPayload = {
   code: string;
   message: string;
@@ -41,7 +51,7 @@ const api = axios.create({
 });
 
 api.interceptors.request.use(async (config) => {
-  if (!config.headers.Authorization) {
+  if (!config.skipAuth && !config.headers.Authorization) {
     config.headers.Authorization = `Bearer ${await getAccessToken()}`;
   }
   return config;
@@ -51,7 +61,7 @@ export function apiUrl(path: string): string {
   return /^https?:\/\//i.test(path) ? path : `${API_BASE_URL}${path}`;
 }
 
-export async function apiClient<T>(path: string, init?: RequestInit): Promise<T> {
+export async function apiClient<T>(path: string, init?: ApiRequestInit): Promise<T> {
   const headers = toAxiosHeaders(init?.headers);
   if (typeof init?.body === 'string' && !hasContentType(headers)) {
     headers['Content-Type'] = 'application/json';
@@ -61,6 +71,7 @@ export async function apiClient<T>(path: string, init?: RequestInit): Promise<T>
     method: init?.method ?? 'GET',
     headers,
     data: init?.body,
+    skipAuth: init?.auth === false,
   };
 
   try {

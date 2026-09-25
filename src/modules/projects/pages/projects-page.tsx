@@ -68,7 +68,11 @@ const ProjectGridView = lazy(() =>
   import('../components/project-grid-view').then((m) => ({ default: m.ProjectGridView })),
 );
 
-const PROJECT_SORT_FIELDS = ['name', 'createdAt', 'updatedAt'] as const satisfies readonly ProjectSortField[];
+const PROJECT_SORT_FIELDS = [
+  'name',
+  'createdAt',
+  'updatedAt',
+] as const satisfies readonly ProjectSortField[];
 const PROJECT_SORT_ORDERS = ['asc', 'desc'] as const satisfies readonly ProjectSortOrder[];
 
 const projectUrlParams = {
