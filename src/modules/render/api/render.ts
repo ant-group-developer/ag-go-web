@@ -82,10 +82,14 @@ export type RenderJobOutput = {
   renderVersion: number;
 };
 
+/** What queued a render job: a batch, an upload, a Drive import or a per-file retry. */
+export type RenderJobSource = 'batch' | 'upload' | 'import' | 'retry' | 'other';
+
 export type RenderJob = {
   id: string;
   assetId: string;
   renderBatchId: string | null;
+  source?: RenderJobSource;
   status: string;
   progressPercent: number;
   progressMessage: string | null;
@@ -109,6 +113,7 @@ export type RenderJob = {
   } | null;
   project?: { id: string; name: string } | null;
   outputs?: RenderJobOutput[];
+  createdByUser?: { id: string; name?: string; email?: string } | null;
 };
 
 export function getRenderProfiles() {
@@ -234,6 +239,12 @@ export function getAllRenderBatches() {
 
 export function getRenderBatchJobs(batchId: string) {
   return apiClient<RenderJob[]>(`/render-batches/${batchId}/jobs`);
+}
+
+/** Jobs queued automatically after an upload or a Drive import, newest first. */
+export function getAutoRenderJobs(projectId?: string) {
+  const query = projectId ? `?projectId=${encodeURIComponent(projectId)}` : '';
+  return apiClient<RenderJob[]>(`/render-jobs/auto${query}`);
 }
 
 export function retryRenderJob(jobId: string) {

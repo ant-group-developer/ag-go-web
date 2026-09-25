@@ -1,21 +1,30 @@
 import { SettingOutlined } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-components';
-import { Alert, Button, Card, Descriptions, Form, Input, Select, Space, Tag } from 'antd';
+import { Alert, Button, Card, Descriptions, Form, Input, Select, Space, Tabs, Tag } from 'antd';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import type { RenderBatch } from '../api/render';
 import { RenderBatchTable } from '../components/render-batch-table';
+import { RenderJobTable } from '../components/render-job-table';
 import { RenderJobsDrawer } from '../components/render-jobs-drawer';
-import { useAllRenderBatches, useCreateRenderBatch, useRenderProfiles } from '../hooks/use-render';
+import {
+  useAllRenderBatches,
+  useAutoRenderJobs,
+  useCreateRenderBatch,
+  useRenderProfiles,
+} from '../hooks/use-render';
 import { normalizeRenderSizes } from '../utils/render-sizes';
 
 type FormValues = { projectId?: string; folderId?: string };
+type HistoryTab = 'auto' | 'batches';
 
 export function RenderPage() {
   const { t } = useTranslation();
   const profiles = useRenderProfiles();
   const batches = useAllRenderBatches();
+  const [historyTab, setHistoryTab] = useState<HistoryTab>('auto');
+  const autoJobs = useAutoRenderJobs(undefined, historyTab === 'auto');
   const createBatch = useCreateRenderBatch();
   const [profileId, setProfileId] = useState<string>();
   const [selectedBatchId, setSelectedBatchId] = useState<string>();
@@ -120,18 +129,46 @@ export function RenderPage() {
       </Card>
 
       <Card title={t('render.systemHistory')}>
-        {batches.isError ? (
-          <Alert
-            type="error"
-            showIcon
-            message={batches.error.message}
-            style={{ marginBottom: 16 }}
-          />
-        ) : null}
-        <RenderBatchTable
-          batches={batches.data ?? []}
-          loading={batches.isLoading}
-          onViewJobs={(batch) => setSelectedBatchId(batch.id)}
+        <Tabs
+          activeKey={historyTab}
+          onChange={(key) => setHistoryTab(key as HistoryTab)}
+          items={[
+            {
+              key: 'auto',
+              label: t('render.autoJobsTab'),
+              children: (
+                <RenderJobTable
+                  jobs={autoJobs.data ?? []}
+                  loading={autoJobs.isLoading}
+                  error={autoJobs.isError ? autoJobs.error.message : undefined}
+                  hint={t('render.autoJobsHint')}
+                  showSource
+                  showCreated
+                />
+              ),
+            },
+            {
+              key: 'batches',
+              label: t('render.batchesTab'),
+              children: (
+                <>
+                  {batches.isError ? (
+                    <Alert
+                      type="error"
+                      showIcon
+                      message={batches.error.message}
+                      style={{ marginBottom: 16 }}
+                    />
+                  ) : null}
+                  <RenderBatchTable
+                    batches={batches.data ?? []}
+                    loading={batches.isLoading}
+                    onViewJobs={(batch) => setSelectedBatchId(batch.id)}
+                  />
+                </>
+              ),
+            },
+          ]}
         />
       </Card>
 

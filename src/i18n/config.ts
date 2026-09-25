@@ -636,6 +636,18 @@ const resources = {
         fileSize: 'Dung lượng',
         format: 'Định dạng',
         profileVersion: 'Profile',
+        autoJobsTab: 'Render tự động (upload/import)',
+        batchesTab: 'Render batch',
+        autoJobsHint:
+          'Job render được tạo tự động khi upload hoặc import file từ Google Drive. Hiển thị 200 job gần nhất.',
+        sourceColumn: 'Nguồn',
+        source: {
+          batch: 'Batch',
+          upload: 'Upload',
+          import: 'Import Drive',
+          retry: 'Chạy lại',
+          other: 'Khác',
+        },
         status: {
           queued: 'Đang chờ',
           processing: 'Đang xử lý',
@@ -1450,6 +1462,18 @@ const resources = {
         fileSize: 'Size',
         format: 'Format',
         profileVersion: 'Profile',
+        autoJobsTab: 'Automatic renders (upload/import)',
+        batchesTab: 'Render batches',
+        autoJobsHint:
+          'Render jobs created automatically when files are uploaded or imported from Google Drive. Showing the latest 200 jobs.',
+        sourceColumn: 'Source',
+        source: {
+          batch: 'Batch',
+          upload: 'Upload',
+          import: 'Drive import',
+          retry: 'Retry',
+          other: 'Other',
+        },
         status: {
           queued: 'Queued',
           processing: 'Processing',

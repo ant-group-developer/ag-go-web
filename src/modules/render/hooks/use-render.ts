@@ -3,6 +3,7 @@ import {
   cancelRenderBatch,
   createRenderBatch,
   getAllRenderBatches,
+  getAutoRenderJobs,
   getProjectRenderBatches,
   getRenderBatch,
   getRenderBatchJobs,
@@ -18,6 +19,7 @@ const keys = {
   projectBatches: (id: string) => [...keys.all, 'project-batches', id] as const,
   allBatches: () => [...keys.all, 'all-batches'] as const,
   jobs: (id: string) => [...keys.all, 'jobs', id] as const,
+  autoJobs: (projectId?: string) => [...keys.all, 'auto-jobs', projectId ?? 'all'] as const,
 };
 
 export function useRenderProfiles() {
@@ -81,6 +83,16 @@ export function useRenderBatchJobs(batchId: string) {
   });
 }
 
+/** Render jobs queued by uploads and Drive imports (outside any batch). */
+export function useAutoRenderJobs(projectId?: string, enabled = true) {
+  return useQuery({
+    queryKey: keys.autoJobs(projectId),
+    queryFn: () => getAutoRenderJobs(projectId),
+    enabled,
+    refetchInterval: (query) => pollWhileActive(query.state.data),
+  });
+}
+
 export function useRetryRenderJob() {
   const client = useQueryClient();
   return useMutation({
@@ -90,6 +102,8 @@ export function useRetryRenderJob() {
         void client.invalidateQueries({ queryKey: keys.jobs(job.renderBatchId) });
         void client.invalidateQueries({ queryKey: keys.batch(job.renderBatchId) });
         void client.invalidateQueries({ queryKey: keys.allBatches() });
+      } else {
+        void client.invalidateQueries({ queryKey: [...keys.all, 'auto-jobs'] });
       }
     },
   });
