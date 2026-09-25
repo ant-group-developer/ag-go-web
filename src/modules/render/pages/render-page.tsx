@@ -1,87 +1,89 @@
+import { SettingOutlined } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-components';
-import {
-  Alert,
-  Button,
-  Card,
-  Empty,
-  Form,
-  Input,
-  List,
-  Progress,
-  Select,
-  Space,
-  Spin,
-  Tag,
-  Typography,
-} from 'antd';
+import { Alert, Button, Card, Descriptions, Form, Input, Select, Space, Tag } from 'antd';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  useAllRenderBatches,
-  useCreateRenderBatch,
-  useRenderBatchJobs,
-  useRenderProfiles,
-  useRetryRenderJob,
-} from '../hooks/use-render';
+import { Link } from 'react-router-dom';
+import type { RenderBatch } from '../api/render';
+import { RenderBatchTable } from '../components/render-batch-table';
+import { RenderJobsDrawer } from '../components/render-jobs-drawer';
+import { useAllRenderBatches, useCreateRenderBatch, useRenderProfiles } from '../hooks/use-render';
+import { normalizeRenderSizes } from '../utils/render-sizes';
 
 type FormValues = { projectId?: string; folderId?: string };
-
-function statusLabel(status: string, t: (key: string) => string): string {
-  return (
-    {
-      queued: t('render.status.queued'),
-      processing: t('render.status.processing'),
-      completed: t('render.status.completed'),
-      partial: t('render.status.partial'),
-      failed: t('render.status.failed'),
-      cancelled: t('render.status.cancelled'),
-    }[status] ?? status
-  );
-}
 
 export function RenderPage() {
   const { t } = useTranslation();
   const profiles = useRenderProfiles();
   const batches = useAllRenderBatches();
   const createBatch = useCreateRenderBatch();
-  const retryJob = useRetryRenderJob();
-  const [createdId, setCreatedId] = useState<string>();
-  const [selectedBatchId, setSelectedBatchId] = useState('');
-  const jobs = useRenderBatchJobs(selectedBatchId);
   const [profileId, setProfileId] = useState<string>();
+  const [selectedBatchId, setSelectedBatchId] = useState<string>();
+  const [createdBatch, setCreatedBatch] = useState<RenderBatch>();
+  // Prefer the polled list entry so the drawer summary stays live.
+  const selectedBatch =
+    batches.data?.find((batch) => batch.id === selectedBatchId) ??
+    (createdBatch?.id === selectedBatchId ? createdBatch : undefined);
+  const activeProfile = profiles.data?.[0];
+  const sizes = activeProfile ? normalizeRenderSizes(activeProfile.renderSizes) : undefined;
 
   return (
     <PageContainer title={t('render.title')}>
-      {profiles.isLoading ? <Spin /> : null}
-      {profiles.isError ? <Alert type="error" message={t('render.loadProfilesFailed')} /> : null}
-      {profiles.data?.length ? (
-        <Card title={t('render.defaultProfile')} style={{ marginBottom: 16 }}>
-          <List
-            dataSource={profiles.data}
-            renderItem={(profile) => (
-              <List.Item>
-                <Space>
-                  <strong>{profile.name}</strong>
-                  <Tag>{profile.outputFormat}</Tag>
-                  <span>v{profile.profileVersion}</span>
-                  {profile.watermarkEnabled ? (
-                    <Tag color="blue">{t('render.watermark')}</Tag>
-                  ) : null}
-                </Space>
-              </List.Item>
-            )}
-          />
-        </Card>
-      ) : (
-        <Empty description={t('render.noProfiles')} />
-      )}
-      <Card title={t('render.createBatch')}>
+      {profiles.isError ? (
+        <Alert type="error" showIcon message={t('render.loadProfilesFailed')} />
+      ) : null}
+      <Card
+        title={t('render.defaultProfile')}
+        loading={profiles.isLoading}
+        extra={
+          <Link to="/system/settings">
+            <Button size="small" icon={<SettingOutlined />}>
+              {t('render.editProfile')}
+            </Button>
+          </Link>
+        }
+        style={{ marginBottom: 16 }}
+      >
+        {activeProfile && sizes ? (
+          <Descriptions size="small" column={{ xs: 1, md: 2, xl: 4 }}>
+            <Descriptions.Item label={t('render.profile')}>
+              {activeProfile.name} · v{activeProfile.profileVersion}
+            </Descriptions.Item>
+            <Descriptions.Item label={t('render.watermark')}>
+              {activeProfile.watermarkEnabled ? (
+                <Tag color="blue">{t('render.withWatermark')}</Tag>
+              ) : (
+                <Tag>{t('render.withoutWatermark')}</Tag>
+              )}
+            </Descriptions.Item>
+            <Descriptions.Item label={t('render.previewSizes')}>
+              <Space size={[4, 4]} wrap>
+                {sizes.previewWidths.map((width) => (
+                  <Tag key={width} style={{ marginInlineEnd: 0 }}>
+                    {width}px
+                  </Tag>
+                ))}
+              </Space>
+            </Descriptions.Item>
+            <Descriptions.Item label={t('render.thumbnail')}>
+              {sizes.thumbnailWidth}px
+            </Descriptions.Item>
+          </Descriptions>
+        ) : (
+          t('render.noProfiles')
+        )}
+      </Card>
+
+      <Card title={t('render.createBatch')} style={{ marginBottom: 16 }}>
         <Form<FormValues>
           layout="inline"
           onFinish={(values) => {
             void createBatch
               .mutateAsync({ ...values, ...(profileId ? { renderProfileId: profileId } : {}) })
-              .then((batch) => setCreatedId(batch.id));
+              .then((batch) => {
+                setCreatedBatch(batch);
+                setSelectedBatchId(batch.id);
+              });
           }}
         >
           <Form.Item name="projectId" label={t('render.projectId')}>
@@ -107,84 +109,37 @@ export function RenderPage() {
             {t('render.submitBatch')}
           </Button>
         </Form>
-        {createdId ? <Progress percent={0} status="active" style={{ marginTop: 16 }} /> : null}
-      </Card>
-      <Card title={t('render.systemHistory')} style={{ marginTop: 16 }}>
-        {batches.isError ? <Alert type="error" message={batches.error.message} /> : null}
-        {batches.isLoading ? <Spin /> : null}
-        {batches.data?.length ? (
-          <List
-            bordered
-            dataSource={batches.data}
-            renderItem={(batch) => (
-              <List.Item
-                actions={[
-                  <Button key="jobs" type="link" onClick={() => setSelectedBatchId(batch.id)}>
-                    {t('common.viewJobs')}
-                  </Button>,
-                ]}
-              >
-                <Space wrap>
-                  <Typography.Text>
-                    {new Date(batch.createdAt).toLocaleString('vi-VN')}
-                  </Typography.Text>
-                  <Tag
-                    color={
-                      batch.status === 'completed'
-                        ? 'success'
-                        : batch.status === 'failed' || batch.status === 'partial'
-                          ? 'error'
-                          : 'processing'
-                    }
-                  >
-                    {statusLabel(batch.status, t)}
-                  </Tag>
-                  <Typography.Text type="secondary">
-                    {batch.completedJobs}/{batch.totalJobs} jobs
-                  </Typography.Text>
-                  <Progress percent={batch.progressPercent} size="small" style={{ width: 140 }} />
-                </Space>
-              </List.Item>
-            )}
-          />
-        ) : (
-          <Empty description={t('render.noRenderHistory')} />
-        )}
-        {jobs.data ? (
-          <List
+        {createBatch.isError ? (
+          <Alert
+            type="error"
+            showIcon
+            message={createBatch.error.message}
             style={{ marginTop: 16 }}
-            header={<Typography.Text strong>{t('render.renderJobsTitle')}</Typography.Text>}
-            dataSource={jobs.data}
-            renderItem={(job) => (
-              <List.Item
-                actions={
-                  job.status === 'failed'
-                    ? [
-                        <Button
-                          key="retry"
-                          size="small"
-                          loading={retryJob.isPending}
-                          onClick={() => retryJob.mutate(job.id)}
-                        >
-                          {t('common.retry')}
-                        </Button>,
-                      ]
-                    : undefined
-                }
-              >
-                <List.Item.Meta
-                  title={`${job.assetId} · ${statusLabel(job.status, t)}`}
-                  description={
-                    job.errorMessage ??
-                    job.progressMessage ??
-                    t('render.attempt', { count: job.attemptCount })
-                  }
-                />
-              </List.Item>
-            )}
           />
         ) : null}
       </Card>
+
+      <Card title={t('render.systemHistory')}>
+        {batches.isError ? (
+          <Alert
+            type="error"
+            showIcon
+            message={batches.error.message}
+            style={{ marginBottom: 16 }}
+          />
+        ) : null}
+        <RenderBatchTable
+          batches={batches.data ?? []}
+          loading={batches.isLoading}
+          onViewJobs={(batch) => setSelectedBatchId(batch.id)}
+        />
+      </Card>
+
+      <RenderJobsDrawer
+        batch={selectedBatch}
+        open={Boolean(selectedBatchId)}
+        onClose={() => setSelectedBatchId(undefined)}
+      />
     </PageContainer>
   );
 }
