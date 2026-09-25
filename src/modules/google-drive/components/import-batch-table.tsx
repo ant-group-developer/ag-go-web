@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { formatFileSize } from '../../../shared/lib/format-file-size';
 import type { ImportHistoryItem } from '../api/google-drive';
 import { formatDate, importStatusColor, importStatusLabel } from '../utils/import-format';
+import { ImportSourceFolders } from './import-source-folders';
 
 type ImportBatchTableProps = {
   batches: ImportHistoryItem[];
@@ -34,6 +35,14 @@ export function ImportBatchTable({
       width: 150,
       render: (_, batch) => (
         <Tag color={importStatusColor(batch.status)}>{importStatusLabel(batch.status, t)}</Tag>
+      ),
+    },
+    {
+      key: 'sourceFolders',
+      title: t('googleDrive.sourceFolders'),
+      width: 240,
+      render: (_, batch) => (
+        <ImportSourceFolders folders={batch.sourceFolders ?? []} maxVisible={2} />
       ),
     },
     {
@@ -145,7 +154,7 @@ export function ImportBatchTable({
       loading={loading}
       columns={columns}
       dataSource={batches}
-      scroll={{ x: 1400, y: scrollY }}
+      scroll={{ x: 1640, y: scrollY }}
       pagination={{ pageSize: 10, hideOnSinglePage: true, showSizeChanger: false }}
       onRow={(batch) => ({ onDoubleClick: () => onViewItems(batch) })}
       locale={{ emptyText: t('render.noImportHistory') }}

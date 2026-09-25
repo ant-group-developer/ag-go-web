@@ -12,6 +12,7 @@ import {
   isFolderItem,
 } from '../utils/import-format';
 import { ImportItemsTable } from './import-items-table';
+import { ImportSourceFolders } from './import-source-folders';
 
 type StatusFilter = 'all' | 'active' | 'completed' | 'failed';
 
@@ -60,6 +61,19 @@ export function ImportBatchDrawer({ batch, open, onClose }: ImportBatchDrawerPro
 
   // Prefer the live detail (polled while importing) over the list snapshot.
   const current = detail.data ?? batch;
+  const sourceFolders = useMemo(
+    () =>
+      detail.data
+        ? detail.data.items
+            .filter(isFolderItem)
+            .map((item) => ({
+              fileId: item.sourceFileId,
+              name: item.sourceName,
+              status: item.status,
+            }))
+        : (batch?.sourceFolders ?? []),
+    [batch, detail.data],
+  );
 
   return (
     <Drawer
@@ -103,6 +117,9 @@ export function ImportBatchDrawer({ batch, open, onClose }: ImportBatchDrawerPro
               {batch.importedBytes !== batch.totalBytes
                 ? ` (${t('googleDrive.importedSize', { size: formatFileSize(batch.importedBytes) })})`
                 : null}
+            </Descriptions.Item>
+            <Descriptions.Item label={t('googleDrive.sourceFolders')} span="filled">
+              <ImportSourceFolders folders={sourceFolders} />
             </Descriptions.Item>
           </Descriptions>
           <Progress
