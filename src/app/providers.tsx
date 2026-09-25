@@ -4,6 +4,7 @@ import viVN from 'antd/locale/vi_VN';
 import type { PropsWithChildren, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Auth0AppProvider } from '../auth/auth0-provider';
+import { LegalPageSwitch } from '../modules/legal/legal-page-switch';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -72,7 +73,9 @@ export function AppProviders({ children }: PropsWithChildren) {
       >
         <AntApp>
           {/* Auth0 sits inside the query/theme providers so the login screen can load public branding. */}
-          <Auth0AppProvider>{children}</Auth0AppProvider>
+          <LegalPageSwitch>
+            <Auth0AppProvider>{children}</Auth0AppProvider>
+          </LegalPageSwitch>
         </AntApp>
       </ConfigProvider>
     </QueryClientProvider>
