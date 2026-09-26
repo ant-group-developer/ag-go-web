@@ -1,12 +1,12 @@
-import { DeleteOutlined } from '@ant-design/icons';
-import { DrivePicker, DrivePickerDocsView } from '@googleworkspace/drive-picker-react';
+import { DeleteOutlined, FolderFilled } from '@ant-design/icons';
 import { useQueryClient } from '@tanstack/react-query';
-import { Alert, Button, Card, List, Progress, Radio, Space, Tag, Typography } from 'antd';
+import { Alert, Button, Card, List, Progress, Radio, Space, Tag, theme, Typography } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatFileSize } from '../../../shared/lib/format-file-size';
 import { mediaQueryKeys } from '../../media/queries/media-query-keys';
 import { projectQueryKeys } from '../../projects/queries/project-query-keys';
+import { driveFolderUrl } from '../api/drive-browser';
 import type { DuplicatePolicy } from '../api/google-drive';
 import {
   useCancelDriveImport,
@@ -24,6 +24,7 @@ import {
   importStatusLabel,
   isFolderItem,
 } from '../utils/import-format';
+import { DriveFolderBrowser, type DriveFolderSelection } from './drive-folder-browser';
 import { ImportItemsTable } from './import-items-table';
 
 type PickedSource = {
@@ -32,22 +33,16 @@ type PickedSource = {
   name?: string;
   mimeType?: string;
   sizeBytes?: number | string;
+  /** Folder picked in the browser: its ancestors and parent path. */
+  ancestorIds?: string[];
+  location?: string;
 };
 
-type PickerDocument = {
-  id: string;
-  driveId?: string;
-  name?: string;
-  mimeType?: string;
-  sizeBytes?: number | string;
-  size?: number | string;
-};
-
-type PickerEvent = { detail?: { docs?: PickerDocument[] } };
-type PickerMode = 'files' | 'folders';
+const FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder';
 
 export function ProjectGoogleDriveImportPanel({ projectId }: { projectId: string }) {
   const { t } = useTranslation();
+  const { token } = theme.useToken();
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState<PickedSource[]>([]);
   const [duplicatePolicy, setDuplicatePolicy] = useState<DuplicatePolicy>('reuse_existing');
@@ -64,9 +59,7 @@ export function ProjectGoogleDriveImportPanel({ projectId }: { projectId: string
   const cancelImport = useCancelDriveImport();
   const summarizeSources = useSummarizeGoogleDriveSources();
   const [batchId, setBatchId] = useState<string>();
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [pickerMode, setPickerMode] = useState<PickerMode>('folders');
-  const [pickerError, setPickerError] = useState<string>();
+  const [browserOpen, setBrowserOpen] = useState(false);
   const batch = useDriveImport(batchId ?? '');
   const batchStatus = batch.data?.status;
   const batchCompletedItems = batch.data?.completedItems;
@@ -83,7 +76,7 @@ export function ProjectGoogleDriveImportPanel({ projectId }: { projectId: string
     () =>
       selected.reduce(
         (counts, source) => {
-          if (source.mimeType === 'application/vnd.google-apps.folder') {
+          if (source.mimeType === FOLDER_MIME_TYPE) {
             counts.folderCount += 1;
           } else if (source.mimeType?.startsWith('video/')) {
             counts.videoCount += 1;
@@ -97,20 +90,29 @@ export function ProjectGoogleDriveImportPanel({ projectId }: { projectId: string
     [selected],
   );
 
-  const openPicker = (mode: PickerMode) => {
-    if (pickerToken.data?.accessToken && connection.data?.status === 'active') {
-      setPickerError(undefined);
-      setPickerMode(mode);
-      setPickerOpen(true);
-    }
-  };
-
   const hasPickerScope = Boolean(
     connection.data?.scopes.some((scope) =>
       scope.includes('https://www.googleapis.com/auth/drive.readonly'),
     ),
   );
   const isConnected = connection.data?.status === 'active' && hasPickerScope;
+
+  const confirmFolders = (folders: DriveFolderSelection[]) => {
+    setBrowserOpen(false);
+    const sources = [
+      ...selected.filter((source) => source.mimeType !== FOLDER_MIME_TYPE),
+      ...folders,
+    ];
+    setSelected(sources);
+    if (sources.length === 0) {
+      summarizeSources.reset();
+      return;
+    }
+    summarizeSources.mutate({
+      projectId,
+      sources: sources.map((source) => ({ fileId: source.fileId, driveId: source.driveId })),
+    });
+  };
 
   const removeSelectedSource = (fileId: string) => {
     const nextSources = selected.filter((source) => source.fileId !== fileId);
@@ -163,112 +165,29 @@ export function ProjectGoogleDriveImportPanel({ projectId }: { projectId: string
               description={t('googleDrive.expiredScopeDescription')}
             />
           ) : null}
-          {pickerError ? <Alert type="error" showIcon message={pickerError} /> : null}
           <Typography.Text type="secondary">{t('googleDrive.selectPrompt')}</Typography.Text>
           <Button
             type="primary"
             disabled={!pickerToken.data?.accessToken}
             loading={pickerToken.isLoading}
-            onClick={() => openPicker('folders')}
+            onClick={() => setBrowserOpen(true)}
           >
             {t('googleDrive.selectFolders')}
           </Button>
-          {pickerOpen ? (
-            <DrivePicker
-              {...({
-                id: 'project-drive-picker',
-                'app-id': import.meta.env.VITE_GOOGLE_PICKER_APP_ID,
-                'client-id': import.meta.env.VITE_GOOGLE_PICKER_CLIENT_ID,
-                'developer-key': import.meta.env.VITE_GOOGLE_PICKER_API_KEY,
-                'oauth-token': pickerToken.data?.accessToken,
-                scope: 'https://www.googleapis.com/auth/drive.readonly',
-                'mine-only': false,
-                origin: window.location.origin,
-                'max-items': 100,
-              } as Record<string, unknown>)}
-              multiselect
-              onCanceled={() => setPickerOpen(false)}
-              onOauthError={() => {
-                setPickerOpen(false);
-                setPickerError(t('googleDrive.oauthError'));
-              }}
-              onOauthResponse={() => setPickerError(undefined)}
-              onPicked={(event: PickerEvent) => {
-                setPickerOpen(false);
-                const pickedDocs = event.detail?.docs ?? [];
-                const sources = pickedDocs
-                  .filter(
-                    (doc) =>
-                      doc.mimeType === 'application/vnd.google-apps.folder' ||
-                      doc.mimeType?.startsWith('image/') ||
-                      doc.mimeType?.startsWith('video/'),
-                  )
-                  .map((doc) => ({
-                    fileId: doc.id,
-                    driveId: doc.driveId,
-                    name: doc.name,
-                    mimeType: doc.mimeType,
-                    sizeBytes: doc.sizeBytes ?? doc.size,
-                  }));
-                if (sources.length < pickedDocs.length) {
-                  setPickerError(t('googleDrive.invalidMediaWarning'));
-                }
-                setSelected(sources);
-                summarizeSources.mutate({
-                  projectId,
-                  sources: sources.map((source) => ({
-                    fileId: source.fileId,
-                    driveId: source.driveId,
-                  })),
-                });
-              }}
-            >
-              {pickerMode === 'files' ? (
-                <>
-                  <DrivePickerDocsView
-                    {...({
-                      'include-folders': 'false',
-                      'select-folder-enabled': 'false',
-                      'mime-types': 'image/*,video/*',
-                      mode: 'GRID',
-                      'view-id': 'DOCS',
-                    } as Record<string, unknown>)}
-                  />
-                  <DrivePickerDocsView
-                    {...({
-                      'enable-drives': 'true',
-                      'include-folders': 'false',
-                      'select-folder-enabled': 'false',
-                      'mime-types': 'image/*,video/*',
-                      mode: 'GRID',
-                      'view-id': 'DOCS',
-                    } as Record<string, unknown>)}
-                  />
-                </>
-              ) : (
-                <>
-                  <DrivePickerDocsView
-                    {...({
-                      'include-folders': 'true',
-                      'select-folder-enabled': 'true',
-                      'mime-types': 'application/vnd.google-apps.folder',
-                      mode: 'GRID',
-                      'view-id': 'FOLDERS',
-                    } as Record<string, unknown>)}
-                  />
-                  <DrivePickerDocsView
-                    {...({
-                      'enable-drives': 'true',
-                      'include-folders': 'true',
-                      'select-folder-enabled': 'true',
-                      'mime-types': 'application/vnd.google-apps.folder',
-                      mode: 'GRID',
-                      'view-id': 'FOLDERS',
-                    } as Record<string, unknown>)}
-                  />
-                </>
-              )}
-            </DrivePicker>
+          {browserOpen ? (
+            <DriveFolderBrowser
+              token={pickerToken.data?.accessToken}
+              initialSelection={selected
+                .filter((source) => source.mimeType === FOLDER_MIME_TYPE)
+                .map((source) => ({
+                  ...source,
+                  name: source.name ?? source.fileId,
+                  mimeType: FOLDER_MIME_TYPE,
+                }))}
+              onCancel={() => setBrowserOpen(false)}
+              onConfirm={confirmFolders}
+              onTokenExpired={() => pickerToken.refetch()}
+            />
           ) : null}
           {selected.length ? (
             <>
@@ -371,15 +290,36 @@ export function ProjectGoogleDriveImportPanel({ projectId }: { projectId: string
                       />,
                     ]}
                   >
-                    <Space>
-                      <Tag>{source.mimeType?.startsWith('video/') ? 'Video' : 'Image/Folder'}</Tag>
-                      <Typography.Text>
-                        {displayFilename(source.name ?? source.fileId, source.mimeType)}
-                      </Typography.Text>
-                      <Typography.Text type="secondary">
-                        {formatFileSize(source.sizeBytes)}
-                      </Typography.Text>
-                    </Space>
+                    {source.mimeType === FOLDER_MIME_TYPE ? (
+                      <Space align="start">
+                        <FolderFilled style={{ fontSize: 18, color: token.colorWarning }} />
+                        <Space direction="vertical" size={0}>
+                          <Typography.Link
+                            strong
+                            href={driveFolderUrl(source.fileId)}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {source.name ?? source.fileId}
+                          </Typography.Link>
+                          {source.location ? (
+                            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                              {source.location}
+                            </Typography.Text>
+                          ) : null}
+                        </Space>
+                      </Space>
+                    ) : (
+                      <Space>
+                        <Tag>{source.mimeType?.startsWith('video/') ? 'Video' : 'Image'}</Tag>
+                        <Typography.Text>
+                          {displayFilename(source.name ?? source.fileId, source.mimeType)}
+                        </Typography.Text>
+                        <Typography.Text type="secondary">
+                          {formatFileSize(source.sizeBytes)}
+                        </Typography.Text>
+                      </Space>
+                    )}
                   </List.Item>
                 )}
               />
@@ -391,7 +331,12 @@ export function ProjectGoogleDriveImportPanel({ projectId }: { projectId: string
                   void createImport
                     .mutateAsync({
                       projectId,
-                      sources: selected,
+                      sources: selected.map((source) => ({
+                        fileId: source.fileId,
+                        driveId: source.driveId,
+                        name: source.name,
+                        mimeType: source.mimeType,
+                      })),
                       duplicatePolicy,
                       idempotencyKey: crypto.randomUUID(),
                     })
