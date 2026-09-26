@@ -21,7 +21,7 @@ import {
 import { ArrowLeft } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Select } from '../../../shared/components/select';
 import { CategorySelect } from '../../categories/components/category-select';
 import { CountrySelect } from '../../countries/components/country-select';
@@ -68,6 +68,9 @@ export function ProjectDetailPage() {
   const { message } = AntApp.useApp();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const location = useLocation();
+  // The project list this page was opened from (projects, evaluations or my projects).
+  const backPath = (location.state as { from?: string } | null)?.from ?? '/projects';
   const [form] = Form.useForm<ProjectDetailFormValues>();
   const initializedProjectId = useRef<string | undefined>(undefined);
   const initializedThumbnailProjectId = useRef<string | undefined>(undefined);
@@ -265,7 +268,7 @@ export function ProjectDetailPage() {
       title={project.data?.name ?? t('projects.projectDetails')}
       loading={project.isPending}
       extra={[
-        <Button key="projects" icon={<ArrowLeft size={16} />} onClick={() => navigate('/projects')}>
+        <Button key="projects" icon={<ArrowLeft size={16} />} onClick={() => navigate(backPath)}>
           {t('media.backToProjects')}
         </Button>,
       ]}

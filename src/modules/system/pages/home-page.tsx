@@ -102,7 +102,7 @@ export function HomePage() {
   const quickActions = [
     {
       key: 'createProject',
-      to: '/projects?create=true',
+      to: '/my-projects?create=true',
       icon: <Plus size={16} />,
       primary: true,
       allowed: can(GO_PERMISSIONS.PROJECT_EDIT) && can(GO_PERMISSIONS.PROJECT_READ),
