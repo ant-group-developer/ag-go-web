@@ -2,6 +2,7 @@ import { EyeOutlined } from '@ant-design/icons';
 import { Button, Progress, Space, Table, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { formatDate } from '../../../shared/lib/format-date';
 import { formatFileSize } from '../../../shared/lib/format-file-size';
 import type { ImportHistoryItem } from '../api/google-drive';
@@ -14,6 +15,8 @@ type ImportBatchTableProps = {
   onViewItems: (batch: ImportHistoryItem) => void;
   /** Fixed body height; rows scroll inside the table. */
   scrollY?: number;
+  /** Show the project column, for the cross-project history. */
+  showProject?: boolean;
 };
 
 export function ImportBatchTable({
@@ -21,6 +24,7 @@ export function ImportBatchTable({
   loading,
   onViewItems,
   scrollY,
+  showProject,
 }: ImportBatchTableProps) {
   const { t } = useTranslation();
   const columns: ColumnsType<ImportHistoryItem> = [
@@ -30,6 +34,25 @@ export function ImportBatchTable({
       width: 170,
       render: (_, batch) => formatDate(batch.createdAt),
     },
+    ...(showProject
+      ? [
+          {
+            key: 'project',
+            title: t('render.project'),
+            width: 220,
+            render: (_: unknown, batch: ImportHistoryItem) => {
+              const label = batch.projectName ?? batch.projectId;
+              return (
+                <Link to={`/projects/${batch.projectId}`} style={{ minWidth: 0 }}>
+                  <Typography.Text ellipsis={{ tooltip: label }} style={{ color: 'inherit' }}>
+                    {label}
+                  </Typography.Text>
+                </Link>
+              );
+            },
+          },
+        ]
+      : []),
     {
       key: 'status',
       title: t('render.statusColumn'),
@@ -155,7 +178,7 @@ export function ImportBatchTable({
       loading={loading}
       columns={columns}
       dataSource={batches}
-      scroll={{ x: 1640, y: scrollY }}
+      scroll={{ x: showProject ? 1860 : 1640, y: scrollY }}
       pagination={{ pageSize: 10, hideOnSinglePage: true, showSizeChanger: false }}
       onRow={(batch) => ({ onDoubleClick: () => onViewItems(batch) })}
       locale={{ emptyText: t('render.noImportHistory') }}

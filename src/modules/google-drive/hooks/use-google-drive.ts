@@ -3,6 +3,7 @@ import {
   cancelDriveImport,
   createDriveImport,
   disconnectGoogleDrive,
+  getAllImports,
   getDriveImport,
   getGoogleDriveConnection,
   getGoogleDrivePickerToken,
@@ -18,6 +19,7 @@ const keys = {
   connection: () => [...keys.all, 'connection'] as const,
   import: (id: string) => [...keys.all, 'import', id] as const,
   projectImports: (id: string) => [...keys.all, 'project-imports', id] as const,
+  allImports: () => [...keys.all, 'all-imports'] as const,
 };
 
 export function useGoogleDriveConnection() {
@@ -65,6 +67,7 @@ export function useCreateDriveImport() {
     onSuccess: (batch) => {
       void client.invalidateQueries({ queryKey: keys.import(batch.id) });
       void client.invalidateQueries({ queryKey: keys.projectImports(batch.projectId) });
+      void client.invalidateQueries({ queryKey: keys.allImports() });
     },
   });
 }
@@ -93,6 +96,18 @@ export function useProjectImports(projectId: string) {
   });
 }
 
+export function useAllImports(enabled = true) {
+  return useQuery({
+    queryKey: keys.allImports(),
+    queryFn: getAllImports,
+    enabled,
+    refetchInterval: (query) =>
+      query.state.data?.some((batch) => !IMPORT_FINISHED_STATUSES.includes(batch.status))
+        ? 5_000
+        : false,
+  });
+}
+
 export function useCancelDriveImport() {
   const client = useQueryClient();
   return useMutation({
@@ -100,6 +115,7 @@ export function useCancelDriveImport() {
     onSuccess: (batch) => {
       void client.invalidateQueries({ queryKey: keys.import(batch.id) });
       void client.invalidateQueries({ queryKey: keys.projectImports(batch.projectId) });
+      void client.invalidateQueries({ queryKey: keys.allImports() });
     },
   });
 }
@@ -112,6 +128,7 @@ export function useRetryDriveImportItem() {
     onSuccess: (item) => {
       void client.invalidateQueries({ queryKey: [...keys.all, 'import', item.batchId] });
       void client.invalidateQueries({ queryKey: [...keys.all, 'project-imports'] });
+      void client.invalidateQueries({ queryKey: keys.allImports() });
     },
   });
 }

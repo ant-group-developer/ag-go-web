@@ -39,6 +39,7 @@ import { PermissionGate } from '../shared/auth/permission-gate';
 import {
   CATEGORY_PAGE_PERMISSIONS,
   GO_PERMISSIONS,
+  LOG_PAGE_PERMISSIONS,
   TAG_PAGE_PERMISSIONS,
 } from '../shared/auth/permissions';
 import { NotFoundResult } from '../shared/components/not-found-result';
@@ -99,11 +100,6 @@ const HomePage = lazy(() =>
 const StatisticsPage = lazy(() =>
   import('../modules/statistics/pages/statistics-page').then(({ StatisticsPage }) => ({
     default: StatisticsPage,
-  })),
-);
-const RenderPage = lazy(() =>
-  import('../modules/render/pages/render-page').then(({ RenderPage }) => ({
-    default: RenderPage,
   })),
 );
 const AuditPage = lazy(() =>
@@ -353,21 +349,12 @@ export function App() {
                 },
               ]
             : []),
-          ...(can(GO_PERMISSIONS.LOGS_READ)
+          ...(canAny(LOG_PAGE_PERMISSIONS)
             ? [
                 {
                   path: '/system/logs',
                   name: t('menu.logs'),
                   icon: <ScrollText size={16} />,
-                },
-              ]
-            : []),
-          ...(can(GO_PERMISSIONS.RENDER_READ)
-            ? [
-                {
-                  path: '/render',
-                  name: t('menu.render'),
-                  icon: <Activity size={16} />,
                 },
               ]
             : []),
@@ -453,14 +440,7 @@ export function App() {
               </PermissionGate>
             }
           />
-          <Route
-            path="/render"
-            element={
-              <PermissionGate permissions={[GO_PERMISSIONS.RENDER_READ]}>
-                <RenderPage />
-              </PermissionGate>
-            }
-          />
+          <Route path="/render" element={<Navigate to="/system/logs?tab=render" replace />} />
           <Route path="/google-drive/callback" element={<GoogleDriveCallbackRoute />} />
           <Route path="/health" element={<HealthPage />} />
           <Route path="/downloads" element={<Navigate to="/projects" replace />} />
@@ -591,7 +571,7 @@ export function App() {
           <Route
             path="/system/logs"
             element={
-              <PermissionGate permissions={[GO_PERMISSIONS.LOGS_READ]}>
+              <PermissionGate permissions={LOG_PAGE_PERMISSIONS}>
                 <LogsPage />
               </PermissionGate>
             }

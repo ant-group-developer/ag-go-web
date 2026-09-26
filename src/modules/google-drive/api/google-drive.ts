@@ -37,6 +37,8 @@ export type ImportHistoryItem = ImportBatch & {
   createdByUser?: { id: string; name?: string; email?: string } | null;
   /** Google Drive folders picked as sources of the batch (subfolders are not listed). */
   sourceFolders: ImportSourceFolder[];
+  /** Only set by the cross-project listing (`getAllImports`). */
+  projectName?: string | null;
 };
 
 export type ImportSourceFolder = {
@@ -141,6 +143,11 @@ export function getProjectImports(projectId: string) {
   return apiClient<ImportHistoryItem[]>(
     `/google-drive/imports?projectId=${encodeURIComponent(projectId)}`,
   );
+}
+
+/** Import jobs across all projects: every batch for admins, otherwise the caller's own. */
+export function getAllImports() {
+  return apiClient<ImportHistoryItem[]>('/google-drive/imports');
 }
 
 export function cancelDriveImport(id: string) {

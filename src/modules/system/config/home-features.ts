@@ -127,7 +127,7 @@ export const HOME_FEATURES: HomeFeature[] = [
   },
   {
     key: 'render',
-    path: '/render',
+    path: '/system/logs?tab=render',
     icon: Activity,
     group: 'system',
     permission: GO_PERMISSIONS.RENDER_READ,
