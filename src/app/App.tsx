@@ -91,11 +91,6 @@ const ProjectsPage = lazyWithReload(() =>
     default: ProjectsPage,
   })),
 );
-const FeaturePlaceholderPage = lazyWithReload(() =>
-  import('../modules/system/pages/feature-placeholder-page').then(({ FeaturePlaceholderPage }) => ({
-    default: FeaturePlaceholderPage,
-  })),
-);
 const HomePage = lazyWithReload(() =>
   import('../modules/system/pages/home-page').then(({ HomePage }) => ({ default: HomePage })),
 );
@@ -468,7 +463,7 @@ export function App() {
             path="/projects"
             element={
               <PermissionGate permissions={[GO_PERMISSIONS.PROJECT_READ]}>
-                <ProjectsPage />
+                <ProjectsPage key="evaluated" scope="evaluated" />
               </PermissionGate>
             }
           />
@@ -476,10 +471,7 @@ export function App() {
             path="/project-evaluations"
             element={
               <PermissionGate permissions={[GO_PERMISSIONS.PROJECT_EVALUATE]}>
-                <FeaturePlaceholderPage
-                  title={t('placeholder.projectEvaluationsTitle')}
-                  description={t('placeholder.projectEvaluationsDescription')}
-                />
+                <ProjectsPage key="evaluation" scope="evaluation" />
               </PermissionGate>
             }
           />
@@ -487,10 +479,7 @@ export function App() {
             path="/my-projects"
             element={
               <PermissionGate permissions={[GO_PERMISSIONS.PROJECT_READ]}>
-                <FeaturePlaceholderPage
-                  title={t('placeholder.myProjectsTitle')}
-                  description={t('placeholder.myProjectsDescription')}
-                />
+                <ProjectsPage key="mine" scope="mine" />
               </PermissionGate>
             }
           />
@@ -498,7 +487,7 @@ export function App() {
             path="/projects/:projectId"
             element={
               <PermissionGate permissions={[GO_PERMISSIONS.PROJECT_READ]}>
-                <ProjectsPage />
+                <ProjectsPage key="evaluated" scope="evaluated" />
               </PermissionGate>
             }
           />

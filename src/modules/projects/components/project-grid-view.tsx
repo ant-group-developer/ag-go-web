@@ -149,6 +149,7 @@ interface ProjectGridViewProps {
   items: ProjectGridItem[];
   isLoading: boolean;
   isAdminView?: boolean;
+  emptyText?: string;
   canEvaluate?: boolean;
   onView?: (id: string) => void;
   onEdit: (id: string) => void;
@@ -160,6 +161,7 @@ interface ProjectGridViewProps {
 export function ProjectGridView({
   items,
   isLoading,
+  emptyText,
   canEvaluate = false,
   onView,
   onEdit,
@@ -242,7 +244,9 @@ export function ProjectGridView({
     return (
       <div style={{ padding: '40px 0' }}>
         <Empty
-          description={<Typography.Text type="secondary">{t('projects.empty')}</Typography.Text>}
+          description={
+            <Typography.Text type="secondary">{emptyText ?? t('projects.empty')}</Typography.Text>
+          }
         />
       </div>
     );
