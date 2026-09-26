@@ -1,12 +1,28 @@
-import { EyeOutlined } from '@ant-design/icons';
-import { Button, Progress, Space, Table, Tag, Typography } from 'antd';
+import {
+  EyeOutlined,
+  LoadingOutlined,
+  PauseCircleOutlined,
+  PlayCircleOutlined,
+  StopOutlined,
+} from '@ant-design/icons';
+import { App, Button, Popconfirm, Progress, Space, Table, Tag, Tooltip, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { formatDate } from '../../../shared/lib/format-date';
 import { formatFileSize } from '../../../shared/lib/format-file-size';
 import type { ImportHistoryItem } from '../api/google-drive';
-import { importStatusColor, importStatusLabel } from '../utils/import-format';
+import {
+  useCancelDriveImport,
+  usePauseDriveImport,
+  useResumeDriveImport,
+} from '../hooks/use-google-drive';
+import {
+  IMPORT_PAUSABLE_STATUSES,
+  importStatusColor,
+  importStatusLabel,
+  isImportScanning,
+} from '../utils/import-format';
 import { ImportSourceFolders } from './import-source-folders';
 
 type ImportBatchTableProps = {
@@ -27,6 +43,20 @@ export function ImportBatchTable({
   showProject,
 }: ImportBatchTableProps) {
   const { t } = useTranslation();
+  const { message } = App.useApp();
+  const pauseImport = usePauseDriveImport();
+  const resumeImport = useResumeDriveImport();
+  const cancelImport = useCancelDriveImport();
+  const onError = (error: Error) => void message.error(error.message);
+  const isPending = (
+    mutation: { isPending: boolean; variables?: string },
+    batch: ImportHistoryItem,
+  ) => mutation.isPending && mutation.variables === batch.id;
+  const scanning = (
+    <Typography.Text type="secondary">
+      <LoadingOutlined /> {t('googleDrive.scanningFolders')}
+    </Typography.Text>
+  );
   const columns: ColumnsType<ImportHistoryItem> = [
     {
       key: 'createdAt',
@@ -73,25 +103,28 @@ export function ImportBatchTable({
       key: 'files',
       title: t('googleDrive.fileCountColumn'),
       width: 170,
-      render: (_, batch) => (
-        <Space direction="vertical" size={2}>
-          <Typography.Text>
-            {t('googleDrive.fileCount', { count: batch.fileCount })}
-          </Typography.Text>
-          <Space size={4} wrap>
-            {batch.imageCount > 0 ? (
-              <Tag color="blue" style={{ marginInlineEnd: 0 }}>
-                {t('googleDrive.imageCount', { count: batch.imageCount })}
-              </Tag>
-            ) : null}
-            {batch.videoCount > 0 ? (
-              <Tag color="purple" style={{ marginInlineEnd: 0 }}>
-                {t('googleDrive.videoCount', { count: batch.videoCount })}
-              </Tag>
-            ) : null}
+      render: (_, batch) =>
+        isImportScanning(batch) ? (
+          scanning
+        ) : (
+          <Space direction="vertical" size={2}>
+            <Typography.Text>
+              {t('googleDrive.fileCount', { count: batch.fileCount })}
+            </Typography.Text>
+            <Space size={4} wrap>
+              {batch.imageCount > 0 ? (
+                <Tag color="blue" style={{ marginInlineEnd: 0 }}>
+                  {t('googleDrive.imageCount', { count: batch.imageCount })}
+                </Tag>
+              ) : null}
+              {batch.videoCount > 0 ? (
+                <Tag color="purple" style={{ marginInlineEnd: 0 }}>
+                  {t('googleDrive.videoCount', { count: batch.videoCount })}
+                </Tag>
+              ) : null}
+            </Space>
           </Space>
-        </Space>
-      ),
+        ),
     },
     {
       key: 'size',
@@ -112,22 +145,25 @@ export function ImportBatchTable({
       key: 'progress',
       title: t('render.progress'),
       width: 220,
-      render: (_, batch) => (
-        <Space direction="vertical" size={0} style={{ width: '100%' }}>
-          <Progress
-            percent={batch.progressPercent}
-            size="small"
-            status={batch.failedItems > 0 ? 'exception' : undefined}
-          />
-          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            {t('render.jobCounts', {
-              completed: batch.completedItems,
-              failed: batch.failedItems,
-              total: batch.totalItems,
-            })}
-          </Typography.Text>
-        </Space>
-      ),
+      render: (_, batch) =>
+        isImportScanning(batch) ? (
+          scanning
+        ) : (
+          <Space direction="vertical" size={0} style={{ width: '100%' }}>
+            <Progress
+              percent={batch.progressPercent}
+              size="small"
+              status={batch.failedItems > 0 ? 'exception' : undefined}
+            />
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+              {t('render.jobCounts', {
+                completed: batch.completedItems,
+                failed: batch.failedItems,
+                total: batch.totalItems,
+              })}
+            </Typography.Text>
+          </Space>
+        ),
     },
     {
       key: 'duplicatePolicy',
@@ -161,12 +197,58 @@ export function ImportBatchTable({
     },
     {
       key: 'actions',
-      width: 130,
+      width: 110,
       fixed: 'right',
       render: (_, batch) => (
-        <Button size="small" icon={<EyeOutlined />} onClick={() => onViewItems(batch)}>
-          {t('common.viewDetails')}
-        </Button>
+        <Space size={4}>
+          <Tooltip title={t('common.viewDetails')}>
+            <Button
+              size="small"
+              icon={<EyeOutlined />}
+              aria-label={t('common.viewDetails')}
+              onClick={() => onViewItems(batch)}
+            />
+          </Tooltip>
+          {IMPORT_PAUSABLE_STATUSES.includes(batch.status) ? (
+            <Tooltip title={t('googleDrive.pauseImport')}>
+              <Button
+                size="small"
+                icon={<PauseCircleOutlined />}
+                aria-label={t('googleDrive.pauseImport')}
+                loading={isPending(pauseImport, batch)}
+                onClick={() => pauseImport.mutate(batch.id, { onError })}
+              />
+            </Tooltip>
+          ) : null}
+          {batch.status === 'paused' ? (
+            <Tooltip title={t('googleDrive.resumeImport')}>
+              <Button
+                size="small"
+                icon={<PlayCircleOutlined />}
+                aria-label={t('googleDrive.resumeImport')}
+                loading={isPending(resumeImport, batch)}
+                onClick={() => resumeImport.mutate(batch.id, { onError })}
+              />
+            </Tooltip>
+          ) : null}
+          {[...IMPORT_PAUSABLE_STATUSES, 'paused'].includes(batch.status) ? (
+            <Popconfirm
+              title={t('googleDrive.cancelImportConfirm')}
+              okButtonProps={{ danger: true }}
+              onConfirm={() => cancelImport.mutateAsync(batch.id).catch(onError)}
+            >
+              <Tooltip title={t('googleDrive.cancelImport')}>
+                <Button
+                  size="small"
+                  danger
+                  icon={<StopOutlined />}
+                  aria-label={t('googleDrive.cancelImport')}
+                  loading={isPending(cancelImport, batch)}
+                />
+              </Tooltip>
+            </Popconfirm>
+          ) : null}
+        </Space>
       ),
     },
   ];

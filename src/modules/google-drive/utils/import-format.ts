@@ -2,6 +2,23 @@ import type { ImportItem } from '../api/google-drive';
 
 export const IMPORT_FINISHED_STATUSES = ['completed', 'partial', 'failed', 'cancelled'];
 
+/** Statuses a batch can still be paused or cancelled from. */
+export const IMPORT_PAUSABLE_STATUSES = ['queued', 'processing'];
+
+/**
+ * True while the batch's source folders are not listed yet, so its file count and size are
+ * still unknown (the list is filled by the discovery job, usually seconds after creation).
+ */
+export function isImportScanning(batch: {
+  status: string;
+  sourceFolders?: Array<{ status: string }>;
+}): boolean {
+  return (
+    !IMPORT_FINISHED_STATUSES.includes(batch.status) &&
+    (batch.sourceFolders ?? []).some((folder) => ['queued', 'importing'].includes(folder.status))
+  );
+}
+
 export function displayFilename(name: string, mimeType?: string | null): string {
   if (name.lastIndexOf('.') > 0) {
     return name;
@@ -25,6 +42,7 @@ export function importStatusLabel(status: string, t: (key: string) => string): s
       queued: t('googleDrive.status.queued'),
       importing: t('googleDrive.status.importing'),
       processing: t('googleDrive.status.processing'),
+      paused: t('googleDrive.status.paused'),
       completed: t('googleDrive.status.completed'),
       partial: t('googleDrive.status.partial'),
       partially_completed: t('googleDrive.status.partial'),
@@ -43,6 +61,8 @@ export function importStatusColor(status: string): string {
       return 'error';
     case 'cancelled':
       return 'default';
+    case 'paused':
+      return 'gold';
     case 'partial':
     case 'partially_completed':
       return 'warning';
