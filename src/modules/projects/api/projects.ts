@@ -30,6 +30,12 @@ export function getProjects(params: ProjectListParams = {}): Promise<ProjectPage
   if (params.tagIds?.length) {
     query.set('tagIds', params.tagIds.join(','));
   }
+  if (params.evaluationStatuses?.length) {
+    query.set('evaluationStatuses', params.evaluationStatuses.join(','));
+  }
+  if (params.mine) {
+    query.set('mine', 'true');
+  }
   if (params.sortBy) {
     query.set('sortBy', params.sortBy);
   }

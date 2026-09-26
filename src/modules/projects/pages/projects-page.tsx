@@ -93,6 +93,53 @@ const projectUrlParams = {
 
 const PROJECTS_VIEW_MODE_STORAGE_KEY = 'ag-go.projects.viewMode';
 
+export type ProjectListScope = 'evaluated' | 'evaluation' | 'mine';
+
+type ProjectListScopeConfig = {
+  basePath: string;
+  titleKey: string;
+  subTitleKey: string;
+  emptyKey: string;
+  /** Fixed filters sent with every list request of this page. */
+  filters: Pick<ProjectListParams, 'evaluationStatuses' | 'mine'>;
+  /** Drawer mode used when a project name/card is opened. */
+  openMode: ProjectDrawerMode;
+  canCreate: boolean;
+};
+
+const PROJECT_LIST_SCOPES: Record<ProjectListScope, ProjectListScopeConfig> = {
+  evaluated: {
+    basePath: '/projects',
+    titleKey: 'projects.title',
+    subTitleKey: 'projects.scopeEvaluatedDescription',
+    emptyKey: 'projects.empty',
+    filters: { evaluationStatuses: ['completed', 'partially_completed'] },
+    openMode: 'view',
+    canCreate: true,
+  },
+  evaluation: {
+    basePath: '/project-evaluations',
+    titleKey: 'menu.projectEvaluations',
+    subTitleKey: 'projects.scopeEvaluationDescription',
+    emptyKey: 'projects.emptyEvaluation',
+    filters: { evaluationStatuses: ['pending', 'failed'] },
+    openMode: 'evaluate',
+    canCreate: false,
+  },
+  mine: {
+    basePath: '/my-projects',
+    titleKey: 'menu.myProjects',
+    subTitleKey: 'projects.scopeMineDescription',
+    emptyKey: 'projects.emptyMine',
+    filters: { mine: true },
+    openMode: 'view',
+    canCreate: true,
+  },
+};
+
+/** New projects start as drafts, so they are only listed on "My projects". */
+const NEW_PROJECT_LIST_PATH = PROJECT_LIST_SCOPES.mine.basePath;
+
 function ProjectThumbnailCell({ assetId }: { assetId?: string | null }) {
   const { t } = useTranslation();
   const previewUrl = useAssetPreviewUrl(assetId);
@@ -110,8 +157,9 @@ function ProjectThumbnailCell({ assetId }: { assetId?: string | null }) {
   );
 }
 
-export function ProjectsPage() {
+export function ProjectsPage({ scope = 'evaluated' }: { scope?: ProjectListScope }) {
   const { t } = useTranslation();
+  const scopeConfig = PROJECT_LIST_SCOPES[scope];
   const { projectId: routeProjectId } = useParams<{ projectId?: string }>();
   const { message } = AntApp.useApp();
   const navigate = useNavigate();
@@ -138,10 +186,10 @@ export function ProjectsPage() {
 
   useEffect(() => {
     if (createParam) {
-      setCreateOpen(true);
+      setCreateOpen(scopeConfig.canCreate);
       void setCreateParam(null);
     }
-  }, [createParam, setCreateParam]);
+  }, [createParam, scopeConfig.canCreate, setCreateParam]);
 
   useEffect(() => {
     if (routeProjectId) {
@@ -149,6 +197,9 @@ export function ProjectsPage() {
       setReviewProjectId(routeProjectId);
     }
   }, [routeProjectId]);
+
+  const openEditPage = (projectId: string) =>
+    navigate(`/projects/${projectId}/edit`, { state: { from: scopeConfig.basePath } });
   const [listError, setListError] = useState<string>();
   const [viewMode, setViewMode] = useState<'list' | 'grid'>(() => {
     try {
@@ -276,7 +327,7 @@ export function ProjectsPage() {
             <Typography.Link
               ellipsis
               title={project.name}
-              onClick={() => openProject(project.id, 'view')}
+              onClick={() => openProject(project.id, scopeConfig.openMode)}
             >
               {project.name}
             </Typography.Link>
@@ -394,7 +445,7 @@ export function ProjectsPage() {
               aria-label={t('projects.edit')}
               icon={<Pencil size={16} />}
               type="text"
-              onClick={() => navigate(`/projects/${project.id}/edit`)}
+              onClick={() => openEditPage(project.id)}
             />
           </Tooltip>
           <Popconfirm
@@ -422,23 +473,28 @@ export function ProjectsPage() {
   return (
     <>
       <PageContainer
-        title={t('projects.title')}
+        title={t(scopeConfig.titleKey)}
+        subTitle={t(scopeConfig.subTitleKey)}
         style={{
           background: token.colorBgContainer,
           paddingBlock: 16,
           paddingInline: 16,
           borderRadius: 6,
         }}
-        extra={[
-          <Button
-            key="create"
-            type="primary"
-            icon={<Plus size={16} />}
-            onClick={() => setCreateOpen(true)}
-          >
-            {t('projects.create')}
-          </Button>,
-        ]}
+        extra={
+          scopeConfig.canCreate
+            ? [
+                <Button
+                  key="create"
+                  type="primary"
+                  icon={<Plus size={16} />}
+                  onClick={() => setCreateOpen(true)}
+                >
+                  {t('projects.create')}
+                </Button>,
+              ]
+            : []
+        }
       >
         {listError ? (
           <Alert
@@ -506,6 +562,7 @@ export function ProjectsPage() {
               ...(urlState.countryId ? { countryId: urlState.countryId } : {}),
               ...(urlState.provinceId ? { provinceId: urlState.provinceId } : {}),
               ...(urlState.categoryId ? { categoryId: urlState.categoryId } : {}),
+              ...scopeConfig.filters,
               sortBy: urlState.sortBy,
               sortOrder: urlState.sortOrder,
               page: current ?? 1,
@@ -528,6 +585,7 @@ export function ProjectsPage() {
             }
           }}
           rowKey="id"
+          locale={{ emptyText: t(scopeConfig.emptyKey) }}
           search={false}
           scroll={{ x: 1680 }}
           sticky={{ offsetHeader: 56 }}
@@ -594,8 +652,9 @@ export function ProjectsPage() {
                           : null,
                       }))}
                       isLoading={isLoading || isFetching}
-                      onView={(id) => openProject(id, 'view')}
-                      onEdit={(id) => navigate(`/projects/${id}/edit`)}
+                      emptyText={t(scopeConfig.emptyKey)}
+                      onView={(id) => openProject(id, scopeConfig.openMode)}
+                      onEdit={openEditPage}
                       onDelete={(item) => void handleDelete(item.id)}
                       onEvaluate={(item) => openProject(item.id, 'evaluate')}
                       canEvaluate
@@ -713,7 +772,7 @@ export function ProjectsPage() {
         onComplete={(project) => {
           setCreateOpen(false);
           void message.success(t('projects.createSuccess'));
-          navigate(`/projects/${project.id}/edit`);
+          navigate(`/projects/${project.id}/edit`, { state: { from: NEW_PROJECT_LIST_PATH } });
         }}
       />
       <ProjectReviewDrawer
@@ -722,8 +781,12 @@ export function ProjectsPage() {
         mode={reviewMode}
         onClose={() => {
           setReviewProjectId(undefined);
+          // Evaluating can move the project in or out of this list.
+          if (reviewMode === 'evaluate') {
+            void actionRef.current?.reload();
+          }
           if (routeProjectId) {
-            navigate('/projects', { replace: true });
+            navigate(scopeConfig.basePath, { replace: true });
           }
         }}
       />
