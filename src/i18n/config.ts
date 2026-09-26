@@ -851,6 +851,12 @@ const resources = {
           'Các job import từ Google Drive của mọi dự án (admin thấy tất cả, người dùng khác thấy job do mình tạo). Hiển thị 500 job gần nhất.',
         searchImports: 'Tìm theo dự án, thư mục nguồn hoặc người tạo',
       },
+      appUpdate: {
+        title: 'Đã có phiên bản mới',
+        description:
+          'Ứng dụng vừa được cập nhật. Tải lại trang để dùng bản mới (trang sẽ tự tải lại khi bạn chuyển trang).',
+        reload: 'Tải lại',
+      },
     },
   },
   en: {
@@ -1700,6 +1706,12 @@ const resources = {
         importHint:
           'Google Drive import jobs across all projects (admins see every job, other users see the jobs they started). Shows the latest 500 jobs.',
         searchImports: 'Search by project, source folder or creator',
+      },
+      appUpdate: {
+        title: 'A new version is available',
+        description:
+          'The app has just been updated. Reload to use the new version (it reloads by itself when you switch pages).',
+        reload: 'Reload',
       },
     },
   },

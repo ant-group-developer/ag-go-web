@@ -20,7 +20,7 @@ import {
   Tags,
   User,
 } from 'lucide-react';
-import { lazy, Suspense, useEffect, useMemo } from 'react';
+import { Suspense, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Link,
@@ -43,76 +43,78 @@ import {
   TAG_PAGE_PERMISSIONS,
 } from '../shared/auth/permissions';
 import { NotFoundResult } from '../shared/components/not-found-result';
+import { lazyWithReload } from '../shared/lib/app-update';
+import { useAppUpdate } from './use-app-update';
 
-const CategoriesPage = lazy(() =>
+const CategoriesPage = lazyWithReload(() =>
   import('../modules/categories/pages/categories-page').then(({ CategoriesPage }) => ({
     default: CategoriesPage,
   })),
 );
-const CountriesPage = lazy(() =>
+const CountriesPage = lazyWithReload(() =>
   import('../modules/countries/pages/countries-page').then(({ CountriesPage }) => ({
     default: CountriesPage,
   })),
 );
-const ProvincesPage = lazy(() =>
+const ProvincesPage = lazyWithReload(() =>
   import('../modules/provinces/pages/provinces-page').then(({ ProvincesPage }) => ({
     default: ProvincesPage,
   })),
 );
-const TagsPage = lazy(() =>
+const TagsPage = lazyWithReload(() =>
   import('../modules/tags/pages/tags-page').then(({ TagsPage }) => ({
     default: TagsPage,
   })),
 );
-const FoldersPage = lazy(() =>
+const FoldersPage = lazyWithReload(() =>
   import('../modules/folders/pages/folders-page').then(({ FoldersPage }) => ({
     default: FoldersPage,
   })),
 );
-const UserAccessPage = lazy(() =>
+const UserAccessPage = lazyWithReload(() =>
   import('../modules/folder-access/pages/user-access-page').then(({ UserAccessPage }) => ({
     default: UserAccessPage,
   })),
 );
-const HealthPage = lazy(() =>
+const HealthPage = lazyWithReload(() =>
   import('../modules/system/pages/health-page').then(({ HealthPage }) => ({
     default: HealthPage,
   })),
 );
-const ProjectDetailPage = lazy(() =>
+const ProjectDetailPage = lazyWithReload(() =>
   import('../modules/projects/pages/project-detail-page').then(({ ProjectDetailPage }) => ({
     default: ProjectDetailPage,
   })),
 );
-const ProjectsPage = lazy(() =>
+const ProjectsPage = lazyWithReload(() =>
   import('../modules/projects/pages/projects-page').then(({ ProjectsPage }) => ({
     default: ProjectsPage,
   })),
 );
-const FeaturePlaceholderPage = lazy(() =>
+const FeaturePlaceholderPage = lazyWithReload(() =>
   import('../modules/system/pages/feature-placeholder-page').then(({ FeaturePlaceholderPage }) => ({
     default: FeaturePlaceholderPage,
   })),
 );
-const HomePage = lazy(() =>
+const HomePage = lazyWithReload(() =>
   import('../modules/system/pages/home-page').then(({ HomePage }) => ({ default: HomePage })),
 );
-const StatisticsPage = lazy(() =>
+const StatisticsPage = lazyWithReload(() =>
   import('../modules/statistics/pages/statistics-page').then(({ StatisticsPage }) => ({
     default: StatisticsPage,
   })),
 );
-const AuditPage = lazy(() =>
+const AuditPage = lazyWithReload(() =>
   import('../modules/audit/pages/audit-page').then(({ AuditPage }) => ({
     default: AuditPage,
   })),
 );
-const SettingsPage = lazy(() =>
+const SettingsPage = lazyWithReload(() =>
   import('../modules/settings/pages/settings-page').then(({ SettingsPage }) => ({
     default: SettingsPage,
   })),
 );
-const LogsPage = lazy(() =>
+const LogsPage = lazyWithReload(() =>
   import('../modules/logs/pages/logs-page').then(({ LogsPage }) => ({
     default: LogsPage,
   })),
@@ -129,6 +131,7 @@ export function App() {
   const { can, canAny, isLoading: isPermissionsLoading } = usePermissions();
 
   const { token } = antdTheme.useToken();
+  useAppUpdate();
 
   const handleLogout = () => {
     void logout({ logoutParams: { returnTo: window.location.origin } });

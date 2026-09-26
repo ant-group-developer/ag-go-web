@@ -43,9 +43,10 @@ import {
   useQueryState,
   useQueryStates,
 } from 'nuqs';
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
+import { lazyWithReload } from '../../../shared/lib/app-update';
 import { CountryFlag } from '../../countries/components';
 import { useAssetPreviewUrl } from '../../media/hooks/use-asset-preview-url';
 import { getProjects } from '../api/projects';
@@ -65,7 +66,7 @@ import type {
 import type { Project } from '../types/project.type';
 import { getProjectStatus } from '../utils/project-status.util';
 
-const ProjectGridView = lazy(() =>
+const ProjectGridView = lazyWithReload(() =>
   import('../components/project-grid-view').then((m) => ({ default: m.ProjectGridView })),
 );
 
