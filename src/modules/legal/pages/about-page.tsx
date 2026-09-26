@@ -76,7 +76,9 @@ export function AboutPage() {
   const vi = language === 'vi';
   const description =
     settings.data?.siteDescription?.trim() ||
-    (vi ? 'Không gian làm việc media nội bộ.' : 'An internal media workspace.');
+    (vi
+      ? 'Không gian làm việc media cho đội ngũ và đối tác.'
+      : 'A media workspace for our team and partners.');
 
   return (
     <LegalLayout
@@ -87,8 +89,8 @@ export function AboutPage() {
     >
       <p>
         {vi
-          ? `${siteName} giúp đội ngũ của tổ chức tập trung, quản lý và phân phối ảnh, video cho các dự án truyền thông. Ứng dụng chỉ dành cho thành viên nội bộ được quản trị viên cấp tài khoản.`
-          : `${siteName} helps our organization's teams collect, manage and deliver photos and videos for media projects. The application is for internal members who have been given an account by an administrator.`}
+          ? `${siteName} giúp đội ngũ của chúng tôi và các đối tác tập trung, quản lý và phân phối ảnh, video cho các dự án truyền thông. Người dùng truy cập theo lời mời, bằng tài khoản do quản trị viên cấp, với email công ty hoặc email của đối tác.`
+          : `${siteName} helps our team and our partner organizations collect, manage and deliver photos and videos for media projects. Access is by invitation: each user, whether using a company or partner email address, is given an account by an administrator.`}
       </p>
 
       <div className="legal-cta">

@@ -150,7 +150,7 @@ export function App() {
     }
 
     const siteName = settings.siteName || 'AG Go';
-    const description = settings.siteDescription || 'AG Go internal media workspace';
+    const description = settings.siteDescription || 'AG Go media workspace';
     document.title = siteName;
     setMetaContent('description', description);
     setMetaContent('og:title', siteName, 'property');

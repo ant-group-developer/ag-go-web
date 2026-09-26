@@ -57,9 +57,9 @@ const resources = {
         loginPrompt: 'Đăng nhập bằng tài khoản công ty để tiếp tục.',
         login: 'Đăng nhập',
         welcome: 'Chào mừng trở lại',
-        tagline: 'Không gian làm việc media nội bộ.',
+        tagline: 'Không gian làm việc media cho đội ngũ và đối tác.',
         pointSecure: 'Xác thực bảo mật qua Auth0',
-        pointInternal: 'Dành riêng cho thành viên nội bộ',
+        pointInternal: 'Dành cho thành viên và đối tác được mời',
         secureNote: 'Bạn sẽ được chuyển đến trang đăng nhập an toàn.',
         needHelp: 'Cần hỗ trợ?',
         supportCenter: 'Trung tâm hỗ trợ',
@@ -115,7 +115,7 @@ const resources = {
         greeting: 'Xin chào, {{name}}',
         greetingFallback: 'Xin chào',
         description:
-          'AG Go là không gian làm việc nội bộ để quản lý dự án và media: tổ chức thư mục, tải ảnh/video hoặc import từ Google Drive, render watermark, đánh giá từng file và tải file gốc.',
+          'AG Go là không gian làm việc cho đội ngũ và đối tác để quản lý dự án và media: tổ chức thư mục, tải ảnh/video hoặc import từ Google Drive, render watermark, đánh giá từng file và tải file gốc.',
         actions: {
           createProject: 'Tạo dự án',
           viewProjects: 'Xem dự án',
@@ -902,9 +902,9 @@ const resources = {
         loginPrompt: 'Sign in with your company account to continue.',
         login: 'Log in',
         welcome: 'Welcome back',
-        tagline: 'Internal media workspace.',
+        tagline: 'Media workspace for our team and partners.',
         pointSecure: 'Secure sign-in powered by Auth0',
-        pointInternal: 'For internal team members only',
+        pointInternal: 'For invited team members and partners',
         secureNote: 'You will be redirected to a secure sign-in page.',
         needHelp: 'Need help?',
         supportCenter: 'Support center',
@@ -960,7 +960,7 @@ const resources = {
         greeting: 'Hello, {{name}}',
         greetingFallback: 'Hello',
         description:
-          'AG Go is the internal workspace for projects and media: organize folders, upload images/videos or import from Google Drive, render watermarks, evaluate each file and download originals.',
+          'AG Go is the workspace for our team and partners, for projects and media: organize folders, upload images/videos or import from Google Drive, render watermarks, evaluate each file and download originals.',
         actions: {
           createProject: 'Create project',
           viewProjects: 'View projects',

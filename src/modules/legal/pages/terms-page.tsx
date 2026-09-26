@@ -46,17 +46,17 @@ function TermsEn({ context, language }: ContentProps) {
 
       <h2>1. The Service</h2>
       <p>
-        {siteName} is an internal media workspace that lets authorized members of our organization
-        manage projects and media files: uploading files from a computer, importing files and
-        folders from Google Drive, organizing them with folders, categories and tags, evaluating
-        them, rendering watermarked versions and downloading originals or renditions.
+        {siteName} is a media workspace that lets our team and invited partners manage projects and
+        media files: uploading files from a computer, importing files and folders from Google Drive,
+        organizing them with folders, categories and tags, evaluating them, rendering watermarked
+        versions and downloading originals or renditions.
       </p>
 
       <h2>2. Eligibility and accounts</h2>
       <ul>
         <li>
-          The Service is available only to people who have been granted an account by an
-          administrator of our organization.
+          The Service is available by invitation only, to our team members and partners who have
+          been granted an account by one of our administrators.
         </li>
         <li>
           You are responsible for keeping your sign-in credentials secure and for all activity that
@@ -115,9 +115,9 @@ function TermsEn({ context, language }: ContentProps) {
       <ul>
         <li>
           Content you upload or import remains owned by you or by our organization, as determined by
-          your employment or engagement agreement. You grant {siteName} the permissions needed to
-          store, process, render and display that content to authorized users in order to provide
-          the Service.
+          your employment, partnership or other agreement with us. You grant {siteName} the
+          permissions needed to store, process, render and display that content to authorized users
+          in order to provide the Service.
         </li>
         <li>
           You are responsible for ensuring you have the necessary rights to the content you upload
@@ -179,15 +179,18 @@ function TermsVi({ context, language }: ContentProps) {
 
       <h2>1. Dịch vụ</h2>
       <p>
-        {siteName} là không gian làm việc media nội bộ, cho phép thành viên được cấp quyền trong tổ
-        chức quản lý project và file media: tải file từ máy tính, nhập file và thư mục từ Google
+        {siteName} là không gian làm việc media cho phép đội ngũ của chúng tôi và các đối tác được
+        mời quản lý project và file media: tải file từ máy tính, nhập file và thư mục từ Google
         Drive, sắp xếp theo thư mục, danh mục, tag, đánh giá, render bản có watermark và tải xuống
         file gốc hoặc bản render.
       </p>
 
       <h2>2. Điều kiện sử dụng và tài khoản</h2>
       <ul>
-        <li>Dịch vụ chỉ dành cho người được quản trị viên của tổ chức cấp tài khoản.</li>
+        <li>
+          Dịch vụ chỉ dành cho người được mời, gồm thành viên đội ngũ và đối tác đã được quản trị
+          viên của chúng tôi cấp tài khoản.
+        </li>
         <li>
           Bạn chịu trách nhiệm bảo mật thông tin đăng nhập và mọi hoạt động dưới tài khoản của mình.
           Hãy báo ngay cho quản trị viên nếu nghi ngờ tài khoản bị sử dụng trái phép.
@@ -238,8 +241,9 @@ function TermsVi({ context, language }: ContentProps) {
       <ul>
         <li>
           Nội dung bạn tải lên hoặc nhập thuộc sở hữu của bạn hoặc của tổ chức, theo thỏa thuận lao
-          động/hợp tác của bạn. Bạn cấp cho {siteName} các quyền cần thiết để lưu trữ, xử lý, render
-          và hiển thị nội dung cho người dùng có quyền nhằm cung cấp Dịch vụ.
+          động, hợp tác hoặc thỏa thuận khác giữa bạn và chúng tôi. Bạn cấp cho {siteName} các quyền
+          cần thiết để lưu trữ, xử lý, render và hiển thị nội dung cho người dùng có quyền nhằm cung
+          cấp Dịch vụ.
         </li>
         <li>Bạn chịu trách nhiệm đảm bảo có đủ quyền đối với nội dung tải lên hoặc nhập.</li>
         <li>
