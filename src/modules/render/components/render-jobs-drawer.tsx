@@ -1,8 +1,9 @@
 import { Alert, Descriptions, Drawer, Flex, Progress, Tag } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { formatDate } from '../../../shared/lib/format-date';
 import type { RenderBatch } from '../api/render';
 import { useRenderBatchJobs } from '../hooks/use-render';
-import { formatDateTime, RENDER_STATUS_COLORS, renderStatusLabel } from '../utils/render-format';
+import { RENDER_STATUS_COLORS, renderStatusLabel } from '../utils/render-format';
 import { RenderBatchScope } from './render-batch-scope';
 import { RenderJobTable } from './render-job-table';
 
@@ -42,7 +43,7 @@ export function RenderJobsDrawer({ batch, open, onClose }: RenderJobsDrawerProps
               {batch.createdByUser?.name ?? batch.createdByUser?.email ?? '-'}
             </Descriptions.Item>
             <Descriptions.Item label={t('render.createdAt')}>
-              {formatDateTime(batch.createdAt)}
+              {formatDate(batch.createdAt)}
             </Descriptions.Item>
           </Descriptions>
           <Progress

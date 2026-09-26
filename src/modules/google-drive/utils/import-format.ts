@@ -64,10 +64,6 @@ export function formatDuration(value: string | null): string {
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
 }
 
-export function formatDate(value: string | null | undefined): string {
-  return value ? new Date(value).toLocaleString('vi-VN') : '-';
-}
-
 /** Folder entries are only traversal records; the file tables hide them. */
 export function isFolderItem(item: Pick<ImportItem, 'sourceMimeType'>): boolean {
   const mime = item.sourceMimeType?.toLowerCase();

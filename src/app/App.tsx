@@ -20,7 +20,7 @@ import {
   Tags,
   User,
 } from 'lucide-react';
-import { lazy, Suspense, useEffect, useMemo } from 'react';
+import { Suspense, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Link,
@@ -39,84 +39,82 @@ import { PermissionGate } from '../shared/auth/permission-gate';
 import {
   CATEGORY_PAGE_PERMISSIONS,
   GO_PERMISSIONS,
+  LOG_PAGE_PERMISSIONS,
   TAG_PAGE_PERMISSIONS,
 } from '../shared/auth/permissions';
 import { NotFoundResult } from '../shared/components/not-found-result';
+import { lazyWithReload } from '../shared/lib/app-update';
+import { useAppUpdate } from './use-app-update';
 
-const CategoriesPage = lazy(() =>
+const CategoriesPage = lazyWithReload(() =>
   import('../modules/categories/pages/categories-page').then(({ CategoriesPage }) => ({
     default: CategoriesPage,
   })),
 );
-const CountriesPage = lazy(() =>
+const CountriesPage = lazyWithReload(() =>
   import('../modules/countries/pages/countries-page').then(({ CountriesPage }) => ({
     default: CountriesPage,
   })),
 );
-const ProvincesPage = lazy(() =>
+const ProvincesPage = lazyWithReload(() =>
   import('../modules/provinces/pages/provinces-page').then(({ ProvincesPage }) => ({
     default: ProvincesPage,
   })),
 );
-const TagsPage = lazy(() =>
+const TagsPage = lazyWithReload(() =>
   import('../modules/tags/pages/tags-page').then(({ TagsPage }) => ({
     default: TagsPage,
   })),
 );
-const FoldersPage = lazy(() =>
+const FoldersPage = lazyWithReload(() =>
   import('../modules/folders/pages/folders-page').then(({ FoldersPage }) => ({
     default: FoldersPage,
   })),
 );
-const UserAccessPage = lazy(() =>
+const UserAccessPage = lazyWithReload(() =>
   import('../modules/folder-access/pages/user-access-page').then(({ UserAccessPage }) => ({
     default: UserAccessPage,
   })),
 );
-const HealthPage = lazy(() =>
+const HealthPage = lazyWithReload(() =>
   import('../modules/system/pages/health-page').then(({ HealthPage }) => ({
     default: HealthPage,
   })),
 );
-const ProjectDetailPage = lazy(() =>
+const ProjectDetailPage = lazyWithReload(() =>
   import('../modules/projects/pages/project-detail-page').then(({ ProjectDetailPage }) => ({
     default: ProjectDetailPage,
   })),
 );
-const ProjectsPage = lazy(() =>
+const ProjectsPage = lazyWithReload(() =>
   import('../modules/projects/pages/projects-page').then(({ ProjectsPage }) => ({
     default: ProjectsPage,
   })),
 );
-const FeaturePlaceholderPage = lazy(() =>
+const FeaturePlaceholderPage = lazyWithReload(() =>
   import('../modules/system/pages/feature-placeholder-page').then(({ FeaturePlaceholderPage }) => ({
     default: FeaturePlaceholderPage,
   })),
 );
-const HomePage = lazy(() =>
+const HomePage = lazyWithReload(() =>
   import('../modules/system/pages/home-page').then(({ HomePage }) => ({ default: HomePage })),
 );
-const StatisticsPage = lazy(() =>
+const StatisticsPage = lazyWithReload(() =>
   import('../modules/statistics/pages/statistics-page').then(({ StatisticsPage }) => ({
     default: StatisticsPage,
   })),
 );
-const RenderPage = lazy(() =>
-  import('../modules/render/pages/render-page').then(({ RenderPage }) => ({
-    default: RenderPage,
-  })),
-);
-const AuditPage = lazy(() =>
+const AuditPage = lazyWithReload(() =>
   import('../modules/audit/pages/audit-page').then(({ AuditPage }) => ({
     default: AuditPage,
   })),
 );
-const SettingsPage = lazy(() =>
+const SettingsPage = lazyWithReload(() =>
   import('../modules/settings/pages/settings-page').then(({ SettingsPage }) => ({
     default: SettingsPage,
   })),
 );
-const LogsPage = lazy(() =>
+const LogsPage = lazyWithReload(() =>
   import('../modules/logs/pages/logs-page').then(({ LogsPage }) => ({
     default: LogsPage,
   })),
@@ -133,6 +131,7 @@ export function App() {
   const { can, canAny, isLoading: isPermissionsLoading } = usePermissions();
 
   const { token } = antdTheme.useToken();
+  useAppUpdate();
 
   const handleLogout = () => {
     void logout({ logoutParams: { returnTo: window.location.origin } });
@@ -150,7 +149,7 @@ export function App() {
     }
 
     const siteName = settings.siteName || 'AG Go';
-    const description = settings.siteDescription || 'AG Go internal media workspace';
+    const description = settings.siteDescription || 'AG Go media workspace';
     document.title = siteName;
     setMetaContent('description', description);
     setMetaContent('og:title', siteName, 'property');
@@ -353,21 +352,12 @@ export function App() {
                 },
               ]
             : []),
-          ...(can(GO_PERMISSIONS.LOGS_READ)
+          ...(canAny(LOG_PAGE_PERMISSIONS)
             ? [
                 {
                   path: '/system/logs',
                   name: t('menu.logs'),
                   icon: <ScrollText size={16} />,
-                },
-              ]
-            : []),
-          ...(can(GO_PERMISSIONS.RENDER_READ)
-            ? [
-                {
-                  path: '/render',
-                  name: t('menu.render'),
-                  icon: <Activity size={16} />,
                 },
               ]
             : []),
@@ -453,14 +443,7 @@ export function App() {
               </PermissionGate>
             }
           />
-          <Route
-            path="/render"
-            element={
-              <PermissionGate permissions={[GO_PERMISSIONS.RENDER_READ]}>
-                <RenderPage />
-              </PermissionGate>
-            }
-          />
+          <Route path="/render" element={<Navigate to="/system/logs?tab=render" replace />} />
           <Route path="/google-drive/callback" element={<GoogleDriveCallbackRoute />} />
           <Route path="/health" element={<HealthPage />} />
           <Route path="/downloads" element={<Navigate to="/projects" replace />} />
@@ -591,7 +574,7 @@ export function App() {
           <Route
             path="/system/logs"
             element={
-              <PermissionGate permissions={[GO_PERMISSIONS.LOGS_READ]}>
+              <PermissionGate permissions={LOG_PAGE_PERMISSIONS}>
                 <LogsPage />
               </PermissionGate>
             }

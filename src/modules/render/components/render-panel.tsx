@@ -1,14 +1,10 @@
 import { SettingOutlined } from '@ant-design/icons';
-import { PageContainer } from '@ant-design/pro-components';
 import { Alert, Button, Card, Descriptions, Form, Input, Space, Tabs, Tag } from 'antd';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Select } from '../../../shared/components/select';
 import type { RenderBatch } from '../api/render';
-import { RenderBatchTable } from '../components/render-batch-table';
-import { RenderJobTable } from '../components/render-job-table';
-import { RenderJobsDrawer } from '../components/render-jobs-drawer';
 import {
   useAllRenderBatches,
   useAutoRenderJobs,
@@ -16,11 +12,15 @@ import {
   useRenderProfiles,
 } from '../hooks/use-render';
 import { normalizeRenderSizes } from '../utils/render-sizes';
+import { RenderBatchTable } from './render-batch-table';
+import { RenderJobTable } from './render-job-table';
+import { RenderJobsDrawer } from './render-jobs-drawer';
 
 type FormValues = { projectId?: string; folderId?: string };
 type HistoryTab = 'auto' | 'batches';
 
-export function RenderPage() {
+/** Render profile, batch creation and system-wide render history (the Render tab of the Log page). */
+export function RenderPanel() {
   const { t } = useTranslation();
   const profiles = useRenderProfiles();
   const batches = useAllRenderBatches();
@@ -38,7 +38,7 @@ export function RenderPage() {
   const sizes = activeProfile ? normalizeRenderSizes(activeProfile.renderSizes) : undefined;
 
   return (
-    <PageContainer title={t('render.title')}>
+    <>
       {profiles.isError ? (
         <Alert type="error" showIcon message={t('render.loadProfilesFailed')} />
       ) : null}
@@ -178,6 +178,6 @@ export function RenderPage() {
         open={Boolean(selectedBatchId)}
         onClose={() => setSelectedBatchId(undefined)}
       />
-    </PageContainer>
+    </>
   );
 }

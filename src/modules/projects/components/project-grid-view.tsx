@@ -29,8 +29,8 @@ import {
   Trash,
 } from 'lucide-react';
 
+import { formatDate } from '../../../shared/lib/format-date';
 import { useAssetPreviewUrl } from '../../media/hooks/use-asset-preview-url';
-import { formatDate } from '../utils/date.util';
 import { getProjectStatus } from '../utils/project-status.util';
 import styles from './project-grid-view.module.css';
 

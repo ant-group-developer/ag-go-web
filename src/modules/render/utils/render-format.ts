@@ -44,10 +44,6 @@ export function formatResolution(width?: number | null, height?: number | null):
   return width && height ? `${width}×${height}` : '-';
 }
 
-export function formatDateTime(value?: string | null): string {
-  return value ? new Date(value).toLocaleString('vi-VN') : '-';
-}
-
 /** Elapsed time between two timestamps, e.g. "1m 05s". */
 export function formatElapsed(from?: string | null, to?: string | null): string {
   if (!from || !to) {

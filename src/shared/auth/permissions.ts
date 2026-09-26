@@ -38,3 +38,10 @@ export const TAG_PAGE_PERMISSIONS: GoPermission[] = [
 ];
 
 export type GoPermission = (typeof GO_PERMISSIONS)[keyof typeof GO_PERMISSIONS];
+
+/** The Log page shows its Log, Render and Import Drive tabs per these permissions. */
+export const LOG_PAGE_PERMISSIONS: GoPermission[] = [
+  GO_PERMISSIONS.LOGS_READ,
+  GO_PERMISSIONS.RENDER_READ,
+  GO_PERMISSIONS.DRIVE_IMPORT,
+];

@@ -57,9 +57,9 @@ const resources = {
         loginPrompt: 'Đăng nhập bằng tài khoản công ty để tiếp tục.',
         login: 'Đăng nhập',
         welcome: 'Chào mừng trở lại',
-        tagline: 'Không gian làm việc media nội bộ.',
+        tagline: 'Không gian làm việc media cho đội ngũ và đối tác.',
         pointSecure: 'Xác thực bảo mật qua Auth0',
-        pointInternal: 'Dành riêng cho thành viên nội bộ',
+        pointInternal: 'Dành cho thành viên và đối tác được mời',
         secureNote: 'Bạn sẽ được chuyển đến trang đăng nhập an toàn.',
         needHelp: 'Cần hỗ trợ?',
         supportCenter: 'Trung tâm hỗ trợ',
@@ -115,7 +115,7 @@ const resources = {
         greeting: 'Xin chào, {{name}}',
         greetingFallback: 'Xin chào',
         description:
-          'AG Go là không gian làm việc nội bộ để quản lý dự án và media: tổ chức thư mục, tải ảnh/video hoặc import từ Google Drive, render watermark, đánh giá từng file và tải file gốc.',
+          'AG Go là không gian làm việc cho đội ngũ và đối tác để quản lý dự án và media: tổ chức thư mục, tải ảnh/video hoặc import từ Google Drive, render watermark, đánh giá từng file và tải file gốc.',
         actions: {
           createProject: 'Tạo dự án',
           viewProjects: 'Xem dự án',
@@ -643,6 +643,7 @@ const resources = {
         profileVersion: 'Profile',
         autoJobsTab: 'Render tự động (upload/import)',
         batchesTab: 'Render batch',
+        supersededJob: 'Đã huỷ do file được render lại bằng profile mới hơn',
         autoJobsHint:
           'Job render được tạo tự động khi upload hoặc import file từ Google Drive. Hiển thị 200 job gần nhất.',
         sourceColumn: 'Nguồn',
@@ -844,6 +845,18 @@ const resources = {
         levelInfo: 'Info',
         levelWarn: 'Warning',
         levelError: 'Error',
+        tabLog: 'Log',
+        tabRender: 'Render',
+        tabImport: 'Import Drive',
+        importHint:
+          'Các job import từ Google Drive của mọi dự án (admin thấy tất cả, người dùng khác thấy job do mình tạo). Hiển thị 500 job gần nhất.',
+        searchImports: 'Tìm theo dự án, thư mục nguồn hoặc người tạo',
+      },
+      appUpdate: {
+        title: 'Đã có phiên bản mới',
+        description:
+          'Ứng dụng vừa được cập nhật. Tải lại trang để dùng bản mới (trang sẽ tự tải lại khi bạn chuyển trang).',
+        reload: 'Tải lại',
       },
     },
   },
@@ -902,9 +915,9 @@ const resources = {
         loginPrompt: 'Sign in with your company account to continue.',
         login: 'Log in',
         welcome: 'Welcome back',
-        tagline: 'Internal media workspace.',
+        tagline: 'Media workspace for our team and partners.',
         pointSecure: 'Secure sign-in powered by Auth0',
-        pointInternal: 'For internal team members only',
+        pointInternal: 'For invited team members and partners',
         secureNote: 'You will be redirected to a secure sign-in page.',
         needHelp: 'Need help?',
         supportCenter: 'Support center',
@@ -960,7 +973,7 @@ const resources = {
         greeting: 'Hello, {{name}}',
         greetingFallback: 'Hello',
         description:
-          'AG Go is the internal workspace for projects and media: organize folders, upload images/videos or import from Google Drive, render watermarks, evaluate each file and download originals.',
+          'AG Go is the workspace for our team and partners, for projects and media: organize folders, upload images/videos or import from Google Drive, render watermarks, evaluate each file and download originals.',
         actions: {
           createProject: 'Create project',
           viewProjects: 'View projects',
@@ -1487,6 +1500,7 @@ const resources = {
         format: 'Format',
         profileVersion: 'Profile',
         autoJobsTab: 'Automatic renders (upload/import)',
+        supersededJob: 'Cancelled: the file was re-rendered with a newer profile',
         batchesTab: 'Render batches',
         autoJobsHint:
           'Render jobs created automatically when files are uploaded or imported from Google Drive. Showing the latest 200 jobs.',
@@ -1688,6 +1702,18 @@ const resources = {
         levelInfo: 'Info',
         levelWarn: 'Warning',
         levelError: 'Error',
+        tabLog: 'Log',
+        tabRender: 'Render',
+        tabImport: 'Drive import',
+        importHint:
+          'Google Drive import jobs across all projects (admins see every job, other users see the jobs they started). Shows the latest 500 jobs.',
+        searchImports: 'Search by project, source folder or creator',
+      },
+      appUpdate: {
+        title: 'A new version is available',
+        description:
+          'The app has just been updated. Reload to use the new version (it reloads by itself when you switch pages).',
+        reload: 'Reload',
       },
     },
   },

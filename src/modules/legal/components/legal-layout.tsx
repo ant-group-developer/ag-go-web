@@ -135,8 +135,8 @@ export function LegalContact({
       {!contactEmail && !supportUrl ? (
         <li>
           {vi
-            ? 'Liên hệ quản trị viên hệ thống của tổ chức bạn.'
-            : "Contact your organization's system administrator."}
+            ? 'Liên hệ quản trị viên AG Go đã mời bạn.'
+            : 'Contact the AG Go administrator who invited you.'}
         </li>
       ) : null}
     </ul>

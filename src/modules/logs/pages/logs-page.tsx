@@ -1,168 +1,54 @@
-import { PageContainer, ProTable } from '@ant-design/pro-components';
-import { useQuery } from '@tanstack/react-query';
-import type { TablePaginationConfig } from 'antd';
-import { Alert, DatePicker, Descriptions, Drawer, Input, Space, Tag } from 'antd';
-import { useState } from 'react';
+import { PageContainer } from '@ant-design/pro-components';
+import { Tabs, type TabsProps } from 'antd';
+import { parseAsStringLiteral, useQueryState } from 'nuqs';
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Select } from '../../../shared/components/select';
-import { bilingualSearchText } from '../../../shared/lib/search-text';
-import { getLogs, type SystemLog } from '../api/logs';
+import { GO_PERMISSIONS, type GoPermission } from '../../../shared/auth/permissions';
+import { usePermissions } from '../../account/hooks/use-current-account';
+import { ImportHistoryPanel } from '../../google-drive/components/import-history-panel';
+import { RenderPanel } from '../../render/components/render-panel';
+import { SystemLogsPanel } from '../components/system-logs-panel';
 
-const { RangePicker } = DatePicker;
+export const LOG_PAGE_TABS = ['log', 'render', 'import'] as const;
+export type LogPageTab = (typeof LOG_PAGE_TABS)[number];
+
+/** Each tab and the permission that shows it. */
+const TAB_PERMISSIONS: Record<LogPageTab, GoPermission> = {
+  log: GO_PERMISSIONS.LOGS_READ,
+  render: GO_PERMISSIONS.RENDER_READ,
+  import: GO_PERMISSIONS.DRIVE_IMPORT,
+};
 
 export function LogsPage() {
   const { t } = useTranslation();
-  const [page, setPage] = useState(1);
-  const [category, setCategory] = useState<string>();
-  const [action, setAction] = useState<string>();
-  const [level, setLevel] = useState<'info' | 'warn' | 'error'>();
-  const [range, setRange] = useState<[string, string]>();
-  const [selected, setSelected] = useState<SystemLog>();
-  const query = useQuery({
-    queryKey: ['logs', { page, category, action, level, range }],
-    queryFn: () =>
-      getLogs({
-        page,
-        pageSize: 25,
-        category,
-        level,
-        action,
-        from: range?.[0],
-        to: range?.[1],
-      }),
-  });
+  const { can } = usePermissions();
+  const [tab, setTab] = useQueryState(
+    'tab',
+    parseAsStringLiteral(LOG_PAGE_TABS).withOptions({ history: 'replace' }),
+  );
 
-  const onTableChange = (pagination: TablePaginationConfig) => {
-    setPage(pagination.current ?? 1);
+  const visibleTabs = LOG_PAGE_TABS.filter((key) => can(TAB_PERMISSIONS[key]));
+  const activeTab = tab && visibleTabs.includes(tab) ? tab : visibleTabs[0];
+
+  const panels: Record<LogPageTab, { label: string; render: () => ReactNode }> = {
+    log: { label: t('logs.tabLog'), render: () => <SystemLogsPanel /> },
+    render: { label: t('logs.tabRender'), render: () => <RenderPanel /> },
+    import: { label: t('logs.tabImport'), render: () => <ImportHistoryPanel /> },
   };
+  // Only the active tab mounts, so hidden tabs do not fetch or poll.
+  const items: TabsProps['items'] = visibleTabs.map((key) => ({
+    key,
+    label: panels[key].label,
+    children: key === activeTab ? panels[key].render() : null,
+  }));
 
   return (
     <PageContainer title={t('logs.title')}>
-      {query.isError ? <Alert type="error" showIcon message={query.error.message} /> : null}
-      <Space wrap style={{ marginBottom: 16 }}>
-        <Input
-          allowClear
-          placeholder={t('logs.category')}
-          value={category}
-          onChange={(event) => {
-            setPage(1);
-            setCategory(event.target.value || undefined);
-          }}
-        />
-        <Input
-          allowClear
-          placeholder={t('logs.action')}
-          value={action}
-          onChange={(event) => {
-            setPage(1);
-            setAction(event.target.value || undefined);
-          }}
-        />
-        <RangePicker
-          onChange={(values) => {
-            setPage(1);
-            setRange(
-              values?.[0] && values[1]
-                ? [values[0].startOf('day').toISOString(), values[1].endOf('day').toISOString()]
-                : undefined,
-            );
-          }}
-        />
-        <Select
-          allowClear
-          placeholder={t('logs.level')}
-          options={[
-            {
-              label: t('logs.levelInfo'),
-              value: 'info',
-              searchText: bilingualSearchText('logs.levelInfo'),
-            },
-            {
-              label: t('logs.levelWarn'),
-              value: 'warn',
-              searchText: bilingualSearchText('logs.levelWarn'),
-            },
-            {
-              label: t('logs.levelError'),
-              value: 'error',
-              searchText: bilingualSearchText('logs.levelError'),
-            },
-          ]}
-          style={{ width: 100 }}
-          value={level}
-          onChange={(value) => {
-            setPage(1);
-            setLevel(value);
-          }}
-        />
-      </Space>
-      <ProTable<SystemLog>
-        rowKey="id"
-        sticky={{ offsetHeader: 64 }}
-        search={false}
-        loading={query.isLoading}
-        dataSource={query.data?.items ?? []}
-        pagination={{
-          current: query.data?.page ?? page,
-          pageSize: query.data?.pageSize ?? 25,
-          total: query.data?.total ?? 0,
-        }}
-        bordered
-        onChange={onTableChange}
-        onRow={(record) => ({ onClick: () => setSelected(record), style: { cursor: 'pointer' } })}
-        columns={[
-          {
-            title: t('logs.time'),
-            dataIndex: 'createdAt',
-            render: (_, record) =>
-              record.createdAt ? new Date(record.createdAt).toLocaleString('vi-VN') : '—',
-          },
-          { title: t('logs.category'), dataIndex: 'category', ellipsis: true },
-          { title: t('logs.action'), dataIndex: 'action', ellipsis: true },
-          {
-            title: t('logs.level'),
-            dataIndex: 'level',
-            render: (_, record) => (
-              <Tag
-                color={
-                  record.level === 'error' ? 'red' : record.level === 'warn' ? 'orange' : 'blue'
-                }
-              >
-                {record.level}
-              </Tag>
-            ),
-          },
-          {
-            title: t('logs.actor'),
-            dataIndex: 'actorUser',
-            ellipsis: true,
-            render: (_: unknown, record) =>
-              record.actorUser?.name ?? record.actorUser?.email ?? record.userId ?? '-',
-          },
-          { title: t('logs.message'), dataIndex: 'message', ellipsis: true },
-        ]}
+      <Tabs
+        activeKey={activeTab}
+        onChange={(key) => void setTab(key as LogPageTab)}
+        items={items}
       />
-      <Drawer
-        title={t('logs.details')}
-        open={Boolean(selected)}
-        onClose={() => setSelected(undefined)}
-      >
-        {selected ? (
-          <Descriptions column={1} bordered size="small">
-            <Descriptions.Item label="ID">{selected.id}</Descriptions.Item>
-            <Descriptions.Item label={t('logs.action')}>{selected.action}</Descriptions.Item>
-            <Descriptions.Item label={t('logs.message')}>{selected.message}</Descriptions.Item>
-            <Descriptions.Item label={t('logs.project')}>
-              {selected.projectId ?? '-'}
-            </Descriptions.Item>
-            <Descriptions.Item label={t('logs.metadata')}>
-              <pre style={{ whiteSpace: 'pre-wrap' }}>
-                {JSON.stringify(selected.metadata ?? {}, null, 2)}
-              </pre>
-            </Descriptions.Item>
-          </Descriptions>
-        ) : null}
-      </Drawer>
     </PageContainer>
   );
 }
