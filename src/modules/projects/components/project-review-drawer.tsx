@@ -31,6 +31,8 @@ import {
 } from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { GO_PERMISSIONS } from '../../../shared/auth/permissions';
+import { formatDate } from '../../../shared/lib/format-date';
 import { usePermissions } from '../../account/hooks/use-current-account';
 import { getProjectAudit, type AuditLog } from '../../audit/api/audit';
 import { createDownload, getDownload, type DownloadResult } from '../../downloads/api/downloads';
@@ -47,7 +49,6 @@ import { RenditionPicker } from '../../media/components/rendition-picker';
 import { useAssetPreviewUrl } from '../../media/hooks/use-asset-preview-url';
 import { useRenditionSelection } from '../../media/hooks/use-rendition-selection';
 import { mediaQueryKeys } from '../../media/queries/media-query-keys';
-import { GO_PERMISSIONS } from '../../../shared/auth/permissions';
 import { getProject } from '../api/projects';
 import { projectQueryKeys } from '../queries/project-query-keys';
 import type { Project } from '../types/project.type';
@@ -70,16 +71,6 @@ type ProjectReviewDrawerProps = {
   mode?: ProjectDrawerMode;
   onClose: () => void;
 };
-
-function formatDateTime(value: string | undefined): string {
-  if (!value) {
-    return '-';
-  }
-  return new Intl.DateTimeFormat('vi-VN', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(value));
-}
 
 function formatFileSize(value: string | undefined): string {
   const bytes = Number(value ?? 0);
@@ -407,10 +398,10 @@ function ProjectOverview({ project }: { project: Project }) {
           </Typography.Text>
         </Space>
         <Typography.Text type="secondary">
-          {t('projects.createdAt')}: {formatDateTime(project.createdAt)}
+          {t('projects.createdAt')}: {formatDate(project.createdAt)}
         </Typography.Text>
         <Typography.Text type="secondary">
-          {t('projects.updatedAt')}: {formatDateTime(project.updatedAt)}
+          {t('projects.updatedAt')}: {formatDate(project.updatedAt)}
         </Typography.Text>
         <Typography.Text type="secondary">
           {t('projects.originalSize')}: {formatFileSize(project.originalBytes)}
@@ -507,7 +498,7 @@ function MediaDetails({
           {formatResolution(media)}
         </Descriptions.Item>
         <Descriptions.Item label={t('media.uploadedAt')}>
-          {formatDateTime(media.createdAt)}
+          {formatDate(media.createdAt)}
         </Descriptions.Item>
         <Descriptions.Item label={t('media.mimeType')}>{media.asset.mimeType}</Descriptions.Item>
         <Descriptions.Item label={t('media.status')}>
@@ -587,7 +578,7 @@ function MediaDetails({
                   <Space direction="vertical" size={2}>
                     <Typography.Text>{item.comment || '-'}</Typography.Text>
                     <Typography.Text type="secondary">
-                      {item.evaluatedBy} · {formatDateTime(item.createdAt)}
+                      {item.evaluatedBy} · {formatDate(item.createdAt)}
                     </Typography.Text>
                   </Space>
                 }
@@ -888,7 +879,7 @@ export function ProjectDetailDrawer({
                                 </Typography.Text>
 
                                 <Typography.Text type="secondary">
-                                  {formatDateTime(item.createdAt)}
+                                  {formatDate(item.createdAt)}
                                 </Typography.Text>
 
                                 <Tag color={status.color}>{status.label}</Tag>
@@ -937,7 +928,7 @@ export function ProjectDetailDrawer({
                 <List.Item>
                   <List.Item.Meta
                     title={<Tag>{item.action}</Tag>}
-                    description={`${item.actorUser?.name ?? item.actorUser?.email ?? item.actorUserId} · ${formatDateTime(item.createdAt)}`}
+                    description={`${item.actorUser?.name ?? item.actorUser?.email ?? item.actorUserId} · ${formatDate(item.createdAt)}`}
                   />
                 </List.Item>
               )}

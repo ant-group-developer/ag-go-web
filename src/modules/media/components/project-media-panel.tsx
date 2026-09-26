@@ -29,6 +29,7 @@ import {
 import type { ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { formatDate } from '../../../shared/lib/format-date';
 import { formatFileSize } from '../../../shared/lib/format-file-size';
 import { projectQueryKeys } from '../../projects/queries/project-query-keys';
 import {
@@ -80,10 +81,6 @@ function formatDuration(value: number | null | undefined): string {
   }
   const total = Math.round(value);
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
-}
-
-function formatDate(value: string | null | undefined): string {
-  return value ? new Date(value).toLocaleString('vi-VN') : '-';
 }
 
 type ProjectMediaPanelProps = {

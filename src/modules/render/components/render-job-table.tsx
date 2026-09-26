@@ -16,11 +16,11 @@ import type { ColumnsType } from 'antd/es/table';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { formatDate } from '../../../shared/lib/format-date';
 import { formatFileSize } from '../../../shared/lib/format-file-size';
 import type { RenderJob, RenderJobOutput } from '../api/render';
 import { useRetryRenderJob } from '../hooks/use-render';
 import {
-  formatDateTime,
   formatElapsed,
   formatResolution,
   isThumbnailOutput,
@@ -178,7 +178,7 @@ export function RenderJobTable({
             width: 170,
             render: (_: unknown, job: RenderJob) => (
               <Space direction="vertical" size={0}>
-                <Typography.Text>{formatDateTime(job.createdAt)}</Typography.Text>
+                <Typography.Text>{formatDate(job.createdAt)}</Typography.Text>
                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                   {job.createdByUser?.name ?? job.createdByUser?.email ?? '-'}
                 </Typography.Text>

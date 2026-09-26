@@ -2,9 +2,10 @@ import { EyeOutlined } from '@ant-design/icons';
 import { Button, Progress, Space, Table, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useTranslation } from 'react-i18next';
+import { formatDate } from '../../../shared/lib/format-date';
 import { formatFileSize } from '../../../shared/lib/format-file-size';
 import type { ImportHistoryItem } from '../api/google-drive';
-import { formatDate, importStatusColor, importStatusLabel } from '../utils/import-format';
+import { importStatusColor, importStatusLabel } from '../utils/import-format';
 import { ImportSourceFolders } from './import-source-folders';
 
 type ImportBatchTableProps = {

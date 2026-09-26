@@ -15,8 +15,8 @@ import {
 } from 'antd';
 import { Trash2, UserPlus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { formatDate } from '../../../shared/lib/format-date';
 import { useFolders } from '../../folders/hooks/use-folders';
-import { formatDate } from '../../projects/utils/date.util';
 import { useFolderGrants } from '../hooks/use-folder-access';
 import { useGrantActions } from '../hooks/use-grant-actions';
 import type { AccessLevel } from '../types/access-level.type';
