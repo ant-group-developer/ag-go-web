@@ -154,6 +154,14 @@ export function cancelDriveImport(id: string) {
   return apiClient<ImportBatch>(`/google-drive/imports/${id}/cancel`, { method: 'POST' });
 }
 
+export function pauseDriveImport(id: string) {
+  return apiClient<ImportBatch>(`/google-drive/imports/${id}/pause`, { method: 'POST' });
+}
+
+export function resumeDriveImport(id: string) {
+  return apiClient<ImportBatch>(`/google-drive/imports/${id}/resume`, { method: 'POST' });
+}
+
 export function retryDriveImportItem(batchId: string, itemId: string) {
   return apiClient<ImportItem>(`/google-drive/imports/${batchId}/items/${itemId}/retry`, {
     method: 'POST',

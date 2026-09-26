@@ -8,9 +8,12 @@ import {
   getGoogleDriveConnection,
   getGoogleDrivePickerToken,
   getProjectImports,
+  pauseDriveImport,
+  resumeDriveImport,
   retryDriveImportItem,
   startGoogleDriveConnection,
   summarizeGoogleDriveSources,
+  type ImportBatch,
 } from '../api/google-drive';
 import { IMPORT_FINISHED_STATUSES } from '../utils/import-format';
 
@@ -108,16 +111,28 @@ export function useAllImports(enabled = true) {
   });
 }
 
-export function useCancelDriveImport() {
+function useBatchMutation(mutationFn: (id: string) => Promise<ImportBatch>) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: cancelDriveImport,
+    mutationFn,
     onSuccess: (batch) => {
       void client.invalidateQueries({ queryKey: keys.import(batch.id) });
       void client.invalidateQueries({ queryKey: keys.projectImports(batch.projectId) });
       void client.invalidateQueries({ queryKey: keys.allImports() });
     },
   });
+}
+
+export function useCancelDriveImport() {
+  return useBatchMutation(cancelDriveImport);
+}
+
+export function usePauseDriveImport() {
+  return useBatchMutation(pauseDriveImport);
+}
+
+export function useResumeDriveImport() {
+  return useBatchMutation(resumeDriveImport);
 }
 
 export function useRetryDriveImportItem() {
