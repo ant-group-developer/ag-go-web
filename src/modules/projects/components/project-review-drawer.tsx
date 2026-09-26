@@ -31,6 +31,8 @@ import {
 } from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { GO_PERMISSIONS } from '../../../shared/auth/permissions';
+import { formatDate } from '../../../shared/lib/format-date';
 import { usePermissions } from '../../account/hooks/use-current-account';
 import { getProjectAudit, type AuditLog } from '../../audit/api/audit';
 import { createDownload, getDownload, type DownloadResult } from '../../downloads/api/downloads';
@@ -47,7 +49,6 @@ import { RenditionPicker } from '../../media/components/rendition-picker';
 import { useAssetPreviewUrl } from '../../media/hooks/use-asset-preview-url';
 import { useRenditionSelection } from '../../media/hooks/use-rendition-selection';
 import { mediaQueryKeys } from '../../media/queries/media-query-keys';
-import { GO_PERMISSIONS } from '../../../shared/auth/permissions';
 import { getProject } from '../api/projects';
 import { projectQueryKeys } from '../queries/project-query-keys';
 import type { Project } from '../types/project.type';
@@ -70,16 +71,6 @@ type ProjectReviewDrawerProps = {
   mode?: ProjectDrawerMode;
   onClose: () => void;
 };
-
-function formatDateTime(value: string | undefined): string {
-  if (!value) {
-    return '-';
-  }
-  return new Intl.DateTimeFormat('vi-VN', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(value));
-}
 
 function formatFileSize(value: string | undefined): string {
   const bytes = Number(value ?? 0);
@@ -332,29 +323,60 @@ function MediaThumbnail({ media }: { media: ProjectMedia }) {
     media.thumbnailUrl || media.asset.processingStatus !== 'ready' ? null : media.assetId,
   );
   const previewUrl = media.thumbnailUrl ?? fetchedUrl;
+  const hasDuration = media.durationSeconds !== null && media.durationSeconds !== undefined;
 
-  return previewUrl ? (
-    <Image
-      alt=""
-      height={64}
-      preview={false}
-      src={previewUrl}
-      style={{ objectFit: 'cover' }}
-      width={88}
-    />
-  ) : (
+  return (
     <div
       style={{
-        alignItems: 'center',
-        background: '#f5f5f5',
-        color: '#8c8c8c',
-        display: 'flex',
+        borderRadius: 6,
+        flexShrink: 0,
         height: 64,
-        justifyContent: 'center',
+        overflow: 'hidden',
+        position: 'relative',
         width: 88,
       }}
     >
-      {media.asset.assetType === 'image' ? <FileImageOutlined /> : <FileOutlined />}
+      {previewUrl ? (
+        <Image
+          alt=""
+          height={64}
+          preview={false}
+          src={previewUrl}
+          style={{ display: 'block', objectFit: 'cover' }}
+          width={88}
+        />
+      ) : (
+        <div
+          style={{
+            alignItems: 'center',
+            background: '#f5f5f5',
+            color: '#8c8c8c',
+            display: 'flex',
+            height: '100%',
+            justifyContent: 'center',
+          }}
+        >
+          {media.asset.assetType === 'image' ? <FileImageOutlined /> : <FileOutlined />}
+        </div>
+      )}
+      {hasDuration ? (
+        <span
+          style={{
+            background: 'rgba(0, 0, 0, 0.72)',
+            borderRadius: 4,
+            bottom: 4,
+            color: '#fff',
+            fontSize: 11,
+            fontVariantNumeric: 'tabular-nums',
+            lineHeight: '16px',
+            padding: '0 4px',
+            position: 'absolute',
+            right: 4,
+          }}
+        >
+          {formatDuration(media.durationSeconds)}
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -407,10 +429,10 @@ function ProjectOverview({ project }: { project: Project }) {
           </Typography.Text>
         </Space>
         <Typography.Text type="secondary">
-          {t('projects.createdAt')}: {formatDateTime(project.createdAt)}
+          {t('projects.createdAt')}: {formatDate(project.createdAt)}
         </Typography.Text>
         <Typography.Text type="secondary">
-          {t('projects.updatedAt')}: {formatDateTime(project.updatedAt)}
+          {t('projects.updatedAt')}: {formatDate(project.updatedAt)}
         </Typography.Text>
         <Typography.Text type="secondary">
           {t('projects.originalSize')}: {formatFileSize(project.originalBytes)}
@@ -507,7 +529,7 @@ function MediaDetails({
           {formatResolution(media)}
         </Descriptions.Item>
         <Descriptions.Item label={t('media.uploadedAt')}>
-          {formatDateTime(media.createdAt)}
+          {formatDate(media.createdAt)}
         </Descriptions.Item>
         <Descriptions.Item label={t('media.mimeType')}>{media.asset.mimeType}</Descriptions.Item>
         <Descriptions.Item label={t('media.status')}>
@@ -587,7 +609,7 @@ function MediaDetails({
                   <Space direction="vertical" size={2}>
                     <Typography.Text>{item.comment || '-'}</Typography.Text>
                     <Typography.Text type="secondary">
-                      {item.evaluatedBy} · {formatDateTime(item.createdAt)}
+                      {item.evaluatedBy} · {formatDate(item.createdAt)}
                     </Typography.Text>
                   </Space>
                 }
@@ -752,154 +774,136 @@ export function ProjectDetailDrawer({
           <Row gutter={[16, 16]} align="top">
             <Col xs={24} lg={8} xl={6}>
               <Card
-                title={t('projects.reviewFiles')}
-                extra={
-                  <Space>
-                    <Tag>{t('media.fileCount', { count: mediaItems.length })}</Tag>
-                    <Button
-                      icon={<DownloadOutlined />}
-                      loading={download.isPending}
-                      size="small"
-                      onClick={() => requestDownload('multiple')}
-                    >
-                      {t('projects.downloadSelected')}
-                    </Button>
-                    <Button
-                      icon={<DownloadOutlined />}
-                      loading={download.isPending}
-                      size="small"
-                      type="primary"
-                      onClick={() => requestDownload('project')}
-                    >
-                      {t('projects.downloadAll')}
-                    </Button>
-                    {media.hasNextPage ? (
-                      <Button
-                        loading={media.isFetchingNextPage}
-                        size="small"
-                        onClick={() => void media.fetchNextPage()}
-                      >
-                        {t('projects.loadMoreFiles')}
-                      </Button>
-                    ) : null}
-                  </Space>
+                title={
+                  <Flex align="center" gap={8} style={{ minWidth: 0 }}>
+                    <Typography.Text strong ellipsis style={{ minWidth: 0 }}>
+                      {t('projects.reviewFiles')}
+                    </Typography.Text>
+                    <Tag bordered={false} style={{ flexShrink: 0, marginInlineEnd: 0 }}>
+                      {t('media.fileCount', { count: mediaItems.length })}
+                    </Tag>
+                  </Flex>
                 }
-                styles={{
-                  body: {
-                    maxHeight: 'calc(100vh - 430px)',
+                styles={{ body: { padding: 0 } }}
+              >
+                <Flex
+                  wrap
+                  gap={8}
+                  style={{
+                    padding: '8px 12px',
+                    borderBottom: `1px solid ${token.colorBorderSecondary}`,
+                  }}
+                >
+                  <Button
+                    icon={<DownloadOutlined />}
+                    loading={download.isPending}
+                    size="small"
+                    onClick={() => requestDownload('multiple')}
+                  >
+                    {t('projects.downloadSelected')}
+                    {selectedMediaIds.length > 0 ? ` (${selectedMediaIds.length})` : ''}
+                  </Button>
+                  <Button
+                    icon={<DownloadOutlined />}
+                    loading={download.isPending}
+                    size="small"
+                    type="primary"
+                    onClick={() => requestDownload('project')}
+                  >
+                    {t('projects.downloadAll')}
+                  </Button>
+                </Flex>
+                <div
+                  style={{
+                    maxHeight: 'calc(100vh - 470px)',
                     overflowY: 'auto',
                     padding: 8,
-                  },
-                }}
-              >
-                {media.isError ? (
-                  <Alert type="error" showIcon message={media.error.message} />
-                ) : null}
-                {mediaItems.length === 0 && !media.isPending ? (
-                  <Empty description={t('media.empty')} />
-                ) : (
-                  <List
-                    dataSource={mediaItems}
-                    renderItem={(item) => {
-                      const isSelected = item.id === selectedMedia?.id;
-                      const status = getEvaluationStatus(item.evaluationStatus, t);
-                      return (
-                        <List.Item
-                          style={{
-                            background: isSelected ? '#e6f4ff' : undefined,
-                            borderRadius: 6,
-                            cursor: 'pointer',
-                            marginBottom: 4,
-                            padding: 8,
-                            width: '100%',
-                            boxSizing: 'border-box',
-                          }}
-                          onClick={() => setSelectedMediaId(item.id)}
-                        >
-                          <Flex
-                            gap={8}
-                            align="start"
+                  }}
+                >
+                  {media.isError ? (
+                    <Alert type="error" showIcon message={media.error.message} />
+                  ) : null}
+                  {mediaItems.length === 0 && !media.isPending ? (
+                    <Empty description={t('media.empty')} />
+                  ) : (
+                    <List
+                      dataSource={mediaItems}
+                      renderItem={(item) => {
+                        const isSelected = item.id === selectedMedia?.id;
+                        const status = getEvaluationStatus(item.evaluationStatus, t);
+                        return (
+                          <List.Item
                             style={{
+                              background: isSelected ? token.colorPrimaryBg : undefined,
+                              border: `1px solid ${isSelected ? token.colorPrimaryBorder : 'transparent'}`,
+                              borderRadius: token.borderRadiusLG,
+                              cursor: 'pointer',
+                              marginBottom: 4,
+                              padding: 8,
                               width: '100%',
-                              minWidth: 0,
+                              boxSizing: 'border-box',
                             }}
+                            onClick={() => setSelectedMediaId(item.id)}
                           >
-                            {/* Thumbnail */}
-                            <div
-                              style={{
-                                flexShrink: 0,
-                              }}
-                            >
-                              <MediaThumbnail media={item} />
-                            </div>
-
-                            {/* Content */}
-                            <Flex
-                              vertical
-                              gap={4}
-                              style={{
-                                flex: 1,
-                                minWidth: 0,
-                                width: 0,
-                              }}
-                            >
-                              {/* Filename */}
-                              <Flex
-                                align="center"
-                                gap={8}
-                                style={{
-                                  width: '100%',
-                                  minWidth: 0,
+                            <Flex align="center" gap={10} style={{ width: '100%', minWidth: 0 }}>
+                              <Checkbox
+                                checked={selectedMediaIds.includes(item.id)}
+                                onClick={(event) => event.stopPropagation()}
+                                onChange={(event) => {
+                                  setSelectedMediaIds((current) =>
+                                    event.target.checked
+                                      ? [...new Set([...current, item.id])]
+                                      : current.filter((id) => id !== item.id),
+                                  );
                                 }}
-                              >
-                                <Checkbox
-                                  checked={selectedMediaIds.includes(item.id)}
-                                  onClick={(event) => event.stopPropagation()}
-                                  onChange={(event) => {
-                                    setSelectedMediaIds((current) =>
-                                      event.target.checked
-                                        ? [...new Set([...current, item.id])]
-                                        : current.filter((id) => id !== item.id),
-                                    );
-                                  }}
-                                />
+                              />
 
+                              <MediaThumbnail media={item} />
+
+                              <Flex vertical gap={2} style={{ flex: 1, minWidth: 0 }}>
                                 <Typography.Text
+                                  strong
                                   ellipsis={{ tooltip: item.asset.originalFilename }}
-                                  style={{
-                                    flex: 1,
-                                    minWidth: 0,
-                                    overflow: 'hidden',
-                                    fontWeight: 700,
-                                  }}
                                 >
                                   {item.asset.originalFilename}
                                 </Typography.Text>
+
+                                <Typography.Text
+                                  type="secondary"
+                                  ellipsis
+                                  style={{ fontSize: token.fontSizeSM }}
+                                >
+                                  {formatResolution(item)} · {formatDate(item.createdAt)}
+                                </Typography.Text>
+
+                                <div>
+                                  <Tag
+                                    color={status.color}
+                                    style={{ fontSize: token.fontSizeSM, marginInlineEnd: 0 }}
+                                  >
+                                    {status.label}
+                                  </Tag>
+                                </div>
                               </Flex>
-
-                              {/* Metadata */}
-                              <Space size={4} wrap>
-                                <Typography.Text type="secondary">
-                                  {formatDuration(item.durationSeconds)}
-                                </Typography.Text>
-
-                                <Typography.Text type="secondary">
-                                  {formatResolution(item)}
-                                </Typography.Text>
-
-                                <Typography.Text type="secondary">
-                                  {formatDateTime(item.createdAt)}
-                                </Typography.Text>
-
-                                <Tag color={status.color}>{status.label}</Tag>
-                              </Space>
                             </Flex>
-                          </Flex>
-                        </List.Item>
-                      );
-                    }}
-                  />
-                )}
+                          </List.Item>
+                        );
+                      }}
+                    />
+                  )}
+                  {media.hasNextPage ? (
+                    <Button
+                      block
+                      type="dashed"
+                      loading={media.isFetchingNextPage}
+                      size="small"
+                      style={{ marginTop: 4 }}
+                      onClick={() => void media.fetchNextPage()}
+                    >
+                      {t('projects.loadMoreFiles')}
+                    </Button>
+                  ) : null}
+                </div>
               </Card>
             </Col>
             <Col xs={24} lg={10} xl={12}>
@@ -937,7 +941,7 @@ export function ProjectDetailDrawer({
                 <List.Item>
                   <List.Item.Meta
                     title={<Tag>{item.action}</Tag>}
-                    description={`${item.actorUser?.name ?? item.actorUser?.email ?? item.actorUserId} · ${formatDateTime(item.createdAt)}`}
+                    description={`${item.actorUser?.name ?? item.actorUser?.email ?? item.actorUserId} · ${formatDate(item.createdAt)}`}
                   />
                 </List.Item>
               )}

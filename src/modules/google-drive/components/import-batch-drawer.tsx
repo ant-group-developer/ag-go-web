@@ -1,12 +1,12 @@
 import { Alert, Descriptions, Drawer, Flex, Input, Progress, Segmented, Tag } from 'antd';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { formatDate } from '../../../shared/lib/format-date';
 import { formatFileSize } from '../../../shared/lib/format-file-size';
 import type { ImportHistoryItem } from '../api/google-drive';
 import { useDriveImport } from '../hooks/use-google-drive';
 import {
   displayFilename,
-  formatDate,
   importStatusColor,
   importStatusLabel,
   isFolderItem,
@@ -64,13 +64,11 @@ export function ImportBatchDrawer({ batch, open, onClose }: ImportBatchDrawerPro
   const sourceFolders = useMemo(
     () =>
       detail.data
-        ? detail.data.items
-            .filter(isFolderItem)
-            .map((item) => ({
-              fileId: item.sourceFileId,
-              name: item.sourceName,
-              status: item.status,
-            }))
+        ? detail.data.items.filter(isFolderItem).map((item) => ({
+            fileId: item.sourceFileId,
+            name: item.sourceName,
+            status: item.status,
+          }))
         : (batch?.sourceFolders ?? []),
     [batch, detail.data],
   );

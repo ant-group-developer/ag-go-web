@@ -43,9 +43,10 @@ import {
   useQueryState,
   useQueryStates,
 } from 'nuqs';
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
+import { lazyWithReload } from '../../../shared/lib/app-update';
 import { CountryFlag } from '../../countries/components';
 import { useAssetPreviewUrl } from '../../media/hooks/use-asset-preview-url';
 import { getProjects } from '../api/projects';
@@ -53,6 +54,7 @@ import { CreateProjectModal } from '../components/create-project-modal';
 import type { ProjectFilterValues } from '../components/project-filter-popover';
 import { ProjectFilterPopover } from '../components/project-filter-popover';
 
+import { formatDate } from '../../../shared/lib/format-date';
 import { ProjectReviewDrawer, type ProjectDrawerMode } from '../components/project-review-drawer';
 import { useDeleteProject } from '../hooks/use-projects';
 import { projectQueryKeys } from '../queries/project-query-keys';
@@ -62,10 +64,9 @@ import type {
   ProjectSortOrder,
 } from '../types/project-list-params.type';
 import type { Project } from '../types/project.type';
-import { formatDate } from '../utils/date.util';
 import { getProjectStatus } from '../utils/project-status.util';
 
-const ProjectGridView = lazy(() =>
+const ProjectGridView = lazyWithReload(() =>
   import('../components/project-grid-view').then((m) => ({ default: m.ProjectGridView })),
 );
 

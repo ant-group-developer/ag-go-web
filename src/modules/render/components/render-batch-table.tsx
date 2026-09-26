@@ -2,8 +2,9 @@ import { EyeOutlined } from '@ant-design/icons';
 import { Button, Progress, Space, Table, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useTranslation } from 'react-i18next';
+import { formatDate } from '../../../shared/lib/format-date';
 import type { RenderBatch } from '../api/render';
-import { formatDateTime, RENDER_STATUS_COLORS, renderStatusLabel } from '../utils/render-format';
+import { RENDER_STATUS_COLORS, renderStatusLabel } from '../utils/render-format';
 import { RenderBatchScope } from './render-batch-scope';
 
 type RenderBatchTableProps = {
@@ -29,7 +30,7 @@ export function RenderBatchTable({
       key: 'createdAt',
       title: t('render.createdAt'),
       width: 170,
-      render: (_, batch) => formatDateTime(batch.createdAt),
+      render: (_, batch) => formatDate(batch.createdAt),
     },
     ...(hideScope
       ? []

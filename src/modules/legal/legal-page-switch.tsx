@@ -1,16 +1,17 @@
 import { Spin } from 'antd';
 import type { ReactNode } from 'react';
-import { lazy, Suspense } from 'react';
+import { Suspense } from 'react';
 import { useLocation } from 'react-router-dom';
+import { lazyWithReload } from '../../shared/lib/app-update';
 import { matchLegalPage, type LegalPageKey } from './legal-routes';
 
-const AboutPage = lazy(() =>
+const AboutPage = lazyWithReload(() =>
   import('./pages/about-page').then(({ AboutPage }) => ({ default: AboutPage })),
 );
-const PrivacyPage = lazy(() =>
+const PrivacyPage = lazyWithReload(() =>
   import('./pages/privacy-page').then(({ PrivacyPage }) => ({ default: PrivacyPage })),
 );
-const TermsPage = lazy(() =>
+const TermsPage = lazyWithReload(() =>
   import('./pages/terms-page').then(({ TermsPage }) => ({ default: TermsPage })),
 );
 

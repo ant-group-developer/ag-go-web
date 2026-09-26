@@ -17,6 +17,7 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Select } from '../../../shared/components/select';
+import { formatDate } from '../../../shared/lib/format-date';
 import { bilingualSearchText } from '../../../shared/lib/search-text';
 import {
   getProjectMedia,
@@ -39,10 +40,6 @@ type EvaluationForm = {
   evaluationStatus: ProjectMedia['evaluationStatus'];
   comment?: string;
 };
-
-function formatDate(value: string) {
-  return new Date(value).toLocaleString('vi-VN');
-}
 
 export function ProjectEvaluationDrawer({ open, projectId, onClose }: Props) {
   const { t } = useTranslation();

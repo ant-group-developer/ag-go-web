@@ -2,12 +2,12 @@ import { ReloadOutlined } from '@ant-design/icons';
 import { Button, Space, Table, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useTranslation } from 'react-i18next';
+import { formatDate } from '../../../shared/lib/format-date';
 import { formatFileSize } from '../../../shared/lib/format-file-size';
 import type { ImportItem } from '../api/google-drive';
 import { useRetryDriveImportItem } from '../hooks/use-google-drive';
 import {
   displayFilename,
-  formatDate,
   formatDimensions,
   formatDuration,
   importStatusColor,

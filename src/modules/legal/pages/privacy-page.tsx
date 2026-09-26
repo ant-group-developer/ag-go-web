@@ -47,8 +47,9 @@ function PrivacyEn({ context, language }: ContentProps) {
         Google Drive account.
       </p>
       <p>
-        {siteName} is an internal media workspace. Access is limited to members of our organization
-        who have been granted an account by an administrator.
+        {siteName} is a media workspace used by our team and our partner organizations. Access is by
+        invitation only: an administrator must create an account for each user, who may sign in with
+        a company or partner email address.
       </p>
 
       <h2>1. Information we collect</h2>
@@ -159,8 +160,8 @@ function PrivacyEn({ context, language }: ContentProps) {
       <p>We do not sell personal information. We share information only:</p>
       <ul>
         <li>
-          With members of our organization who are authorized, through folder permissions, to access
-          the project containing the content.
+          With other {siteName} users (our team members and invited partners) who have been granted
+          access, through folder permissions, to the project containing the content.
         </li>
         <li>
           With service providers that process data on our behalf to run the service: Auth0
@@ -253,8 +254,9 @@ function PrivacyVi({ context, language }: ContentProps) {
         Drive.
       </p>
       <p>
-        {siteName} là không gian làm việc media nội bộ. Chỉ thành viên của tổ chức được quản trị
-        viên cấp tài khoản mới có thể truy cập.
+        {siteName} là không gian làm việc media dành cho đội ngũ của chúng tôi và các đối tác. Chỉ
+        người được mời mới truy cập được: quản trị viên cấp tài khoản cho từng người dùng, có thể
+        đăng nhập bằng email công ty hoặc email của đối tác.
       </p>
 
       <h2>1. Thông tin chúng tôi thu thập</h2>
@@ -356,7 +358,10 @@ function PrivacyVi({ context, language }: ContentProps) {
       <h2>4. Chia sẻ thông tin</h2>
       <p>Chúng tôi không bán thông tin cá nhân. Chúng tôi chỉ chia sẻ thông tin:</p>
       <ul>
-        <li>Với thành viên trong tổ chức được cấp quyền truy cập thư mục chứa project.</li>
+        <li>
+          Với người dùng {siteName} khác (thành viên đội ngũ và đối tác được mời) đã được cấp quyền
+          truy cập thư mục chứa project.
+        </li>
         <li>
           Với các nhà cung cấp dịch vụ xử lý dữ liệu thay mặt chúng tôi: Auth0 (xác thực),
           Cloudflare R2 (lưu trữ file), nhà cung cấp hosting và cơ sở dữ liệu. Họ chỉ được dùng dữ

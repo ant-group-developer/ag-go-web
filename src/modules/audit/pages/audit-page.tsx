@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Alert, Empty, List, Spin, Tag, Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
+import { formatDate } from '../../../shared/lib/format-date';
 import { getProjectAudit } from '../api/audit';
 
 export function AuditPage() {
@@ -26,7 +27,7 @@ export function AuditPage() {
             <List.Item>
               <List.Item.Meta
                 title={<Tag>{item.action}</Tag>}
-                description={`${item.actorUser?.name ?? item.actorUser?.email ?? item.actorUserId} · ${new Date(item.createdAt).toLocaleString('vi-VN')}`}
+                description={`${item.actorUser?.name ?? item.actorUser?.email ?? item.actorUserId} · ${formatDate(item.createdAt)}`}
               />
             </List.Item>
           )}

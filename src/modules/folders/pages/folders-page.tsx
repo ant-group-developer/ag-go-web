@@ -16,8 +16,8 @@ import { Folder as FolderIcon, FolderPlus, Pencil, Shield, Trash2 } from 'lucide
 import { parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from 'nuqs';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { formatDate } from '../../../shared/lib/format-date';
 import { FolderAccessDrawer } from '../../folder-access/components/folder-access-drawer';
-import { formatDate } from '../../projects/utils/date.util';
 import { CreateFolderModal } from '../components/create-folder-modal';
 import { EditFolderModal } from '../components/edit-folder-modal';
 import { useDeleteFolder, useFolders } from '../hooks/use-folders';
