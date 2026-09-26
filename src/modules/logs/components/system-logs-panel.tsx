@@ -5,6 +5,7 @@ import { Alert, DatePicker, Descriptions, Drawer, Input, Space, Tag } from 'antd
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Select } from '../../../shared/components/select';
+import { formatDate } from '../../../shared/lib/format-date';
 import { bilingualSearchText } from '../../../shared/lib/search-text';
 import { getLogs, type SystemLog } from '../api/logs';
 
@@ -117,8 +118,7 @@ export function SystemLogsPanel() {
           {
             title: t('logs.time'),
             dataIndex: 'createdAt',
-            render: (_, record) =>
-              record.createdAt ? new Date(record.createdAt).toLocaleString('vi-VN') : '—',
+            render: (_, record) => formatDate(record.createdAt),
           },
           { title: t('logs.category'), dataIndex: 'category', ellipsis: true },
           { title: t('logs.action'), dataIndex: 'action', ellipsis: true },
