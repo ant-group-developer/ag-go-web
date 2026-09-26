@@ -64,13 +64,11 @@ export function ImportBatchDrawer({ batch, open, onClose }: ImportBatchDrawerPro
   const sourceFolders = useMemo(
     () =>
       detail.data
-        ? detail.data.items
-            .filter(isFolderItem)
-            .map((item) => ({
-              fileId: item.sourceFileId,
-              name: item.sourceName,
-              status: item.status,
-            }))
+        ? detail.data.items.filter(isFolderItem).map((item) => ({
+            fileId: item.sourceFileId,
+            name: item.sourceName,
+            status: item.status,
+          }))
         : (batch?.sourceFolders ?? []),
     [batch, detail.data],
   );
