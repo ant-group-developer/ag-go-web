@@ -244,6 +244,10 @@ export function RenderJobTable({
             <Typography.Text type="secondary" style={{ fontSize: 12 }}>
               {job.progressMessage}
             </Typography.Text>
+          ) : job.status === 'cancelled' && job.progressMessage?.includes('superseded') ? (
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+              {t('render.supersededJob')}
+            </Typography.Text>
           ) : null}
         </Space>
       ),

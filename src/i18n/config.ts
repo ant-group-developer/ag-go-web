@@ -643,6 +643,7 @@ const resources = {
         profileVersion: 'Profile',
         autoJobsTab: 'Render tự động (upload/import)',
         batchesTab: 'Render batch',
+        supersededJob: 'Đã huỷ do file được render lại bằng profile mới hơn',
         autoJobsHint:
           'Job render được tạo tự động khi upload hoặc import file từ Google Drive. Hiển thị 200 job gần nhất.',
         sourceColumn: 'Nguồn',
@@ -1499,6 +1500,7 @@ const resources = {
         format: 'Format',
         profileVersion: 'Profile',
         autoJobsTab: 'Automatic renders (upload/import)',
+        supersededJob: 'Cancelled: the file was re-rendered with a newer profile',
         batchesTab: 'Render batches',
         autoJobsHint:
           'Render jobs created automatically when files are uploaded or imported from Google Drive. Showing the latest 200 jobs.',
