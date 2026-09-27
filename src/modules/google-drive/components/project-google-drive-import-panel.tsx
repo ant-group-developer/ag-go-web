@@ -373,6 +373,8 @@ export function ProjectGoogleDriveImportPanel({ projectId }: { projectId: string
               <ImportItemsTable
                 items={(batch.data?.items ?? []).filter((item) => !isFolderItem(item))}
                 scrollY={400}
+                onRefresh={() => void batch.refetch()}
+                refreshing={batch.isFetching}
               />
             </Card>
           ) : null}

@@ -16,7 +16,10 @@ import { Folder as FolderIcon, FolderPlus, Pencil, Shield, Trash2 } from 'lucide
 import { parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from 'nuqs';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { SortDropdown } from '../../../shared/components/sort-dropdown';
+import { sortRows, toTimestamp, type SortValue } from '../../../shared/lib/compare-sort-values';
 import { formatDate } from '../../../shared/lib/format-date';
+import { PAGE_TABLE_STICKY } from '../../../shared/lib/sticky-table-header';
 import { FolderAccessDrawer } from '../../folder-access/components/folder-access-drawer';
 import { CreateFolderModal } from '../components/create-folder-modal';
 import { EditFolderModal } from '../components/edit-folder-modal';
@@ -35,8 +38,8 @@ type FolderSortField = (typeof sortFields)[number];
 
 const folderUrlParams = {
   parentId: parseAsString.withOptions({ history: 'push' }),
-  sortBy: parseAsStringLiteral(sortFields),
-  sortOrder: parseAsStringLiteral(['ascend', 'descend'] as const),
+  sortBy: parseAsStringLiteral(sortFields).withDefault('name'),
+  sortOrder: parseAsStringLiteral(['asc', 'desc'] as const).withDefault('asc'),
   page: parseAsInteger.withDefault(1),
   pageSize: parseAsInteger.withDefault(20),
 };
@@ -44,7 +47,7 @@ const folderUrlParams = {
 const ownerName = (folder: Folder) =>
   folder.createdByUser?.name || folder.createdByUser?.email || '';
 
-const sortValue = (folder: Folder, field: FolderSortField): string | number => {
+const sortValue = (folder: Folder, field: FolderSortField): SortValue => {
   switch (field) {
     case 'name':
       return folder.name;
@@ -56,7 +59,7 @@ const sortValue = (folder: Folder, field: FolderSortField): string | number => {
       return folder.projectCount ?? 0;
     case 'createdAt':
     case 'updatedAt':
-      return folder[field] ? Date.parse(folder[field]) : 0;
+      return toTimestamp(folder[field]);
   }
 };
 
@@ -83,28 +86,17 @@ export function FoldersPage() {
         ? folder.parentId === currentFolder.id
         : !folder.parentId || !folderById.has(folder.parentId),
     );
-    if (!sortBy || !sortOrder) {
-      return levelFolders;
-    }
-    const direction = sortOrder === 'ascend' ? 1 : -1;
-    return [...levelFolders].sort((a, b) => {
-      const left = sortValue(a, sortBy);
-      const right = sortValue(b, sortBy);
-      const result =
-        typeof left === 'number' && typeof right === 'number'
-          ? left - right
-          : String(left).localeCompare(String(right), 'vi', { sensitivity: 'base' });
-      return result * direction;
-    });
+    return sortRows(levelFolders, (folder) => sortValue(folder, sortBy), sortOrder);
   }, [folders.data, folderById, currentFolder, sortBy, sortOrder]);
 
-  // ProTable tracks sort state by dataIndex, so each sortable column uses its sort field as dataIndex.
-  const sortProps = (field: FolderSortField) => ({
-    dataIndex: field,
-    key: field,
-    sorter: true,
-    defaultSortOrder: sortBy === field ? sortOrder : undefined,
-  });
+  const sortFieldLabels: Record<FolderSortField, string> = {
+    name: t('folders.name'),
+    childCount: t('folders.childCount'),
+    projectCount: t('folders.projectCount'),
+    owner: t('folders.owner'),
+    createdAt: t('folders.createdAt'),
+    updatedAt: t('folders.updatedAt'),
+  };
 
   const handleDelete = async (folder: Folder) => {
     try {
@@ -130,7 +122,7 @@ export function FoldersPage() {
   const columns: ProColumns<Folder>[] = [
     {
       title: t('folders.name'),
-      ...sortProps('name'),
+      dataIndex: 'name',
       ellipsis: true,
       render: (_, folder) => (
         <Button
@@ -144,11 +136,11 @@ export function FoldersPage() {
         </Button>
       ),
     },
-    { title: t('folders.childCount'), width: 160, ...sortProps('childCount') },
-    { title: t('folders.projectCount'), width: 160, ...sortProps('projectCount') },
+    { title: t('folders.childCount'), width: 160, dataIndex: 'childCount' },
+    { title: t('folders.projectCount'), width: 160, dataIndex: 'projectCount' },
     {
       title: t('folders.owner'),
-      ...sortProps('owner'),
+      key: 'owner',
       width: 220,
       ellipsis: true,
       render: (_, folder) => (
@@ -164,13 +156,13 @@ export function FoldersPage() {
     },
     {
       title: t('folders.createdAt'),
-      ...sortProps('createdAt'),
+      dataIndex: 'createdAt',
       width: 170,
       render: (_, folder) => formatDate(folder.createdAt),
     },
     {
       title: t('folders.updatedAt'),
-      ...sortProps('updatedAt'),
+      dataIndex: 'updatedAt',
       width: 170,
       render: (_, folder) => formatDate(folder.updatedAt),
     },
@@ -304,14 +296,18 @@ export function FoldersPage() {
               }),
           }}
           columns={columns}
-          sticky={{ offsetHeader: 56 }}
-          onChange={(pagination, _filters, sorter) => {
-            const activeSorter = Array.isArray(sorter) ? sorter[0] : sorter;
-            const field = activeSorter?.columnKey as FolderSortField | undefined;
-            const order = activeSorter?.order ?? null;
+          sticky={PAGE_TABLE_STICKY}
+          toolBarRender={() => [
+            <SortDropdown<FolderSortField>
+              key="sort"
+              fields={sortFields.map((field) => ({ value: field, label: sortFieldLabels[field] }))}
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+              onChange={(change) => void setUrlState({ ...change, page: null })}
+            />,
+          ]}
+          onChange={(pagination) => {
             void setUrlState({
-              sortBy: order && field ? field : null,
-              sortOrder: order && field ? order : null,
               page: pagination.current ?? 1,
               pageSize: pagination.pageSize ?? 20,
             });

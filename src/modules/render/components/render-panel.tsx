@@ -134,7 +134,7 @@ export function RenderPanel() {
               children: (
                 <AutoRenderJobTable
                   enabled={historyTab === 'auto'}
-                  hint={t('render.autoJobsHint')}
+                  // hint={t('render.autoJobsHint')}
                 />
               ),
             },
@@ -154,6 +154,8 @@ export function RenderPanel() {
                   <RenderBatchTable
                     batches={batches.data ?? []}
                     loading={batches.isLoading}
+                    onRefresh={() => void batches.refetch()}
+                    refreshing={batches.isFetching}
                     onViewJobs={(batch) => setSelectedBatchId(batch.id)}
                   />
                 </>

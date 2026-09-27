@@ -1,4 +1,5 @@
 import { Alert, Button, Card, Space } from 'antd';
+import type { TableProps } from 'antd/es/table';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Select } from '../../../shared/components/select';
@@ -19,9 +20,16 @@ type ProjectHistoryCardProps = {
   /** DOM id used as an anchor target. */
   id?: string;
   scrollY?: number;
+  /** Sticky table header offset; pass `CONTAINER_TABLE_STICKY` inside drawers. */
+  sticky?: TableProps<object>['sticky'];
 };
 
-export function ProjectImportHistoryCard({ projectId, id, scrollY }: ProjectHistoryCardProps) {
+export function ProjectImportHistoryCard({
+  projectId,
+  id,
+  scrollY,
+  sticky,
+}: ProjectHistoryCardProps) {
   const { t } = useTranslation();
   const imports = useProjectImports(projectId);
   const [selectedImportId, setSelectedImportId] = useState('');
@@ -34,7 +42,10 @@ export function ProjectImportHistoryCard({ projectId, id, scrollY }: ProjectHist
       <ImportBatchTable
         batches={imports.data ?? []}
         loading={imports.isLoading}
+        onRefresh={() => void imports.refetch()}
+        refreshing={imports.isFetching}
         scrollY={scrollY}
+        sticky={sticky}
         onViewItems={(batch) => setSelectedImportId(batch.id)}
       />
       <ImportBatchDrawer
@@ -109,6 +120,8 @@ export function ProjectRenderBatchesCard({ projectId, id, scrollY }: ProjectHist
       <RenderBatchTable
         batches={renderBatches.data ?? []}
         loading={renderBatches.isLoading}
+        onRefresh={() => void renderBatches.refetch()}
+        refreshing={renderBatches.isFetching}
         hideScope
         scrollY={scrollY}
         onViewJobs={(batch) => setSelectedBatchId(batch.id)}

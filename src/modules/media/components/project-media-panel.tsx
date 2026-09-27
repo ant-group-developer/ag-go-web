@@ -29,6 +29,7 @@ import {
 import type { ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { sortRows } from '../../../shared/lib/compare-sort-values';
 import { formatDate } from '../../../shared/lib/format-date';
 import { formatFileSize } from '../../../shared/lib/format-file-size';
 import { projectQueryKeys } from '../../projects/queries/project-query-keys';
@@ -42,6 +43,13 @@ import {
   type ProjectMedia,
 } from '../api/media';
 import { mediaQueryKeys } from '../queries/media-query-keys';
+import {
+  DEFAULT_PROJECT_MEDIA_SORT,
+  projectMediaModifiedAt,
+  projectMediaSortValue,
+  type ProjectMediaSort,
+} from '../utils/sort-project-media';
+import { ProjectMediaSortDropdown } from './project-media-sort-dropdown';
 
 type ProjectMediaUploadFile = UploadFile<ProjectMedia>;
 type UploadTaskStatus = 'queued' | 'uploading' | 'done' | 'error';
@@ -101,6 +109,22 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
   const uploadedMediaIdsRef = useRef(new Map<string, string>());
   const [fileList, setFileList] = useState<ProjectMediaUploadFile[]>([]);
   const [taskStatuses, setTaskStatuses] = useState<Record<string, UploadTaskStatus>>({});
+  const [sort, setSort] = useState<ProjectMediaSort>(DEFAULT_PROJECT_MEDIA_SORT);
+  // Uploads still in progress have no server row yet: their dates are missing and sort last.
+  const sortedFileList = useMemo(
+    () =>
+      sortRows(
+        fileList,
+        (file) =>
+          file.response
+            ? projectMediaSortValue(file.response, sort.sortBy)
+            : sort.sortBy === 'name'
+              ? file.name
+              : null,
+        sort.sortOrder,
+      ),
+    [fileList, sort],
+  );
   const media = useQuery({
     queryKey: mediaQueryKeys.project(projectId),
     queryFn: () => getAllProjectMedia(projectId),
@@ -306,12 +330,15 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
       title={t('media.projectMedia')}
       loading={media.isPending}
       extra={
-        <Button
-          aria-label={t('common.refresh')}
-          icon={<ReloadOutlined />}
-          loading={media.isFetching}
-          onClick={() => void media.refetch()}
-        />
+        <Space>
+          <ProjectMediaSortDropdown value={sort} onChange={setSort} />
+          <Button
+            aria-label={t('common.refresh')}
+            icon={<ReloadOutlined />}
+            loading={media.isFetching}
+            onClick={() => void media.refetch()}
+          />
+        </Space>
       }
     >
       {media.isError ? (
@@ -331,9 +358,9 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
         <Tag icon={statusIcons.error} color={statusColors.error}>
           {statusLabels.error}: {statusCounts.error}
         </Tag>
-        <Typography.Text type="secondary">
+        {/* <Typography.Text type="secondary">
           {t('media.concurrentUploadLimit', { count: MAX_CONCURRENT_UPLOADS })}
-        </Typography.Text>
+        </Typography.Text> */}
       </Space>
       <Upload.Dragger
         accept="image/*,video/*"
@@ -356,10 +383,10 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
         style={{ marginTop: 24 }}
         size="small"
         rowKey="uid"
-        scroll={{ x: 1130, y: 400 }}
+        scroll={{ x: 1290, y: 400 }}
         pagination={false}
         locale={{ emptyText: t('media.empty') }}
-        dataSource={fileList}
+        dataSource={sortedFileList}
         columns={[
           {
             key: 'file',
@@ -494,12 +521,22 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
             },
           },
           {
-            key: 'updatedAt',
-            title: t('projects.updatedAt'),
+            key: 'createdAt',
+            title: t('media.createdAt'),
             width: 160,
             render: (_, file) => (
               <Typography.Text type="secondary">
-                {formatDate(file.response?.modifiedAt ?? file.response?.updatedAt)}
+                {formatDate(file.response?.createdAt)}
+              </Typography.Text>
+            ),
+          },
+          {
+            key: 'modifiedAt',
+            title: t('media.modifiedAt'),
+            width: 160,
+            render: (_, file) => (
+              <Typography.Text type="secondary">
+                {formatDate(file.response ? projectMediaModifiedAt(file.response) : null)}
               </Typography.Text>
             ),
           },

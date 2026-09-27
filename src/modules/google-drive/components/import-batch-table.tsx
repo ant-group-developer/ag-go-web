@@ -5,12 +5,25 @@ import {
   PlayCircleOutlined,
   StopOutlined,
 } from '@ant-design/icons';
-import { App, Button, Popconfirm, Progress, Space, Table, Tag, Tooltip, Typography } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
+import {
+  App,
+  Button,
+  Flex,
+  Popconfirm,
+  Progress,
+  Space,
+  Table,
+  Tag,
+  Tooltip,
+  Typography,
+} from 'antd';
+import type { ColumnsType, TableProps } from 'antd/es/table';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { TableRefreshButton } from '../../../shared/components/table-refresh-button';
 import { formatDate } from '../../../shared/lib/format-date';
 import { formatFileSize } from '../../../shared/lib/format-file-size';
+import { PAGE_TABLE_STICKY } from '../../../shared/lib/sticky-table-header';
 import type { ImportHistoryItem } from '../api/google-drive';
 import {
   useCancelDriveImport,
@@ -33,6 +46,11 @@ type ImportBatchTableProps = {
   scrollY?: number;
   /** Show the project column, for the cross-project history. */
   showProject?: boolean;
+  /** Refetches the batches list; renders a reload button above the table when given. */
+  onRefresh?: () => void;
+  refreshing?: boolean;
+  /** Sticky header offset; defaults to below the page header, use 0 inside drawers. */
+  sticky?: TableProps<ImportHistoryItem>['sticky'];
 };
 
 export function ImportBatchTable({
@@ -41,6 +59,9 @@ export function ImportBatchTable({
   onViewItems,
   scrollY,
   showProject,
+  onRefresh,
+  refreshing,
+  sticky = PAGE_TABLE_STICKY,
 }: ImportBatchTableProps) {
   const { t } = useTranslation();
   const { message } = App.useApp();
@@ -257,6 +278,16 @@ export function ImportBatchTable({
     <Table<ImportHistoryItem>
       rowKey="id"
       size="small"
+      sticky={sticky}
+      title={
+        onRefresh
+          ? () => (
+              <Flex justify="flex-end">
+                <TableRefreshButton onRefresh={onRefresh} refreshing={refreshing} size="small" />
+              </Flex>
+            )
+          : undefined
+      }
       loading={loading}
       columns={columns}
       dataSource={batches}

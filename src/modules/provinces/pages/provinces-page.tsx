@@ -9,6 +9,7 @@ import { FileUp } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CatalogImportModal } from '../../../shared/components/catalog-import-modal';
+import { PAGE_TABLE_STICKY } from '../../../shared/lib/sticky-table-header';
 import { CountryFlag, CountrySelect } from '../../countries/components';
 import { getProvinces } from '../api/provinces';
 import { useImportProvinces } from '../hooks/use-provinces';
@@ -142,7 +143,7 @@ export function ProvincesPage() {
             onChange: (page, pageSize) => setPagination({ page, pageSize }),
           }}
           onRequestError={setRequestError}
-          sticky={{ offsetHeader: 56 }}
+          sticky={PAGE_TABLE_STICKY}
         />
       </PageContainer>
       <CatalogImportModal

@@ -246,12 +246,19 @@ export type RenderJobStatusFilter = 'all' | 'active' | 'completed' | 'failed';
 
 export type RenderJobStatusCounts = Record<RenderJobStatusFilter, number>;
 
+/** Server-sortable render job columns: queued time, processing start and processing duration. */
+export type RenderJobSortField = 'createdAt' | 'startedAt' | 'elapsed';
+
+export type RenderJobSort = { sortBy: RenderJobSortField; sortOrder: 'asc' | 'desc' };
+
 export type AutoRenderJobsParams = {
   projectId?: string;
   page: number;
   pageSize: number;
   status: RenderJobStatusFilter;
   search?: string;
+  /** Omit for newest first. */
+  sort?: RenderJobSort;
 };
 
 export type AutoRenderJobPage = {
@@ -263,13 +270,17 @@ export type AutoRenderJobPage = {
   counts: RenderJobStatusCounts;
 };
 
-/** One page of the jobs queued automatically after an upload or a Drive import, newest first. */
+/**
+ * One page of the jobs queued automatically after an upload or a Drive import, newest first
+ * unless `sort` is given.
+ */
 export function getAutoRenderJobs({
   projectId,
   page,
   pageSize,
   status,
   search,
+  sort,
 }: AutoRenderJobsParams) {
   const query = new URLSearchParams({
     page: String(page),
@@ -281,6 +292,10 @@ export function getAutoRenderJobs({
   }
   if (search) {
     query.set('search', search);
+  }
+  if (sort) {
+    query.set('sortBy', sort.sortBy);
+    query.set('sortOrder', sort.sortOrder);
   }
   return apiClient<AutoRenderJobPage>(`/render-jobs/auto?${query.toString()}`);
 }

@@ -7,7 +7,6 @@ import {
   Avatar,
   Button,
   Col,
-  Dropdown,
   Flex,
   Image,
   Input,
@@ -22,16 +21,7 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
-import {
-  ArrowDownWideNarrow,
-  ArrowUpNarrowWide,
-  Check,
-  ClipboardCheck,
-  LayoutGrid,
-  List,
-  Pencil,
-  Trash2,
-} from 'lucide-react';
+import { ClipboardCheck, LayoutGrid, List, Pencil, Trash2 } from 'lucide-react';
 
 import {
   parseAsArrayOf,
@@ -45,7 +35,9 @@ import {
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
+import { SortDropdown } from '../../../shared/components/sort-dropdown';
 import { lazyWithReload } from '../../../shared/lib/app-update';
+import { PAGE_TABLE_STICKY } from '../../../shared/lib/sticky-table-header';
 import { CountryFlag } from '../../countries/components';
 import { useAssetPreviewUrl } from '../../media/hooks/use-asset-preview-url';
 import { getProjects } from '../api/projects';
@@ -188,7 +180,6 @@ export function ProjectsPage({ scope = 'evaluated' }: { scope?: ProjectListScope
     history: 'replace',
   });
   const [createOpen, setCreateOpen] = useState(false);
-  const [sortOpen, setSortOpen] = useState(false);
   const [reviewProjectId, setReviewProjectId] = useState<string>();
   const [reviewMode, setReviewMode] = useState<ProjectDrawerMode>('view');
   const openProject = (projectId: string, mode: ProjectDrawerMode) => {
@@ -602,7 +593,7 @@ export function ProjectsPage({ scope = 'evaluated' }: { scope?: ProjectListScope
           locale={{ emptyText: t(scopeConfig.emptyKey) }}
           search={false}
           scroll={{ x: 1680 }}
-          sticky={{ offsetHeader: 56 }}
+          sticky={PAGE_TABLE_STICKY}
           tableRender={(_props, _defaultDom, domList) => (
             <>
               {domList.toolbar}
@@ -707,56 +698,16 @@ export function ProjectsPage({ scope = 'evaluated' }: { scope?: ProjectListScope
             </>
           )}
           toolBarRender={() => [
-            <Dropdown
+            <SortDropdown<ProjectSortField>
               key="sort"
-              trigger={['click']}
-              open={sortOpen}
-              // Keep the menu open while picking field/order; close only via trigger or outside click.
-              onOpenChange={(nextOpen, info) => {
-                if (info.source === 'trigger') {
-                  setSortOpen(nextOpen);
-                }
-              }}
-              menu={{
-                items: [
-                  {
-                    type: 'group',
-                    label: t('projects.sort'),
-                    children: PROJECT_SORT_FIELDS.map((field) => ({
-                      key: `sortBy:${field}`,
-                      label: sortFieldLabels[field],
-                      extra: urlState.sortBy === field ? <Check size={14} /> : null,
-                      onClick: () => handleSortChange({ sortBy: field }),
-                    })),
-                  },
-                  { type: 'divider' },
-                  ...PROJECT_SORT_ORDERS.map((order) => ({
-                    key: `sortOrder:${order}`,
-                    icon:
-                      order === 'asc' ? (
-                        <ArrowUpNarrowWide size={14} />
-                      ) : (
-                        <ArrowDownWideNarrow size={14} />
-                      ),
-                    label: t(order === 'asc' ? 'projects.sortAsc' : 'projects.sortDesc'),
-                    extra: urlState.sortOrder === order ? <Check size={14} /> : null,
-                    onClick: () => handleSortChange({ sortOrder: order }),
-                  })),
-                ],
-              }}
-            >
-              <Button
-                icon={
-                  urlState.sortOrder === 'asc' ? (
-                    <ArrowUpNarrowWide size={16} />
-                  ) : (
-                    <ArrowDownWideNarrow size={16} />
-                  )
-                }
-              >
-                {sortFieldLabels[urlState.sortBy]}
-              </Button>
-            </Dropdown>,
+              fields={PROJECT_SORT_FIELDS.map((field) => ({
+                value: field,
+                label: sortFieldLabels[field],
+              }))}
+              sortBy={urlState.sortBy}
+              sortOrder={urlState.sortOrder}
+              onChange={handleSortChange}
+            />,
             <Radio.Group
               key="view-mode"
               value={viewMode}

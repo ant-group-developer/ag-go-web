@@ -32,6 +32,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GO_PERMISSIONS } from '../../../shared/auth/permissions';
 import { formatDate } from '../../../shared/lib/format-date';
+import { CONTAINER_TABLE_STICKY } from '../../../shared/lib/sticky-table-header';
 import { usePermissions } from '../../account/hooks/use-current-account';
 import { createDownload, getDownload, type DownloadResult } from '../../downloads/api/downloads';
 import { useRefreshProjectMediaOnImportProgress } from '../../google-drive/hooks/use-refresh-project-media-on-import-progress';
@@ -44,10 +45,17 @@ import {
   type ProjectMedia,
   type ProjectMediaEvaluation,
 } from '../../media/api/media';
+import { ProjectMediaSortDropdown } from '../../media/components/project-media-sort-dropdown';
 import { RenditionPicker } from '../../media/components/rendition-picker';
 import { useAssetPreviewUrl } from '../../media/hooks/use-asset-preview-url';
 import { useRenditionSelection } from '../../media/hooks/use-rendition-selection';
 import { mediaQueryKeys } from '../../media/queries/media-query-keys';
+import {
+  DEFAULT_PROJECT_MEDIA_SORT,
+  projectMediaModifiedAt,
+  sortProjectMedia,
+  type ProjectMediaSort,
+} from '../../media/utils/sort-project-media';
 import { ProjectImportHistoryCard } from '../../render/components/project-processing-history-cards';
 import { getProject } from '../api/projects';
 import { projectQueryKeys } from '../queries/project-query-keys';
@@ -557,6 +565,7 @@ export function ProjectDetailDrawer({
   const [selectedMediaId, setSelectedMediaId] = useState<string>();
   const [selectedMediaIds, setSelectedMediaIds] = useState<string[]>([]);
   const [downloadJobId, setDownloadJobId] = useState<string>();
+  const [mediaSort, setMediaSort] = useState<ProjectMediaSort>(DEFAULT_PROJECT_MEDIA_SORT);
   const project = useQuery({
     queryKey: projectQueryKeys.detail(projectId ?? ''),
     queryFn: () => getProject(projectId ?? ''),
@@ -577,6 +586,17 @@ export function ProjectDetailDrawer({
     () => media.data?.pages.flatMap((page) => page.items) ?? [],
     [media.data],
   );
+  const sortedMediaItems = useMemo(
+    () => sortProjectMedia(mediaItems, mediaSort),
+    [mediaItems, mediaSort],
+  );
+  // Sorting needs every file, not only the pages loaded so far.
+  const { hasNextPage, isFetchingNextPage, fetchNextPage } = media;
+  useEffect(() => {
+    if (hasNextPage && !isFetchingNextPage) {
+      void fetchNextPage();
+    }
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
   // Files imported from Google Drive show up in the list while the import is running.
   useRefreshProjectMediaOnImportProgress(open ? (projectId ?? '') : '');
   const selectedMedia = mediaItems.find((item) => item.id === selectedMediaId) ?? mediaItems[0];
@@ -725,6 +745,11 @@ export function ProjectDetailDrawer({
                   >
                     {t('projects.downloadAll')}
                   </Button>
+                  <ProjectMediaSortDropdown
+                    size="small"
+                    value={mediaSort}
+                    onChange={setMediaSort}
+                  />
                 </Flex>
                 <div
                   style={{
@@ -740,7 +765,7 @@ export function ProjectDetailDrawer({
                     <Empty description={t('media.empty')} />
                   ) : (
                     <List
-                      dataSource={mediaItems}
+                      dataSource={sortedMediaItems}
                       renderItem={(item) => {
                         const isSelected = item.id === selectedMedia?.id;
                         const status = getEvaluationStatus(item.evaluationStatus, t);
@@ -786,7 +811,13 @@ export function ProjectDetailDrawer({
                                   ellipsis
                                   style={{ fontSize: token.fontSizeSM }}
                                 >
-                                  {formatResolution(item)} · {formatDate(item.createdAt)}
+                                  {formatResolution(item)} ·{' '}
+                                  {formatDate(
+                                    // Show the date the list is sorted by.
+                                    mediaSort.sortBy === 'modifiedAt'
+                                      ? projectMediaModifiedAt(item)
+                                      : item.createdAt,
+                                  )}
                                 </Typography.Text>
 
                                 <div>
@@ -845,7 +876,11 @@ export function ProjectDetailDrawer({
             </Col>
           </Row>
           <div style={{ marginTop: 16 }}>
-            <ProjectImportHistoryCard projectId={project.data.id} scrollY={IMPORT_TABLE_SCROLL_Y} />
+            <ProjectImportHistoryCard
+              projectId={project.data.id}
+              scrollY={IMPORT_TABLE_SCROLL_Y}
+              sticky={CONTAINER_TABLE_STICKY}
+            />
           </div>
           <ProjectAuditLogCard projectId={project.data.id} enabled={open} />
           {downloadJobId ? (

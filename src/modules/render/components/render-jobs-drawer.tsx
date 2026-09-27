@@ -1,6 +1,7 @@
 import { Alert, Descriptions, Drawer, Flex, Progress, Tag } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { formatDate } from '../../../shared/lib/format-date';
+import { CONTAINER_TABLE_STICKY } from '../../../shared/lib/sticky-table-header';
 import type { RenderBatch } from '../api/render';
 import { useRenderBatchJobs } from '../hooks/use-render';
 import { RENDER_STATUS_COLORS, renderStatusLabel } from '../utils/render-format';
@@ -59,6 +60,9 @@ export function RenderJobsDrawer({ batch, open, onClose }: RenderJobsDrawerProps
             jobs={jobs.data ?? []}
             loading={jobs.isLoading}
             error={jobs.isError ? jobs.error.message : undefined}
+            sticky={CONTAINER_TABLE_STICKY}
+            onRefresh={() => void jobs.refetch()}
+            refreshing={jobs.isFetching}
           />
         </Flex>
       ) : null}

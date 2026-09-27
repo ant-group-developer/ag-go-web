@@ -18,6 +18,7 @@ import { parseAsString, useQueryStates } from 'nuqs';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatDate } from '../../../shared/lib/format-date';
+import { PAGE_TABLE_STICKY } from '../../../shared/lib/sticky-table-header';
 import { FolderCascader } from '../../folders/components/folder-cascader';
 import type { Folder } from '../../folders/types/folder.type';
 import { AccessLevelSelect } from '../components/access-level-select';
@@ -176,6 +177,7 @@ export function UserAccessPage() {
         ) : (
           <ProTable<UserFolderGrant>
             rowKey="id"
+            sticky={PAGE_TABLE_STICKY}
             headerTitle={
               <Breadcrumb
                 items={[
