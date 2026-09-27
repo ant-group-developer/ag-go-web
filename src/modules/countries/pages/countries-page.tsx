@@ -4,6 +4,7 @@ import { FileUp, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CatalogImportModal } from '../../../shared/components/catalog-import-modal';
+import { PAGE_TABLE_STICKY } from '../../../shared/lib/sticky-table-header';
 import { useCountries, useCreateCountry, useImportCountries } from '../hooks/use-countries';
 import type { CountryFormValues } from '../types/country-form-values.type';
 import type { Country } from '../types/country.type';
@@ -110,7 +111,7 @@ export function CountriesPage() {
                 }),
             }}
             columns={columns}
-            sticky={{ offsetHeader: 56 }}
+            sticky={PAGE_TABLE_STICKY}
           />
         ) : null}
       </PageContainer>

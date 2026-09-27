@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { Select } from '../../../shared/components/select';
 import { formatDate } from '../../../shared/lib/format-date';
 import { bilingualSearchText } from '../../../shared/lib/search-text';
+import { PAGE_TABLE_STICKY } from '../../../shared/lib/sticky-table-header';
 import { getLogs, type SystemLog } from '../api/logs';
 
 const { RangePicker } = DatePicker;
@@ -102,10 +103,16 @@ export function SystemLogsPanel() {
       </Space>
       <ProTable<SystemLog>
         rowKey="id"
-        sticky={{ offsetHeader: 64 }}
+        sticky={PAGE_TABLE_STICKY}
         search={false}
-        loading={query.isLoading}
+        loading={query.isFetching}
         dataSource={query.data?.items ?? []}
+        options={{
+          reload: () => void query.refetch(),
+          density: false,
+          setting: false,
+          fullScreen: false,
+        }}
         pagination={{
           current: query.data?.page ?? page,
           pageSize: query.data?.pageSize ?? 25,

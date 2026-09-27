@@ -1,9 +1,11 @@
 import { ReloadOutlined } from '@ant-design/icons';
-import { Button, Space, Table, Tag, Typography } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
+import { Button, Flex, Space, Table, Tag, Typography } from 'antd';
+import type { ColumnsType, TableProps } from 'antd/es/table';
 import { useTranslation } from 'react-i18next';
+import { TableRefreshButton } from '../../../shared/components/table-refresh-button';
 import { formatDate } from '../../../shared/lib/format-date';
 import { formatFileSize } from '../../../shared/lib/format-file-size';
+import { PAGE_TABLE_STICKY } from '../../../shared/lib/sticky-table-header';
 import type { ImportItem } from '../api/google-drive';
 import { useRetryDriveImportItem } from '../hooks/use-google-drive';
 import {
@@ -21,9 +23,22 @@ type ImportItemsTableProps = {
   paginate?: boolean;
   /** Fixed body height; rows scroll inside the table. */
   scrollY?: number;
+  /** `sticky` config for the header; defaults to the page-level offset (56px ProLayout header). */
+  sticky?: TableProps<ImportItem>['sticky'];
+  /** Refetches the items list; renders a reload button above the table when given. */
+  onRefresh?: () => void;
+  refreshing?: boolean;
 };
 
-export function ImportItemsTable({ items, loading, paginate, scrollY }: ImportItemsTableProps) {
+export function ImportItemsTable({
+  items,
+  loading,
+  paginate,
+  scrollY,
+  sticky,
+  onRefresh,
+  refreshing,
+}: ImportItemsTableProps) {
   const { t } = useTranslation();
   const retryItem = useRetryDriveImportItem();
   const columns: ColumnsType<ImportItem> = [
@@ -113,6 +128,16 @@ export function ImportItemsTable({ items, loading, paginate, scrollY }: ImportIt
     <Table<ImportItem>
       size="small"
       rowKey="id"
+      sticky={sticky ?? PAGE_TABLE_STICKY}
+      title={
+        onRefresh
+          ? () => (
+              <Flex justify="flex-end">
+                <TableRefreshButton onRefresh={onRefresh} refreshing={refreshing} size="small" />
+              </Flex>
+            )
+          : undefined
+      }
       loading={loading}
       scroll={{ x: 1100, y: scrollY }}
       columns={columns}

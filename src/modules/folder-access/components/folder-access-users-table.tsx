@@ -3,8 +3,10 @@ import { Alert, Button, Empty, Input, Space, Tag, Tooltip, Typography } from 'an
 import { parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from 'nuqs';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { SortDropdown } from '../../../shared/components/sort-dropdown';
 import { useDebouncedValue } from '../../../shared/hooks/use-debounced-value';
 import { formatDate } from '../../../shared/lib/format-date';
+import { PAGE_TABLE_STICKY } from '../../../shared/lib/sticky-table-header';
 import { useFolderAccessUsers } from '../hooks/use-folder-access';
 import type { FolderAccessUserSummary } from '../types/folder-access-user-summary.type';
 import type { FolderAccessUserSortField } from '../types/folder-access-users-params.type';
@@ -17,8 +19,9 @@ const MAX_FOLDER_TAGS = 3;
 
 const usersUrlParams = {
   q: parseAsString.withDefault(''),
-  sortBy: parseAsStringLiteral(sortFields),
-  sortOrder: parseAsStringLiteral(['ascend', 'descend'] as const),
+  // Same default as the server: users by name, A → Z.
+  sortBy: parseAsStringLiteral(sortFields).withDefault('user'),
+  sortOrder: parseAsStringLiteral(['asc', 'desc'] as const).withDefault('asc'),
   page: parseAsInteger.withDefault(1),
   pageSize: parseAsInteger.withDefault(20),
 };
@@ -38,31 +41,30 @@ export function FolderAccessUsersTable({ onOpenUser }: FolderAccessUsersTablePro
 
   const users = useFolderAccessUsers({
     keyword: urlState.q || undefined,
-    sortBy: sortBy && sortOrder ? sortBy : undefined,
-    sortOrder: sortBy && sortOrder ? (sortOrder === 'ascend' ? 'asc' : 'desc') : undefined,
+    sortBy,
+    sortOrder,
     page,
     limit: pageSize,
   });
 
-  // ProTable tracks sort state by dataIndex, so each sortable column uses its sort field as dataIndex.
-  const sortProps = (field: FolderAccessUserSortField) => ({
-    dataIndex: field,
-    key: field,
-    sorter: true,
-    defaultSortOrder: sortBy === field ? sortOrder : undefined,
-  });
+  const sortFieldLabels: Record<FolderAccessUserSortField, string> = {
+    user: t('folderAccess.user'),
+    folderCount: t('folderAccess.folderCount'),
+    highestLevel: t('folderAccess.highestLevel'),
+    updatedAt: t('folderAccess.lastUpdatedAt'),
+  };
 
   const columns: ProColumns<FolderAccessUserSummary>[] = [
     {
       title: t('folderAccess.user'),
-      ...sortProps('user'),
+      key: 'user',
       width: 280,
       ellipsis: true,
       render: (_, row) => <UserCell user={row.user} fallbackId={row.userId} />,
     },
     {
       title: t('folderAccess.folderCount'),
-      ...sortProps('folderCount'),
+      key: 'folderCount',
       width: 130,
       render: (_, row) => row.folderCount,
     },
@@ -113,7 +115,7 @@ export function FolderAccessUsersTable({ onOpenUser }: FolderAccessUsersTablePro
     },
     {
       title: t('folderAccess.highestLevel'),
-      ...sortProps('highestLevel'),
+      key: 'highestLevel',
       width: 140,
       render: (_, row) => (
         <Tag color={levelColors[row.highestLevel]}>
@@ -123,7 +125,7 @@ export function FolderAccessUsersTable({ onOpenUser }: FolderAccessUsersTablePro
     },
     {
       title: t('folderAccess.lastUpdatedAt'),
-      ...sortProps('updatedAt'),
+      key: 'updatedAt',
       width: 170,
       render: (_, row) => formatDate(row.lastUpdatedAt),
     },
@@ -151,6 +153,7 @@ export function FolderAccessUsersTable({ onOpenUser }: FolderAccessUsersTablePro
   return (
     <ProTable<FolderAccessUserSummary>
       rowKey="userId"
+      sticky={PAGE_TABLE_STICKY}
       headerTitle={<Typography.Text strong>{t('folderAccess.usersWithAccess')}</Typography.Text>}
       dataSource={users.data?.data}
       loading={users.isFetching}
@@ -169,6 +172,13 @@ export function FolderAccessUsersTable({ onOpenUser }: FolderAccessUsersTablePro
           placeholder={t('folderAccess.userSearchPlaceholder')}
           onChange={(event) => setKeywordInput(event.target.value)}
           style={{ width: 280 }}
+        />,
+        <SortDropdown<FolderAccessUserSortField>
+          key="sort"
+          fields={sortFields.map((field) => ({ value: field, label: sortFieldLabels[field] }))}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          onChange={(change) => void setUrlState({ ...change, page: null })}
         />,
       ]}
       onRow={(row) => ({
@@ -189,15 +199,9 @@ export function FolderAccessUsersTable({ onOpenUser }: FolderAccessUsersTablePro
           t('common.paginationTotal', { start: range[0], end: range[1], total }),
       }}
       columns={columns}
-      onChange={(pagination, _filters, sorter) => {
-        const activeSorter = Array.isArray(sorter) ? sorter[0] : sorter;
-        const field = activeSorter?.columnKey as FolderAccessUserSortField | undefined;
-        const order = activeSorter?.order ?? null;
-        const sortChanged = (order && field ? field : null) !== sortBy || order !== sortOrder;
+      onChange={(pagination) => {
         void setUrlState({
-          sortBy: order && field ? field : null,
-          sortOrder: order && field ? order : null,
-          page: sortChanged ? null : (pagination.current ?? 1),
+          page: pagination.current ?? 1,
           pageSize: pagination.pageSize ?? 20,
         });
       }}

@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GO_PERMISSIONS } from '../../../shared/auth/permissions';
 import { ApiError } from '../../../shared/lib/api-client';
+import { PAGE_TABLE_STICKY } from '../../../shared/lib/sticky-table-header';
 import { usePermissions } from '../../account/hooks/use-current-account';
 import { TagFormModal } from '../components/tag-form-modal';
 import { useDeleteTag, useTags } from '../hooks/use-tags';
@@ -125,7 +126,7 @@ export function TagsPage() {
                 }),
             }}
             columns={columns}
-            sticky={{ offsetHeader: 56 }}
+            sticky={PAGE_TABLE_STICKY}
           />
         ) : null}
       </PageContainer>
