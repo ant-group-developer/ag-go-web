@@ -555,7 +555,8 @@ const resources = {
         dropFiles: 'Kéo thả hoặc nhấn để chọn ảnh và video',
         dropFilesHint: 'File sẽ được tải lên Cloudflare R2 và gắn vào dự án.',
         fileCount: 'Tổng số file: {{count}}',
-        concurrentUploadLimit: 'Tối đa {{count}} file được tải lên cùng lúc.',
+        concurrentUploadLimit:
+          'Chọn bao nhiêu file cũng được, hệ thống tự xếp hàng và tải lên {{count}} file cùng lúc.',
         uploadQueued: 'Đang chờ',
         uploading: 'Đang tải',
         uploadDone: 'Hoàn tất',
@@ -1469,7 +1470,8 @@ const resources = {
         dropFiles: 'Drag and drop or click to select images and videos',
         dropFilesHint: 'Files will be uploaded to Cloudflare R2 and attached to project.',
         fileCount: 'Total files: {{count}}',
-        concurrentUploadLimit: 'Max {{count}} files uploaded simultaneously.',
+        concurrentUploadLimit:
+          'Select as many files as you like; they are queued and uploaded {{count}} at a time.',
         uploadQueued: 'Queued',
         uploading: 'Uploading',
         uploadDone: 'Finished',

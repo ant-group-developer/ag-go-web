@@ -93,6 +93,9 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
   const queryClient = useQueryClient();
   const uploadQueueRef = useRef<UploadTask[]>([]);
   const activeUploadsRef = useRef(0);
+  const uploadBatchIdRef = useRef<string | undefined>(undefined);
+  const isUploadQueueIdle = () =>
+    activeUploadsRef.current === 0 && uploadQueueRef.current.length === 0;
   const taskStatusesRef = useRef<Record<string, UploadTaskStatus>>({});
   // Upload uid -> project media id, so finished uploads are replaced by their server row.
   const uploadedMediaIdsRef = useRef(new Map<string, string>());
@@ -162,6 +165,12 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
 
   const customRequest: NonNullable<UploadProps['customRequest']> = (options) => {
     const uid = (options.file as UploadFile).uid;
+    // A batch lasts from an idle queue until every queued file is done: files added while
+    // others are still uploading join the running batch (one audit entry per batch).
+    if (!uploadBatchIdRef.current || isUploadQueueIdle()) {
+      uploadBatchIdRef.current = globalThis.crypto.randomUUID();
+    }
+    const uploadBatchId = uploadBatchIdRef.current;
     updateTaskStatus(uid, 'queued');
     uploadQueueRef.current.push({
       uid,
@@ -179,6 +188,7 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
               mimeType: file.type || 'application/octet-stream',
               fileSizeBytes: file.size,
               targetProjectId: projectId,
+              uploadBatchId,
             },
             globalThis.crypto.randomUUID(),
           );

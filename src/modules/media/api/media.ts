@@ -205,6 +205,8 @@ export type CreateUploadSessionInput = {
   mimeType: string;
   fileSizeBytes: number;
   targetProjectId: string;
+  /** Files sharing this id are logged as one upload batch in the project audit log. */
+  uploadBatchId?: string;
 };
 
 export function createUploadSession(
