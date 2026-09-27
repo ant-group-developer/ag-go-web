@@ -2,6 +2,7 @@ import { Flex, Table, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { PAGE_TABLE_STICKY } from '../../../shared/lib/sticky-table-header';
 import { usePermissions } from '../../account/hooks/use-current-account';
 import type { StatisticsAttentionProject, StatisticsProgress } from '../types/statistics.type';
 import { ageInDays, formatNumber } from '../utils/statistics-format';
@@ -96,10 +97,12 @@ export function StatisticsAttentionProjectsCard({
       query={query}
       isEmpty={!projects?.items.length}
       emptyText={t('statistics.attention.empty')}
+      onRefresh={() => void query.refetch()}
     >
       <Table
         rowKey="projectId"
         size="small"
+        sticky={PAGE_TABLE_STICKY}
         columns={columns}
         dataSource={projects?.items ?? []}
         pagination={false}

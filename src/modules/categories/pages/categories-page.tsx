@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GO_PERMISSIONS } from '../../../shared/auth/permissions';
 import { ApiError } from '../../../shared/lib/api-client';
+import { PAGE_TABLE_STICKY } from '../../../shared/lib/sticky-table-header';
 import { usePermissions } from '../../account/hooks/use-current-account';
 import { CategoryFormModal } from '../components/category-form-modal';
 import { useCategories, useDeleteCategory } from '../hooks/use-categories';
@@ -134,7 +135,7 @@ export function CategoriesPage() {
                 }),
             }}
             columns={columns}
-            sticky={{ offsetHeader: 56 }}
+            sticky={PAGE_TABLE_STICKY}
           />
         ) : null}
       </PageContainer>

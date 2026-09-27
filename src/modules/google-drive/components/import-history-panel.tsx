@@ -87,6 +87,8 @@ export function ImportHistoryPanel() {
           loading={imports.isLoading}
           onViewItems={(batch) => setSelectedBatchId(batch.id)}
           showProject
+          onRefresh={() => void imports.refetch()}
+          refreshing={imports.isFetching}
         />
       </Flex>
       <ImportBatchDrawer

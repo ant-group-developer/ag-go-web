@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatDate } from '../../../shared/lib/format-date';
 import { formatFileSize } from '../../../shared/lib/format-file-size';
+import { CONTAINER_TABLE_STICKY } from '../../../shared/lib/sticky-table-header';
 import type { ImportHistoryItem } from '../api/google-drive';
 import { useDriveImport } from '../hooks/use-google-drive';
 import {
@@ -153,7 +154,14 @@ export function ImportBatchDrawer({ batch, open, onClose }: ImportBatchDrawerPro
               onChange={(event) => setSearch(event.target.value)}
             />
           </Flex>
-          <ImportItemsTable items={filteredFiles} loading={detail.isLoading} paginate />
+          <ImportItemsTable
+            items={filteredFiles}
+            loading={detail.isLoading}
+            paginate
+            sticky={CONTAINER_TABLE_STICKY}
+            onRefresh={() => void detail.refetch()}
+            refreshing={detail.isFetching}
+          />
         </Flex>
       ) : null}
     </Drawer>

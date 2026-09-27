@@ -3,6 +3,7 @@ import type { UploadFile, UploadProps } from 'antd';
 import { Alert, App as AntApp, Descriptions, Modal, Table, Typography, Upload } from 'antd';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { CONTAINER_TABLE_STICKY } from '../lib/sticky-table-header';
 import { type CatalogImportResult, importResultFromError } from '../types/catalog-import.type';
 
 const MAX_CSV_FILE_SIZE_BYTES = 5 * 1024 * 1024;
@@ -148,6 +149,7 @@ export function CatalogImportModal({
               dataSource={result.errors}
               pagination={false}
               scroll={{ y: 260 }}
+              sticky={CONTAINER_TABLE_STICKY}
               style={{ marginTop: 16 }}
               columns={[
                 {

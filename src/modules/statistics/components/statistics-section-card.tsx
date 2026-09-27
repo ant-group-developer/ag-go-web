@@ -1,13 +1,16 @@
 import { ProCard } from '@ant-design/pro-components';
-import { Alert, Button, Empty, Skeleton } from 'antd';
+import { Alert, Button, Empty, Skeleton, Space } from 'antd';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { TableRefreshButton } from '../../../shared/components/table-refresh-button';
 
 export type StatisticsQueryState = {
   isPending: boolean;
   isError: boolean;
   /** True while a new period loads and the previous period's data is still shown. */
   isPlaceholderData?: boolean;
+  /** True during any fetch (including background refetches), used to spin the refresh button. */
+  isFetching?: boolean;
   data: unknown;
   refetch: () => unknown;
 };
@@ -26,6 +29,8 @@ export function StatisticsSectionCard({
   isEmpty = false,
   emptyText,
   fillHeight = false,
+  /** Shows a reload button next to `extra`; pass the widget's own `query.refetch`. */
+  onRefresh,
   children,
 }: {
   title: ReactNode;
@@ -34,9 +39,19 @@ export function StatisticsSectionCard({
   isEmpty?: boolean;
   emptyText?: string;
   fillHeight?: boolean;
+  onRefresh?: () => void;
   children: ReactNode;
 }) {
   const { t } = useTranslation();
+
+  const cardExtra = onRefresh ? (
+    <Space size={8}>
+      {extra}
+      <TableRefreshButton onRefresh={onRefresh} refreshing={query.isFetching} size="small" />
+    </Space>
+  ) : (
+    extra
+  );
 
   let body: ReactNode;
   if (query.isPending) {
@@ -57,7 +72,7 @@ export function StatisticsSectionCard({
   return (
     <ProCard
       title={title}
-      extra={extra}
+      extra={cardExtra}
       bordered
       headerBordered
       style={{ height: '100%', borderRadius: 12, display: 'flex', flexDirection: 'column' }}

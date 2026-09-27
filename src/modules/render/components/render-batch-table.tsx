@@ -1,8 +1,10 @@
 import { EyeOutlined } from '@ant-design/icons';
-import { Button, Progress, Space, Table, Tag, Typography } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
+import { Button, Flex, Progress, Space, Table, Tag, Typography } from 'antd';
+import type { ColumnsType, TableProps } from 'antd/es/table';
 import { useTranslation } from 'react-i18next';
+import { TableRefreshButton } from '../../../shared/components/table-refresh-button';
 import { formatDate } from '../../../shared/lib/format-date';
+import { PAGE_TABLE_STICKY } from '../../../shared/lib/sticky-table-header';
 import type { RenderBatch } from '../api/render';
 import { RENDER_STATUS_COLORS, renderStatusLabel } from '../utils/render-format';
 import { RenderBatchScope } from './render-batch-scope';
@@ -15,6 +17,11 @@ type RenderBatchTableProps = {
   onViewJobs: (batch: RenderBatch) => void;
   /** Fixed body height; rows scroll inside the table. */
   scrollY?: number;
+  /** Sticky header offset; defaults to below the page header, use 0 inside drawers. */
+  sticky?: TableProps<RenderBatch>['sticky'];
+  /** Shows a reload button above the table. */
+  onRefresh?: () => void;
+  refreshing?: boolean;
 };
 
 export function RenderBatchTable({
@@ -23,6 +30,9 @@ export function RenderBatchTable({
   hideScope,
   onViewJobs,
   scrollY,
+  sticky = PAGE_TABLE_STICKY,
+  onRefresh,
+  refreshing,
 }: RenderBatchTableProps) {
   const { t } = useTranslation();
   const columns: ColumnsType<RenderBatch> = [
@@ -105,17 +115,29 @@ export function RenderBatchTable({
     },
   ];
 
-  return (
+  const table = (
     <Table<RenderBatch>
       rowKey="id"
       size="small"
       loading={loading}
       columns={columns}
       dataSource={batches}
+      sticky={sticky}
       scroll={{ x: hideScope ? 1000 : 1260, y: scrollY }}
       pagination={{ pageSize: 20, hideOnSinglePage: true, showSizeChanger: false }}
       onRow={(batch) => ({ onDoubleClick: () => onViewJobs(batch) })}
       locale={{ emptyText: t('render.noRenderHistory') }}
     />
+  );
+  if (!onRefresh) {
+    return table;
+  }
+  return (
+    <Flex vertical gap={12}>
+      <Flex justify="flex-end">
+        <TableRefreshButton onRefresh={onRefresh} refreshing={refreshing} />
+      </Flex>
+      {table}
+    </Flex>
   );
 }

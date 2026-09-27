@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDebouncedValue } from '../../../shared/hooks/use-debounced-value';
-import type { RenderJobStatusFilter } from '../api/render';
+import type { RenderJobSort, RenderJobStatusFilter } from '../api/render';
 import { useAutoRenderJobs } from '../hooks/use-render';
+import { DEFAULT_RENDER_JOB_SORT } from '../utils/render-job-sort';
 import { RenderJobTable } from './render-job-table';
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -21,8 +22,8 @@ type AutoRenderJobTableProps = {
 };
 
 /**
- * Every render job queued automatically by uploads and Drive imports, paged, filtered and
- * searched on the server so no job is cut off.
+ * Every render job queued automatically by uploads and Drive imports, paged, filtered, sorted
+ * and searched on the server so no job is cut off.
  */
 export function AutoRenderJobTable({
   projectId,
@@ -35,16 +36,18 @@ export function AutoRenderJobTable({
   const [status, setStatus] = useState<RenderJobStatusFilter>('all');
   const [searchInput, setSearchInput] = useState('');
   const search = useDebouncedValue(searchInput.trim(), SEARCH_DEBOUNCE_MS);
+  const [sort, setSort] = useState<RenderJobSort>(DEFAULT_RENDER_JOB_SORT);
   const [paging, setPaging] = useState({ page: 1, pageSize: DEFAULT_PAGE_SIZE });
-  // A new filter or search starts again from the first page.
-  const [filterKey, setFilterKey] = useState(`${status}|${search}`);
-  if (filterKey !== `${status}|${search}`) {
-    setFilterKey(`${status}|${search}`);
+  // A new filter, search or sort starts again from the first page.
+  const queryKey = `${status}|${search}|${sort.sortBy}|${sort.sortOrder}`;
+  const [filterKey, setFilterKey] = useState(queryKey);
+  if (filterKey !== queryKey) {
+    setFilterKey(queryKey);
     setPaging((current) => ({ ...current, page: 1 }));
   }
 
   const jobs = useAutoRenderJobs(
-    { projectId, status, search: search || undefined, ...paging },
+    { projectId, status, search: search || undefined, sort, ...paging },
     enabled && (projectId === undefined || Boolean(projectId)),
   );
   // Jobs leave a tab while it is polled (e.g. "processing" ones finish): stay on a real page.
@@ -63,11 +66,15 @@ export function AutoRenderJobTable({
       showCreated
       hideProject={hideProject}
       scrollY={scrollY}
+      onRefresh={() => void jobs.refetch()}
+      refreshing={jobs.isFetching}
       server={{
         counts: jobs.data?.counts ?? EMPTY_COUNTS,
         status,
         onStatusChange: setStatus,
         onSearchChange: setSearchInput,
+        sort,
+        onSortChange: setSort,
         pagination: {
           current: paging.page,
           pageSize: paging.pageSize,

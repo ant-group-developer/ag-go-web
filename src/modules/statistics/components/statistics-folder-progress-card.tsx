@@ -2,6 +2,7 @@ import { Flex, Table, Tooltip, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { PAGE_TABLE_STICKY } from '../../../shared/lib/sticky-table-header';
 import { usePermissions } from '../../account/hooks/use-current-account';
 import type { StatisticsFolderProgress, StatisticsProgress } from '../types/statistics.type';
 import { formatNumber, percentOf } from '../utils/statistics-format';
@@ -96,10 +97,12 @@ export function StatisticsFolderProgressCard({
       }
       query={query}
       isEmpty={!folders?.items.length}
+      onRefresh={() => void query.refetch()}
     >
       <Table
         rowKey="folderId"
         size="small"
+        sticky={PAGE_TABLE_STICKY}
         columns={columns}
         dataSource={folders?.items ?? []}
         pagination={false}

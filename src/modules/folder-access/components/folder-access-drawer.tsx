@@ -15,7 +15,9 @@ import {
 } from 'antd';
 import { Trash2, UserPlus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { TableRefreshButton } from '../../../shared/components/table-refresh-button';
 import { formatDate } from '../../../shared/lib/format-date';
+import { CONTAINER_TABLE_STICKY } from '../../../shared/lib/sticky-table-header';
 import { useFolders } from '../../folders/hooks/use-folders';
 import { useFolderGrants } from '../hooks/use-folder-access';
 import { useGrantActions } from '../hooks/use-grant-actions';
@@ -174,6 +176,13 @@ export function FolderAccessDrawer({ folderId, onClose, onOpenFolder }: FolderAc
           ) : null}
         </Space>
       }
+      extra={
+        <TableRefreshButton
+          onRefresh={() => void grants.refetch()}
+          refreshing={grants.isFetching}
+          size="small"
+        />
+      }
       onClose={onClose}
       destroyOnClose
     >
@@ -234,6 +243,7 @@ export function FolderAccessDrawer({ folderId, onClose, onOpenFolder }: FolderAc
           <Table<FolderGrant>
             rowKey="id"
             size="small"
+            sticky={CONTAINER_TABLE_STICKY}
             loading={grants.isLoading}
             dataSource={grants.data?.direct}
             columns={directColumns}
@@ -250,6 +260,7 @@ export function FolderAccessDrawer({ folderId, onClose, onOpenFolder }: FolderAc
           <Table<InheritedFolderGrant>
             rowKey="id"
             size="small"
+            sticky={CONTAINER_TABLE_STICKY}
             loading={grants.isLoading}
             dataSource={grants.data?.inherited}
             columns={inheritedColumns}

@@ -41,9 +41,11 @@ import {
 } from 'antd';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { TableRefreshButton } from '../../../shared/components/table-refresh-button';
 import { useDebouncedValue } from '../../../shared/hooks/use-debounced-value';
 import { formatDate } from '../../../shared/lib/format-date';
 import { formatFileSize } from '../../../shared/lib/format-file-size';
+import { CONTAINER_TABLE_STICKY } from '../../../shared/lib/sticky-table-header';
 import {
   DRIVE_FOLDER_MIME_TYPE,
   DriveApiError,
@@ -430,35 +432,47 @@ export function DriveFolderBrowser({
           </Space>
         </Flex>
 
-        <Flex align="center" gap={8} style={{ minHeight: 32 }}>
-          <Tooltip title={t('googleDrive.browser.back')}>
-            <Button
-              size="small"
-              icon={<ArrowLeftOutlined />}
-              disabled={!path.length}
-              onClick={() => setPath(path.slice(0, -1))}
-            />
-          </Tooltip>
-          <Breadcrumb
-            items={[
-              {
-                title: path.length ? (
-                  <Typography.Link onClick={() => setPath([])}>{baseLabel}</Typography.Link>
-                ) : (
-                  baseLabel
-                ),
-              },
-              ...path.map((folder, index) => ({
-                title:
-                  index === path.length - 1 ? (
-                    folder.name
+        <Flex align="center" justify="space-between" gap={8} style={{ minHeight: 32 }}>
+          <Flex align="center" gap={8} style={{ minWidth: 0 }}>
+            <Tooltip title={t('googleDrive.browser.back')}>
+              <Button
+                size="small"
+                icon={<ArrowLeftOutlined />}
+                disabled={!path.length}
+                onClick={() => setPath(path.slice(0, -1))}
+              />
+            </Tooltip>
+            <Breadcrumb
+              items={[
+                {
+                  title: path.length ? (
+                    <Typography.Link onClick={() => setPath([])}>{baseLabel}</Typography.Link>
                   ) : (
-                    <Typography.Link onClick={() => setPath(path.slice(0, index + 1))}>
-                      {folder.name}
-                    </Typography.Link>
+                    baseLabel
                   ),
-              })),
-            ]}
+                },
+                ...path.map((folder, index) => ({
+                  title:
+                    index === path.length - 1 ? (
+                      folder.name
+                    ) : (
+                      <Typography.Link onClick={() => setPath(path.slice(0, index + 1))}>
+                        {folder.name}
+                      </Typography.Link>
+                    ),
+                })),
+              ]}
+            />
+          </Flex>
+          <TableRefreshButton
+            onRefresh={() => {
+              void list.refetch();
+              if (atMyDriveRoot) {
+                void myDriveRoot.refetch();
+              }
+            }}
+            refreshing={list.isFetching || (atMyDriveRoot && myDriveRoot.isFetching)}
+            size="small"
           />
         </Flex>
 
@@ -506,6 +520,7 @@ export function DriveFolderBrowser({
               loading={list.isLoading}
               pagination={false}
               tableLayout="fixed"
+              sticky={CONTAINER_TABLE_STICKY}
               scroll={{ y: currentFolder ? 340 : 440 }}
               rowSelection={{
                 columnWidth: 44,
