@@ -1,11 +1,8 @@
 import { DeleteOutlined, FolderFilled } from '@ant-design/icons';
-import { useQueryClient } from '@tanstack/react-query';
 import { Alert, Button, Card, List, Progress, Radio, Space, Tag, theme, Typography } from 'antd';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatFileSize } from '../../../shared/lib/format-file-size';
-import { mediaQueryKeys } from '../../media/queries/media-query-keys';
-import { projectQueryKeys } from '../../projects/queries/project-query-keys';
 import { driveFolderUrl } from '../api/drive-browser';
 import type { DuplicatePolicy } from '../api/google-drive';
 import {
@@ -18,6 +15,7 @@ import {
   useStartGoogleDriveConnection,
   useSummarizeGoogleDriveSources,
 } from '../hooks/use-google-drive';
+import { useRefreshProjectMediaOnImportProgress } from '../hooks/use-refresh-project-media-on-import-progress';
 import {
   displayFilename,
   importStatusColor,
@@ -43,7 +41,6 @@ const FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder';
 export function ProjectGoogleDriveImportPanel({ projectId }: { projectId: string }) {
   const { t } = useTranslation();
   const { token } = theme.useToken();
-  const queryClient = useQueryClient();
   const [selected, setSelected] = useState<PickedSource[]>([]);
   const [duplicatePolicy, setDuplicatePolicy] = useState<DuplicatePolicy>('reuse_existing');
   const connection = useGoogleDriveConnection();
@@ -61,17 +58,8 @@ export function ProjectGoogleDriveImportPanel({ projectId }: { projectId: string
   const [batchId, setBatchId] = useState<string>();
   const [browserOpen, setBrowserOpen] = useState(false);
   const batch = useDriveImport(batchId ?? '');
-  const batchStatus = batch.data?.status;
-  const batchCompletedItems = batch.data?.completedItems;
-  const batchFailedItems = batch.data?.failedItems;
-  useEffect(() => {
-    if (!batchStatus) {
-      return;
-    }
-    void queryClient.invalidateQueries({ queryKey: mediaQueryKeys.project(projectId) });
-    void queryClient.invalidateQueries({ queryKey: projectQueryKeys.detail(projectId) });
-    void queryClient.invalidateQueries({ queryKey: projectQueryKeys.list() });
-  }, [batchCompletedItems, batchFailedItems, batchStatus, projectId, queryClient]);
+  // Imports started elsewhere (or before a reload) must refresh the media list too.
+  useRefreshProjectMediaOnImportProgress(projectId);
   const selectedCounts = useMemo(
     () =>
       selected.reduce(

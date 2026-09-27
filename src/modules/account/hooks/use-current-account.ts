@@ -41,5 +41,7 @@ export function usePermissions() {
     [can],
   );
 
-  return { isLoading: account.isLoading, isError: account.isError, can, canAny };
+  const isAdmin = isAdminUserType(data?.user_type);
+
+  return { isLoading: account.isLoading, isError: account.isError, isAdmin, can, canAny };
 }

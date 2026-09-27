@@ -5,15 +5,10 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Select } from '../../../shared/components/select';
 import type { RenderBatch } from '../api/render';
-import {
-  useAllRenderBatches,
-  useAutoRenderJobs,
-  useCreateRenderBatch,
-  useRenderProfiles,
-} from '../hooks/use-render';
+import { useAllRenderBatches, useCreateRenderBatch, useRenderProfiles } from '../hooks/use-render';
 import { normalizeRenderSizes } from '../utils/render-sizes';
+import { AutoRenderJobTable } from './auto-render-job-table';
 import { RenderBatchTable } from './render-batch-table';
-import { RenderJobTable } from './render-job-table';
 import { RenderJobsDrawer } from './render-jobs-drawer';
 
 type FormValues = { projectId?: string; folderId?: string };
@@ -25,7 +20,6 @@ export function RenderPanel() {
   const profiles = useRenderProfiles();
   const batches = useAllRenderBatches();
   const [historyTab, setHistoryTab] = useState<HistoryTab>('auto');
-  const autoJobs = useAutoRenderJobs(undefined, historyTab === 'auto');
   const createBatch = useCreateRenderBatch();
   const [profileId, setProfileId] = useState<string>();
   const [selectedBatchId, setSelectedBatchId] = useState<string>();
@@ -138,13 +132,9 @@ export function RenderPanel() {
               key: 'auto',
               label: t('render.autoJobsTab'),
               children: (
-                <RenderJobTable
-                  jobs={autoJobs.data ?? []}
-                  loading={autoJobs.isLoading}
-                  error={autoJobs.isError ? autoJobs.error.message : undefined}
+                <AutoRenderJobTable
+                  enabled={historyTab === 'auto'}
                   hint={t('render.autoJobsHint')}
-                  showSource
-                  showCreated
                 />
               ),
             },

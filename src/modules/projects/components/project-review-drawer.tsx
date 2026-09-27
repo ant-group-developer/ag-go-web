@@ -8,7 +8,6 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tansta
 import {
   Alert,
   App as AntApp,
-  Avatar,
   Button,
   Card,
   Checkbox,
@@ -34,8 +33,8 @@ import { useTranslation } from 'react-i18next';
 import { GO_PERMISSIONS } from '../../../shared/auth/permissions';
 import { formatDate } from '../../../shared/lib/format-date';
 import { usePermissions } from '../../account/hooks/use-current-account';
-import { getProjectAudit, type AuditLog } from '../../audit/api/audit';
 import { createDownload, getDownload, type DownloadResult } from '../../downloads/api/downloads';
+import { useRefreshProjectMediaOnImportProgress } from '../../google-drive/hooks/use-refresh-project-media-on-import-progress';
 import {
   getAssetOriginalUrl,
   getProjectMedia,
@@ -49,9 +48,11 @@ import { RenditionPicker } from '../../media/components/rendition-picker';
 import { useAssetPreviewUrl } from '../../media/hooks/use-asset-preview-url';
 import { useRenditionSelection } from '../../media/hooks/use-rendition-selection';
 import { mediaQueryKeys } from '../../media/queries/media-query-keys';
+import { ProjectImportHistoryCard } from '../../render/components/project-processing-history-cards';
 import { getProject } from '../api/projects';
 import { projectQueryKeys } from '../queries/project-query-keys';
-import type { Project } from '../types/project.type';
+import { ProjectAuditLogCard } from './project-audit-log-card';
+import { ProjectOverviewCard } from './project-overview-card';
 
 /** 'evaluate' shows the original files; 'view' shows the watermarked previews. */
 export type ProjectDrawerMode = 'view' | 'evaluate';
@@ -61,6 +62,7 @@ type MediaSource = 'preview' | 'original';
 type EvaluationDecision = 'approved' | 'rejected';
 
 const MIN_COMMENT_LENGTH = 2;
+const IMPORT_TABLE_SCROLL_Y = 320;
 
 const ORIGINAL_URL_STALE_MS = 5 * 60 * 1000;
 const ORIGINAL_PERMISSIONS = ['go.project.evaluate', 'go.project.download_original'];
@@ -97,20 +99,6 @@ function formatDuration(value: number | null | undefined): string {
 
 function formatResolution(media: ProjectMedia): string {
   return media.width && media.height ? `${media.width} × ${media.height}` : '-';
-}
-
-function getProjectStatus(status: string, t: (key: string) => string) {
-  const statuses: Record<string, { color: string; label: string }> = {
-    draft: { color: 'default', label: t('projects.statusDraft') },
-    pending: { color: 'processing', label: t('projects.statusPending') },
-    completed: { color: 'success', label: t('projects.statusCompleted') },
-    partially_completed: {
-      color: 'warning',
-      label: t('projects.statusPartiallyCompleted'),
-    },
-    failed: { color: 'error', label: t('projects.statusFailed') },
-  };
-  return statuses[status] ?? { color: 'default', label: status };
 }
 
 function getEvaluationStatus(status: ProjectMedia['evaluationStatus'], t: (key: string) => string) {
@@ -381,77 +369,6 @@ function MediaThumbnail({ media }: { media: ProjectMedia }) {
   );
 }
 
-function ProjectOverview({ project }: { project: Project }) {
-  const { t } = useTranslation();
-  const status = getProjectStatus(project.evaluationStatus, t);
-
-  return (
-    <Card title={t('projects.projectInformation')} size="small" styles={{ body: { padding: 12 } }}>
-      <Descriptions column={{ xs: 1, sm: 2, md: 3, xl: 6 }} size="small" bordered>
-        <Descriptions.Item label={t('projects.name')}>{project.name}</Descriptions.Item>
-        <Descriptions.Item label={t('projects.status')}>
-          <Tag color={status.color}>{status.label}</Tag>
-        </Descriptions.Item>
-        <Descriptions.Item label={t('projects.folder')}>
-          {project.folderPath || project.folderId}
-        </Descriptions.Item>
-        <Descriptions.Item label={t('projects.location')}>
-          {[project.countryName, project.provinceName].filter(Boolean).join(' / ') || '-'}
-        </Descriptions.Item>
-        <Descriptions.Item label={t('projects.category')}>
-          {project.categoryName || '-'}
-        </Descriptions.Item>
-        <Descriptions.Item label={t('projects.fileCounts')}>
-          <Space wrap>
-            <Tag color="blue">
-              {project.imageCount} {t('media.image')}
-            </Tag>
-            <Tag color="purple">
-              {project.videoCount} {t('media.video')}
-            </Tag>
-          </Space>
-        </Descriptions.Item>
-      </Descriptions>
-      <Space size={[8, 4]} style={{ marginTop: 8 }} wrap>
-        <Typography.Text type="secondary">{t('projects.tags')}:</Typography.Text>
-        {project.tags?.length ? (
-          project.tags.map((tag) => <Tag key={tag}>{tag}</Tag>)
-        ) : (
-          <Typography.Text type="secondary">-</Typography.Text>
-        )}
-        <Space size={4}>
-          <Avatar size={18} src={project.ownerUser?.avatar}>
-            {project.ownerUser?.name?.charAt(0)?.toUpperCase()}
-          </Avatar>
-          <Typography.Text type="secondary">
-            {t('common.author')}:{' '}
-            {project.ownerUser?.name || project.ownerUser?.email || t('common.unknown')}
-          </Typography.Text>
-        </Space>
-        <Typography.Text type="secondary">
-          {t('projects.createdAt')}: {formatDate(project.createdAt)}
-        </Typography.Text>
-        <Typography.Text type="secondary">
-          {t('projects.updatedAt')}: {formatDate(project.updatedAt)}
-        </Typography.Text>
-        <Typography.Text type="secondary">
-          {t('projects.originalSize')}: {formatFileSize(project.originalBytes)}
-        </Typography.Text>
-        <Typography.Text type="secondary">
-          {t('projects.renderedSize')}: {formatFileSize(project.renderedBytes)}
-        </Typography.Text>
-      </Space>
-      <Typography.Paragraph
-        ellipsis={{ rows: 2, expandable: true, symbol: t('common.viewMore') }}
-        style={{ margin: '8px 0 0' }}
-      >
-        <Typography.Text type="secondary">{t('projects.description')}: </Typography.Text>
-        {project.description || '-'}
-      </Typography.Paragraph>
-    </Card>
-  );
-}
-
 function MediaDetails({
   media,
   canEvaluate,
@@ -660,12 +577,9 @@ export function ProjectDetailDrawer({
     () => media.data?.pages.flatMap((page) => page.items) ?? [],
     [media.data],
   );
+  // Files imported from Google Drive show up in the list while the import is running.
+  useRefreshProjectMediaOnImportProgress(open ? (projectId ?? '') : '');
   const selectedMedia = mediaItems.find((item) => item.id === selectedMediaId) ?? mediaItems[0];
-  const audit = useQuery({
-    queryKey: ['audit', 'project', projectId],
-    queryFn: () => getProjectAudit(projectId ?? ''),
-    enabled: open && Boolean(projectId),
-  });
   const downloadJob = useQuery({
     queryKey: ['download', downloadJobId],
     queryFn: () => getDownload(downloadJobId ?? ''),
@@ -769,9 +683,8 @@ export function ProjectDetailDrawer({
       ) : null}
       {project.data ? (
         <>
-          <ProjectOverview project={project.data} />
-          <Divider />
-          <Row gutter={[16, 16]} align="top">
+          <ProjectOverviewCard project={project.data} />
+          <Row gutter={[16, 16]} align="top" style={{ marginTop: 16 }}>
             <Col xs={24} lg={8} xl={6}>
               <Card
                 title={
@@ -931,22 +844,10 @@ export function ProjectDetailDrawer({
               )}
             </Col>
           </Row>
-          <Card title={t('projects.auditLog')} style={{ marginTop: 16 }}>
-            {audit.isError ? <Alert type="error" message={t('projects.auditLogError')} /> : null}
-            <List
-              dataSource={audit.data?.items ?? []}
-              loading={audit.isPending}
-              locale={{ emptyText: t('projects.auditLogEmpty') }}
-              renderItem={(item: AuditLog) => (
-                <List.Item>
-                  <List.Item.Meta
-                    title={<Tag>{item.action}</Tag>}
-                    description={`${item.actorUser?.name ?? item.actorUser?.email ?? item.actorUserId} · ${formatDate(item.createdAt)}`}
-                  />
-                </List.Item>
-              )}
-            />
-          </Card>
+          <div style={{ marginTop: 16 }}>
+            <ProjectImportHistoryCard projectId={project.data.id} scrollY={IMPORT_TABLE_SCROLL_Y} />
+          </div>
+          <ProjectAuditLogCard projectId={project.data.id} enabled={open} />
           {downloadJobId ? (
             <Alert
               style={{ marginTop: 16 }}

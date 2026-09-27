@@ -1,40 +1,43 @@
 import { apiClient } from '../../../shared/lib/api-client';
+import type {
+  StatisticsActivity,
+  StatisticsOperations,
+  StatisticsPeriodParams,
+  StatisticsProgress,
+  StatisticsSummary,
+  StatisticsTeam,
+  StatisticsTrend,
+} from '../types/statistics.type';
 
-export type StatisticsOverview = {
-  projects: number;
-  assets: number;
-  media: number;
-  originalBytes: string;
-  evaluation: {
-    pending: number;
-    approved: number;
-    rejected: number;
-  };
-};
-
-export type RenderingStatistics = {
-  queued: number;
-  processing: number;
-  completed: number;
-  failed: number;
-  cancelled: number;
-  averageRenderSeconds: number;
-};
-
-export type StatisticsQuery = { from?: string; to?: string };
-
-function queryString(query: StatisticsQuery) {
-  const params = new URLSearchParams();
-  if (query.from) params.set('from', query.from);
-  if (query.to) params.set('to', query.to);
-  const value = params.toString();
-  return value ? `?${value}` : '';
+function withQuery(path: string, params: Record<string, string | number | undefined>) {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined) search.set(key, String(value));
+  }
+  const query = search.toString();
+  return query ? `${path}?${query}` : path;
 }
 
-export function getStatisticsOverview(query: StatisticsQuery = {}) {
-  return apiClient<StatisticsOverview>(`/statistics/overview${queryString(query)}`);
+export function getStatisticsSummary(period: StatisticsPeriodParams) {
+  return apiClient<StatisticsSummary>(withQuery('/statistics/summary', period));
 }
 
-export function getRenderingStatistics(query: StatisticsQuery = {}) {
-  return apiClient<RenderingStatistics>(`/statistics/rendering${queryString(query)}`);
+export function getStatisticsTrend(period: StatisticsPeriodParams) {
+  return apiClient<StatisticsTrend>(withQuery('/statistics/trend', period));
+}
+
+export function getStatisticsProgress(limit?: number) {
+  return apiClient<StatisticsProgress>(withQuery('/statistics/progress', { limit }));
+}
+
+export function getStatisticsTeam(period: StatisticsPeriodParams) {
+  return apiClient<StatisticsTeam>(withQuery('/statistics/team', period));
+}
+
+export function getStatisticsOperations(period: StatisticsPeriodParams) {
+  return apiClient<StatisticsOperations>(withQuery('/statistics/operations', period));
+}
+
+export function getStatisticsActivity(limit?: number) {
+  return apiClient<StatisticsActivity>(withQuery('/statistics/activity', { limit }));
 }
