@@ -241,10 +241,48 @@ export function getRenderBatchJobs(batchId: string) {
   return apiClient<RenderJob[]>(`/render-batches/${batchId}/jobs`);
 }
 
-/** Jobs queued automatically after an upload or a Drive import, newest first. */
-export function getAutoRenderJobs(projectId?: string) {
-  const query = projectId ? `?projectId=${encodeURIComponent(projectId)}` : '';
-  return apiClient<RenderJob[]>(`/render-jobs/auto${query}`);
+/** Status tabs of a render job list; 'active' groups queued and processing jobs. */
+export type RenderJobStatusFilter = 'all' | 'active' | 'completed' | 'failed';
+
+export type RenderJobStatusCounts = Record<RenderJobStatusFilter, number>;
+
+export type AutoRenderJobsParams = {
+  projectId?: string;
+  page: number;
+  pageSize: number;
+  status: RenderJobStatusFilter;
+  search?: string;
+};
+
+export type AutoRenderJobPage = {
+  items: RenderJob[];
+  total: number;
+  page: number;
+  pageSize: number;
+  /** Jobs per status tab (search applied, status filter not). */
+  counts: RenderJobStatusCounts;
+};
+
+/** One page of the jobs queued automatically after an upload or a Drive import, newest first. */
+export function getAutoRenderJobs({
+  projectId,
+  page,
+  pageSize,
+  status,
+  search,
+}: AutoRenderJobsParams) {
+  const query = new URLSearchParams({
+    page: String(page),
+    pageSize: String(pageSize),
+    status,
+  });
+  if (projectId) {
+    query.set('projectId', projectId);
+  }
+  if (search) {
+    query.set('search', search);
+  }
+  return apiClient<AutoRenderJobPage>(`/render-jobs/auto?${query.toString()}`);
 }
 
 export function retryRenderJob(jobId: string) {

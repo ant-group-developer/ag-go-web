@@ -21,7 +21,7 @@ export function RenderJobsDrawer({ batch, open, onClose }: RenderJobsDrawerProps
     <Drawer
       open={open}
       onClose={onClose}
-      width="min(1280px, 100vw)"
+      width="min(1760px, 100vw)"
       title={t('render.batchDetail')}
       extra={
         batch ? (
