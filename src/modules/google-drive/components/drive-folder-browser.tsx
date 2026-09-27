@@ -258,17 +258,22 @@ export function DriveFolderBrowser({
               color: folder.isSharedDrive ? themeToken.colorPrimary : themeToken.colorWarning,
             }}
           />
-          <Flex vertical style={{ minWidth: 0 }}>
-            <Space size={6} style={{ minWidth: 0 }}>
-              <Typography.Text strong ellipsis={{ tooltip: folder.name }}>
+          {/* flex + minWidth 0 lets long names clamp inside the cell instead of spilling over. */}
+          <Flex vertical style={{ flex: 1, minWidth: 0 }}>
+            <Flex align="center" gap={6} style={{ minWidth: 0 }}>
+              <Typography.Paragraph
+                strong
+                ellipsis={{ rows: 2, tooltip: folder.name }}
+                style={{ margin: 0, minWidth: 0, wordBreak: 'break-word' }}
+              >
                 {folder.name}
-              </Typography.Text>
+              </Typography.Paragraph>
               {folder.shared ? (
                 <Tooltip title={t('googleDrive.browser.shared')}>
-                  <TeamOutlined style={{ color: themeToken.colorTextTertiary }} />
+                  <TeamOutlined style={{ color: themeToken.colorTextTertiary, flexShrink: 0 }} />
                 </Tooltip>
               ) : null}
-            </Space>
+            </Flex>
             {searching && path.length === 0 ? (
               <ParentLocation token={token} folder={folder} />
             ) : null}

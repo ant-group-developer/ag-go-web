@@ -67,7 +67,7 @@ export function HomePage() {
   const { token } = theme.useToken();
   const screens = Grid.useBreakpoint();
   const webSettings = usePublicSettings();
-  const { can, canAny, isLoading } = usePermissions();
+  const { can, canAny, isAdmin, isLoading } = usePermissions();
 
   useEffect(() => {
     if (!import.meta.env.DEV) {
@@ -93,10 +93,11 @@ export function HomePage() {
         features: HOME_FEATURES.filter(
           (feature) =>
             feature.group === group.key &&
+            (!feature.adminOnly || isAdmin) &&
             (!feature.permission || canAny([feature.permission].flat())),
         ),
       })).filter((group) => group.features.length > 0),
-    [canAny],
+    [canAny, isAdmin],
   );
 
   const quickActions = [

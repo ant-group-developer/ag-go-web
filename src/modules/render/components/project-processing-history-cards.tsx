@@ -6,13 +6,12 @@ import { ImportBatchDrawer } from '../../google-drive/components/import-batch-dr
 import { ImportBatchTable } from '../../google-drive/components/import-batch-table';
 import { useProjectImports } from '../../google-drive/hooks/use-google-drive';
 import {
-  useAutoRenderJobs,
   useCreateRenderBatch,
   useProjectRenderBatches,
   useRenderProfiles,
 } from '../hooks/use-render';
+import { AutoRenderJobTable } from './auto-render-job-table';
 import { RenderBatchTable } from './render-batch-table';
-import { RenderJobTable } from './render-job-table';
 import { RenderJobsDrawer } from './render-jobs-drawer';
 
 type ProjectHistoryCardProps = {
@@ -49,16 +48,12 @@ export function ProjectImportHistoryCard({ projectId, id, scrollY }: ProjectHist
 
 export function ProjectAutoRenderJobsCard({ projectId, id, scrollY }: ProjectHistoryCardProps) {
   const { t } = useTranslation();
-  const autoJobs = useAutoRenderJobs(projectId, Boolean(projectId));
 
   return (
     <Card id={id} title={t('render.autoJobsTab')}>
-      <RenderJobTable
-        jobs={autoJobs.data ?? []}
-        loading={autoJobs.isLoading}
-        error={autoJobs.isError ? autoJobs.error.message : undefined}
-        showSource
-        showCreated
+      <AutoRenderJobTable
+        projectId={projectId}
+        enabled={Boolean(projectId)}
         hideProject
         scrollY={scrollY}
       />

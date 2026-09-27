@@ -30,7 +30,6 @@ import {
   LayoutGrid,
   List,
   Pencil,
-  Plus,
   Trash2,
 } from 'lucide-react';
 
@@ -58,10 +57,12 @@ import { formatDate } from '../../../shared/lib/format-date';
 import { ProjectReviewDrawer, type ProjectDrawerMode } from '../components/project-review-drawer';
 import { useDeleteProject } from '../hooks/use-projects';
 import { projectQueryKeys } from '../queries/project-query-keys';
-import type {
-  ProjectListParams,
-  ProjectSortField,
-  ProjectSortOrder,
+import {
+  PROJECT_EVALUATION_STATUSES,
+  type ProjectEvaluationStatus,
+  type ProjectListParams,
+  type ProjectSortField,
+  type ProjectSortOrder,
 } from '../types/project-list-params.type';
 import type { Project } from '../types/project.type';
 import { getProjectStatus } from '../utils/project-status.util';
@@ -85,6 +86,9 @@ const projectUrlParams = {
   countryId: parseAsString,
   provinceId: parseAsString,
   categoryId: parseAsString,
+  evaluationStatuses: parseAsArrayOf(parseAsStringLiteral(PROJECT_EVALUATION_STATUSES)).withDefault(
+    [],
+  ),
   page: parseAsInteger.withDefault(1),
   pageSize: parseAsInteger.withDefault(20),
   sortBy: parseAsStringLiteral(PROJECT_SORT_FIELDS).withDefault('updatedAt'),
@@ -93,7 +97,7 @@ const projectUrlParams = {
 
 const PROJECTS_VIEW_MODE_STORAGE_KEY = 'ag-go.projects.viewMode';
 
-export type ProjectListScope = 'evaluated' | 'evaluation' | 'mine';
+export type ProjectListScope = 'all' | 'evaluated' | 'evaluation' | 'mine';
 
 type ProjectListScopeConfig = {
   basePath: string;
@@ -108,6 +112,16 @@ type ProjectListScopeConfig = {
 };
 
 const PROJECT_LIST_SCOPES: Record<ProjectListScope, ProjectListScopeConfig> = {
+  // Admin-only: every status including drafts (API enforces the draft visibility rule).
+  all: {
+    basePath: '/all-projects',
+    titleKey: 'menu.allProjects',
+    subTitleKey: 'projects.scopeAllDescription',
+    emptyKey: 'projects.empty',
+    filters: {},
+    openMode: 'view',
+    canCreate: true,
+  },
   evaluated: {
     basePath: '/projects',
     titleKey: 'projects.title',
@@ -160,6 +174,9 @@ function ProjectThumbnailCell({ assetId }: { assetId?: string | null }) {
 export function ProjectsPage({ scope = 'evaluated' }: { scope?: ProjectListScope }) {
   const { t } = useTranslation();
   const scopeConfig = PROJECT_LIST_SCOPES[scope];
+  // The status filter can only narrow the scope's fixed statuses, never widen them.
+  const statusOptions: readonly ProjectEvaluationStatus[] =
+    scopeConfig.filters.evaluationStatuses ?? PROJECT_EVALUATION_STATUSES;
   const { projectId: routeProjectId } = useParams<{ projectId?: string }>();
   const { message } = AntApp.useApp();
   const navigate = useNavigate();
@@ -231,6 +248,9 @@ export function ProjectsPage({ scope = 'evaluated' }: { scope?: ProjectListScope
     provinceId: urlState.provinceId ?? undefined,
     categoryId: urlState.categoryId ?? undefined,
     tagIds: urlState.tagIds?.length ? urlState.tagIds : undefined,
+    evaluationStatuses: urlState.evaluationStatuses.length
+      ? urlState.evaluationStatuses
+      : undefined,
   });
 
   const [keywordInput, setKeywordInput] = useState(urlState.keyword ?? '');
@@ -241,6 +261,7 @@ export function ProjectsPage({ scope = 'evaluated' }: { scope?: ProjectListScope
     () =>
       [
         filterValues.keyword?.trim(),
+        filterValues.evaluationStatuses?.length,
         filterValues.folderId,
         filterValues.countryId || filterValues.provinceId,
         filterValues.categoryId,
@@ -257,6 +278,7 @@ export function ProjectsPage({ scope = 'evaluated' }: { scope?: ProjectListScope
       countryId: values.countryId ?? null,
       provinceId: values.provinceId ?? null,
       categoryId: values.categoryId ?? null,
+      evaluationStatuses: values.evaluationStatuses?.length ? values.evaluationStatuses : null,
       page: 1,
     });
     void actionRef.current?.reload();
@@ -281,6 +303,7 @@ export function ProjectsPage({ scope = 'evaluated' }: { scope?: ProjectListScope
       countryId: null,
       provinceId: null,
       categoryId: null,
+      evaluationStatuses: null,
       page: 1,
     });
     void actionRef.current?.reload();
@@ -481,20 +504,6 @@ export function ProjectsPage({ scope = 'evaluated' }: { scope?: ProjectListScope
           paddingInline: 16,
           borderRadius: 6,
         }}
-        extra={
-          scopeConfig.canCreate
-            ? [
-                <Button
-                  key="create"
-                  type="primary"
-                  icon={<Plus size={16} />}
-                  onClick={() => setCreateOpen(true)}
-                >
-                  {t('projects.create')}
-                </Button>,
-              ]
-            : []
-        }
       >
         {listError ? (
           <Alert
@@ -521,6 +530,7 @@ export function ProjectsPage({ scope = 'evaluated' }: { scope?: ProjectListScope
                 onChange={handleFilterChange}
                 onClear={handleClearFilter}
                 activeCount={activeFilterCount}
+                statusOptions={statusOptions}
               />
               <Input.Search
                 allowClear
@@ -551,6 +561,9 @@ export function ProjectsPage({ scope = 'evaluated' }: { scope?: ProjectListScope
           params={urlState}
           request={async ({ current, pageSize }) => {
             setIsLoading(true);
+            const selectedStatuses = urlState.evaluationStatuses.filter((status) =>
+              statusOptions.includes(status),
+            );
             const params: ProjectListParams = {
               ...(urlState.keyword ? { keyword: urlState.keyword } : {}),
               ...(urlState.folderIds?.length
@@ -563,6 +576,7 @@ export function ProjectsPage({ scope = 'evaluated' }: { scope?: ProjectListScope
               ...(urlState.provinceId ? { provinceId: urlState.provinceId } : {}),
               ...(urlState.categoryId ? { categoryId: urlState.categoryId } : {}),
               ...scopeConfig.filters,
+              ...(selectedStatuses.length ? { evaluationStatuses: selectedStatuses } : {}),
               sortBy: urlState.sortBy,
               sortOrder: urlState.sortOrder,
               page: current ?? 1,

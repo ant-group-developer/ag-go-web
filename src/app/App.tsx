@@ -2,18 +2,29 @@ import { LogoutOutlined } from '@ant-design/icons';
 import { ProLayout, type ProLayoutProps } from '@ant-design/pro-components';
 import { useAuth0 } from '@auth0/auth0-react';
 import { useQueryClient } from '@tanstack/react-query';
-import { theme as antdTheme, Avatar, Dropdown, Flex, MenuProps, Spin, Typography } from 'antd';
+import {
+  theme as antdTheme,
+  Avatar,
+  Button,
+  Dropdown,
+  Flex,
+  MenuProps,
+  Spin,
+  Typography,
+} from 'antd';
 import {
   Activity,
   AppWindow,
   BarChart3,
   ClipboardCheck,
   Folder,
+  FolderKanban,
   FolderOpen,
   Globe,
   LayoutDashboard,
   List,
   MapPinned,
+  Plus,
   ScrollText,
   Settings,
   Shield,
@@ -123,7 +134,7 @@ export function App() {
   const applications = useAccountApplications();
   const webSettings = usePublicSettings();
   // `can` is false until permissions load, so permission-gated menu items never flash.
-  const { can, canAny, isLoading: isPermissionsLoading } = usePermissions();
+  const { can, canAny, isAdmin, isLoading: isPermissionsLoading } = usePermissions();
 
   const { token } = antdTheme.useToken();
   useAppUpdate();
@@ -247,6 +258,15 @@ export function App() {
         path: '/content',
         name: t('menu.content'),
         routes: [
+          ...(isAdmin && can(GO_PERMISSIONS.PROJECT_READ)
+            ? [
+                {
+                  path: '/all-projects',
+                  name: t('menu.allProjects'),
+                  icon: <FolderKanban size={16} />,
+                },
+              ]
+            : []),
           ...(can(GO_PERMISSIONS.PROJECT_READ)
             ? [
                 {
@@ -407,6 +427,21 @@ export function App() {
       menuItemRender={(item, dom) => (item.path ? <Link to={item.path}>{dom}</Link> : dom)}
       onMenuHeaderClick={() => navigate('/')}
       contentStyle={{ padding: 24 }}
+      // Global "create project" shortcut; `?create=true` opens the create modal on My Projects.
+      actionsRender={() =>
+        can(GO_PERMISSIONS.PROJECT_EDIT) && can(GO_PERMISSIONS.PROJECT_READ)
+          ? [
+              <Button
+                key="create-project"
+                type="primary"
+                icon={<Plus size={16} />}
+                onClick={() => navigate('/my-projects?create=true')}
+              >
+                {t('projects.create')}
+              </Button>,
+            ]
+          : []
+      }
       avatarProps={{
         src: user?.picture,
         size: 'small',
@@ -456,6 +491,14 @@ export function App() {
             element={
               <PermissionGate permissions={[GO_PERMISSIONS.FOLDER_MANAGE]}>
                 <UserAccessPage />
+              </PermissionGate>
+            }
+          />
+          <Route
+            path="/all-projects"
+            element={
+              <PermissionGate permissions={[GO_PERMISSIONS.PROJECT_READ]} adminOnly>
+                <ProjectsPage key="all" scope="all" />
               </PermissionGate>
             }
           />

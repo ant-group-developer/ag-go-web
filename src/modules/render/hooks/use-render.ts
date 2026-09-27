@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   cancelRenderBatch,
   createRenderBatch,
@@ -10,6 +10,7 @@ import {
   getRenderProfiles,
   retryRenderJob,
   updateRenderProfile,
+  type AutoRenderJobsParams,
 } from '../api/render';
 
 const keys = {
@@ -19,7 +20,7 @@ const keys = {
   projectBatches: (id: string) => [...keys.all, 'project-batches', id] as const,
   allBatches: () => [...keys.all, 'all-batches'] as const,
   jobs: (id: string) => [...keys.all, 'jobs', id] as const,
-  autoJobs: (projectId?: string) => [...keys.all, 'auto-jobs', projectId ?? 'all'] as const,
+  autoJobs: (params: AutoRenderJobsParams) => [...keys.all, 'auto-jobs', params] as const,
 };
 
 export function useRenderProfiles() {
@@ -83,13 +84,17 @@ export function useRenderBatchJobs(batchId: string) {
   });
 }
 
-/** Render jobs queued by uploads and Drive imports (outside any batch). */
-export function useAutoRenderJobs(projectId?: string, enabled = true) {
+/** One page of the render jobs queued by uploads and Drive imports (outside any batch). */
+export function useAutoRenderJobs(params: AutoRenderJobsParams, enabled = true) {
   return useQuery({
-    queryKey: keys.autoJobs(projectId),
-    queryFn: () => getAutoRenderJobs(projectId),
+    queryKey: keys.autoJobs(params),
+    queryFn: () => getAutoRenderJobs(params),
     enabled,
-    refetchInterval: (query) => pollWhileActive(query.state.data),
+    // Keep the current rows on screen while the next page or filter loads.
+    placeholderData: keepPreviousData,
+    // Poll while any job in scope (not only on this page) is still queued or processing.
+    refetchInterval: (query) =>
+      (query.state.data?.counts.active ?? 0) > 0 ? POLL_INTERVAL_MS : false,
   });
 }
 

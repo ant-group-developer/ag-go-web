@@ -1,7 +1,8 @@
-import { Button, Empty, Input, Popover, Spin, Tree, Typography } from 'antd';
+import { Button, Checkbox, Empty, Input, Popover, Spin, Tag, Tree, Typography } from 'antd';
 import type { DataNode } from 'antd/es/tree';
 import { t } from 'i18next';
 import {
+  CircleDot,
   Filter as FilterIcon,
   Folder as FolderIcon,
   Layers,
@@ -18,6 +19,8 @@ import { useFolders } from '../../folders/hooks/use-folders';
 import type { Folder as FolderType } from '../../folders/types/folder.type';
 import { useProvinces } from '../../provinces/hooks/use-provinces';
 import { useTags } from '../../tags/hooks/use-tags';
+import type { ProjectEvaluationStatus } from '../types/project-list-params.type';
+import { getProjectStatus } from '../utils/project-status.util';
 
 export type ProjectFilterValues = {
   keyword?: string;
@@ -27,15 +30,18 @@ export type ProjectFilterValues = {
   provinceId?: string;
   categoryId?: string;
   tagIds?: string[];
+  evaluationStatuses?: ProjectEvaluationStatus[];
 };
 
-type FilterCategory = 'keyword' | 'folder' | 'category' | 'tags' | 'location';
+type FilterCategory = 'keyword' | 'status' | 'folder' | 'category' | 'tags' | 'location';
 
 interface ProjectFilterPopoverProps {
   value: ProjectFilterValues;
   onChange: (values: ProjectFilterValues) => void;
   onClear: () => void;
   activeCount?: number;
+  /** Statuses the current page may show; the status filter is hidden when fewer than 2. */
+  statusOptions?: readonly ProjectEvaluationStatus[];
 }
 
 // ─── Helper to highlight search matches in node titles ──────────────────────
@@ -140,6 +146,8 @@ function getCategoryFilterCount(key: FilterCategory, value: ProjectFilterValues)
   switch (key) {
     case 'keyword':
       return value.keyword?.trim() ? 1 : 0;
+    case 'status':
+      return value.evaluationStatuses?.length ?? 0;
     case 'folder':
       return value.folderId?.trim() ? 1 : 0;
     case 'category':
@@ -162,10 +170,12 @@ function FilterContent({
   value,
   onChange,
   onClear,
+  statusOptions = [],
 }: {
   value: ProjectFilterValues;
   onChange: (values: ProjectFilterValues) => void;
   onClear: () => void;
+  statusOptions?: readonly ProjectEvaluationStatus[];
 }) {
   const { t } = useTranslation();
   const [activeCategory, setActiveCategory] = useState<FilterCategory>('keyword');
@@ -198,6 +208,7 @@ function FilterContent({
     () =>
       [
         value.keyword?.trim(),
+        value.evaluationStatuses?.length,
         value.folderId?.trim(),
         value.countryId || value.provinceId,
         value.categoryId,
@@ -206,17 +217,22 @@ function FilterContent({
     [value],
   );
 
+  const showStatusFilter = statusOptions.length > 1;
+
   const filterCategories = useMemo<
     Array<{ key: FilterCategory; icon: React.ReactNode; label: string }>
   >(
     () => [
       { key: 'keyword', icon: <Search size={16} />, label: t('projects.keyword') },
+      ...(showStatusFilter
+        ? [{ key: 'status' as const, icon: <CircleDot size={16} />, label: t('projects.status') }]
+        : []),
       { key: 'folder', icon: <FolderIcon size={16} />, label: t('projects.folder') },
       { key: 'category', icon: <Layers size={16} />, label: t('projects.category') },
       { key: 'tags', icon: <TagIcon size={16} />, label: t('projects.tags') },
       { key: 'location', icon: <MapPin size={16} />, label: t('projects.location') },
     ],
-    [t],
+    [t, showStatusFilter],
   );
 
   const visibleCategories = filterCategories.filter((c) =>
@@ -245,6 +261,40 @@ function FilterContent({
             />
             <Typography.Text type="secondary" style={{ fontSize: 13 }}>
               {t('projects.keywordPlaceholder')}
+            </Typography.Text>
+          </div>
+        );
+
+      case 'status':
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <CircleDot size={18} style={{ color: '#1677ff' }} />
+              <Typography.Text strong style={{ fontSize: 16 }}>
+                {t('projects.status')}
+              </Typography.Text>
+            </div>
+            <Checkbox.Group
+              value={value.evaluationStatuses ?? []}
+              onChange={(v) =>
+                onChange({
+                  ...value,
+                  evaluationStatuses: v.length ? (v as ProjectEvaluationStatus[]) : undefined,
+                })
+              }
+              style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
+            >
+              {statusOptions.map((status) => {
+                const { color, label } = getProjectStatus(status);
+                return (
+                  <Checkbox key={status} value={status}>
+                    <Tag color={color}>{t(label)}</Tag>
+                  </Checkbox>
+                );
+              })}
+            </Checkbox.Group>
+            <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+              {t('projects.statusFilterDescription')}
             </Typography.Text>
           </div>
         );
@@ -604,6 +654,7 @@ export function ProjectFilterPopover({
   onChange,
   onClear,
   activeCount = 0,
+  statusOptions,
 }: ProjectFilterPopoverProps) {
   return (
     <Popover
@@ -618,7 +669,14 @@ export function ProjectFilterPopover({
           boxShadow: '0 10px 36px rgba(0, 0, 0, 0.14)',
         },
       }}
-      content={<FilterContent value={value} onChange={onChange} onClear={onClear} />}
+      content={
+        <FilterContent
+          value={value}
+          onChange={onChange}
+          onClear={onClear}
+          statusOptions={statusOptions}
+        />
+      }
     >
       <Button
         icon={<FilterIcon size={15} />}
