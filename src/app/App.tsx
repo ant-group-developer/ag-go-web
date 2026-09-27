@@ -2,7 +2,16 @@ import { LogoutOutlined } from '@ant-design/icons';
 import { ProLayout, type ProLayoutProps } from '@ant-design/pro-components';
 import { useAuth0 } from '@auth0/auth0-react';
 import { useQueryClient } from '@tanstack/react-query';
-import { theme as antdTheme, Avatar, Dropdown, Flex, MenuProps, Spin, Typography } from 'antd';
+import {
+  theme as antdTheme,
+  Avatar,
+  Button,
+  Dropdown,
+  Flex,
+  MenuProps,
+  Spin,
+  Typography,
+} from 'antd';
 import {
   Activity,
   AppWindow,
@@ -15,6 +24,7 @@ import {
   LayoutDashboard,
   List,
   MapPinned,
+  Plus,
   ScrollText,
   Settings,
   Shield,
@@ -417,6 +427,21 @@ export function App() {
       menuItemRender={(item, dom) => (item.path ? <Link to={item.path}>{dom}</Link> : dom)}
       onMenuHeaderClick={() => navigate('/')}
       contentStyle={{ padding: 24 }}
+      // Global "create project" shortcut; `?create=true` opens the create modal on My Projects.
+      actionsRender={() =>
+        can(GO_PERMISSIONS.PROJECT_EDIT) && can(GO_PERMISSIONS.PROJECT_READ)
+          ? [
+              <Button
+                key="create-project"
+                type="primary"
+                icon={<Plus size={16} />}
+                onClick={() => navigate('/my-projects?create=true')}
+              >
+                {t('projects.create')}
+              </Button>,
+            ]
+          : []
+      }
       avatarProps={{
         src: user?.picture,
         size: 'small',

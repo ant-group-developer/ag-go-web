@@ -30,7 +30,6 @@ import {
   LayoutGrid,
   List,
   Pencil,
-  Plus,
   Trash2,
 } from 'lucide-react';
 
@@ -505,20 +504,6 @@ export function ProjectsPage({ scope = 'evaluated' }: { scope?: ProjectListScope
           paddingInline: 16,
           borderRadius: 6,
         }}
-        extra={
-          scopeConfig.canCreate
-            ? [
-                <Button
-                  key="create"
-                  type="primary"
-                  icon={<Plus size={16} />}
-                  onClick={() => setCreateOpen(true)}
-                >
-                  {t('projects.create')}
-                </Button>,
-              ]
-            : []
-        }
       >
         {listError ? (
           <Alert
