@@ -1,23 +1,68 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import {
-  getRenderingStatistics,
-  getStatisticsOverview,
-  type StatisticsQuery,
+  getStatisticsActivity,
+  getStatisticsOperations,
+  getStatisticsProgress,
+  getStatisticsSummary,
+  getStatisticsTeam,
+  getStatisticsTrend,
 } from '../api/statistics';
 import { statisticsQueryKeys } from '../queries/statistics-query-keys';
+import type { StatisticsPeriodParams } from '../types/statistics.type';
 
-export function useStatisticsOverview(query: StatisticsQuery) {
+/*
+ * One query per widget so each card loads, fails and refreshes on its own. Period queries keep
+ * the previous data while a new period loads, so cards do not flash empty on a filter change.
+ */
+
+export function useStatisticsSummary(period: StatisticsPeriodParams) {
   return useQuery({
-    queryKey: [...statisticsQueryKeys.overview(), query],
-    queryFn: () => getStatisticsOverview(query),
-    refetchInterval: 30_000,
+    queryKey: statisticsQueryKeys.summary(period),
+    queryFn: () => getStatisticsSummary(period),
+    placeholderData: keepPreviousData,
+    refetchInterval: 60_000,
   });
 }
 
-export function useRenderingStatistics(query: StatisticsQuery) {
+export function useStatisticsTrend(period: StatisticsPeriodParams) {
   return useQuery({
-    queryKey: [...statisticsQueryKeys.rendering(), query],
-    queryFn: () => getRenderingStatistics(query),
+    queryKey: statisticsQueryKeys.trend(period),
+    queryFn: () => getStatisticsTrend(period),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useStatisticsProgress() {
+  return useQuery({
+    queryKey: statisticsQueryKeys.progress(),
+    queryFn: () => getStatisticsProgress(),
+    refetchInterval: 60_000,
+  });
+}
+
+export function useStatisticsTeam(period: StatisticsPeriodParams) {
+  return useQuery({
+    queryKey: statisticsQueryKeys.team(period),
+    queryFn: () => getStatisticsTeam(period),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useStatisticsOperations(period: StatisticsPeriodParams) {
+  return useQuery({
+    queryKey: statisticsQueryKeys.operations(period),
+    queryFn: () => getStatisticsOperations(period),
+    placeholderData: keepPreviousData,
     refetchInterval: 15_000,
+  });
+}
+
+/** Audit entries: only fetched for viewers with audit access (the API requires it too). */
+export function useStatisticsActivity(enabled: boolean) {
+  return useQuery({
+    queryKey: statisticsQueryKeys.activity(),
+    queryFn: () => getStatisticsActivity(),
+    enabled,
+    refetchInterval: 30_000,
   });
 }
