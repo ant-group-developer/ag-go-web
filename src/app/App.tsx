@@ -9,6 +9,7 @@ import {
   BarChart3,
   ClipboardCheck,
   Folder,
+  FolderKanban,
   FolderOpen,
   Globe,
   LayoutDashboard,
@@ -123,7 +124,7 @@ export function App() {
   const applications = useAccountApplications();
   const webSettings = usePublicSettings();
   // `can` is false until permissions load, so permission-gated menu items never flash.
-  const { can, canAny, isLoading: isPermissionsLoading } = usePermissions();
+  const { can, canAny, isAdmin, isLoading: isPermissionsLoading } = usePermissions();
 
   const { token } = antdTheme.useToken();
   useAppUpdate();
@@ -247,6 +248,15 @@ export function App() {
         path: '/content',
         name: t('menu.content'),
         routes: [
+          ...(isAdmin && can(GO_PERMISSIONS.PROJECT_READ)
+            ? [
+                {
+                  path: '/all-projects',
+                  name: t('menu.allProjects'),
+                  icon: <FolderKanban size={16} />,
+                },
+              ]
+            : []),
           ...(can(GO_PERMISSIONS.PROJECT_READ)
             ? [
                 {
@@ -456,6 +466,14 @@ export function App() {
             element={
               <PermissionGate permissions={[GO_PERMISSIONS.FOLDER_MANAGE]}>
                 <UserAccessPage />
+              </PermissionGate>
+            }
+          />
+          <Route
+            path="/all-projects"
+            element={
+              <PermissionGate permissions={[GO_PERMISSIONS.PROJECT_READ]} adminOnly>
+                <ProjectsPage key="all" scope="all" />
               </PermissionGate>
             }
           />

@@ -1,7 +1,13 @@
 export type ProjectSortField = 'name' | 'createdAt' | 'updatedAt';
 export type ProjectSortOrder = 'asc' | 'desc';
-export type ProjectEvaluationStatus =
-  'draft' | 'pending' | 'completed' | 'partially_completed' | 'failed';
+export const PROJECT_EVALUATION_STATUSES = [
+  'draft',
+  'pending',
+  'completed',
+  'partially_completed',
+  'failed',
+] as const;
+export type ProjectEvaluationStatus = (typeof PROJECT_EVALUATION_STATUSES)[number];
 
 export type ProjectListParams = {
   page?: number;

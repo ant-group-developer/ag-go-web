@@ -6,11 +6,13 @@ import { ForbiddenResult } from '../components/forbidden-result';
 type PermissionGateProps = {
   /** User needs at least one of these permissions. */
   permissions: string[];
+  /** Also require an ADMIN user type (checked by user type, not by permission). */
+  adminOnly?: boolean;
   children: ReactNode;
 };
 
-export function PermissionGate({ permissions, children }: PermissionGateProps) {
-  const { isLoading, canAny } = usePermissions();
+export function PermissionGate({ permissions, adminOnly, children }: PermissionGateProps) {
+  const { isLoading, isAdmin, canAny } = usePermissions();
 
   if (isLoading) {
     return (
@@ -20,7 +22,7 @@ export function PermissionGate({ permissions, children }: PermissionGateProps) {
     );
   }
 
-  if (!canAny(permissions)) {
+  if (!canAny(permissions) || (adminOnly && !isAdmin)) {
     return <ForbiddenResult />;
   }
 

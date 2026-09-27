@@ -3,6 +3,7 @@ import {
   BarChart3,
   ClipboardCheck,
   Folder,
+  FolderKanban,
   FolderOpen,
   Globe,
   HeartPulse,
@@ -32,6 +33,8 @@ export type HomeFeature = {
   group: HomeFeatureGroup;
   /** User needs at least one of these. Omit for features every signed-in user can open. */
   permission?: GoPermission | GoPermission[];
+  /** Only ADMIN user type can open it. */
+  adminOnly?: boolean;
 };
 
 export const HOME_FEATURE_GROUPS: { key: HomeFeatureGroup; color: string }[] = [
@@ -41,6 +44,14 @@ export const HOME_FEATURE_GROUPS: { key: HomeFeatureGroup; color: string }[] = [
 ];
 
 export const HOME_FEATURES: HomeFeature[] = [
+  {
+    key: 'allProjects',
+    path: '/all-projects',
+    icon: FolderKanban,
+    group: 'content',
+    permission: GO_PERMISSIONS.PROJECT_READ,
+    adminOnly: true,
+  },
   {
     key: 'projects',
     path: '/projects',
