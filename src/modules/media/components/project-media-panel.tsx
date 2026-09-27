@@ -36,7 +36,7 @@ import {
   abortUpload,
   completeUpload,
   createUploadSession,
-  getProjectMedia,
+  getAllProjectMedia,
   removeProjectMedia,
   uploadAssetContent,
   type ProjectMedia,
@@ -100,7 +100,7 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
   const [taskStatuses, setTaskStatuses] = useState<Record<string, UploadTaskStatus>>({});
   const media = useQuery({
     queryKey: mediaQueryKeys.project(projectId),
-    queryFn: () => getProjectMedia(projectId),
+    queryFn: () => getAllProjectMedia(projectId),
     enabled: Boolean(projectId),
   });
   const items = media.data?.items;

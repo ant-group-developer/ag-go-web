@@ -96,6 +96,24 @@ export function getProjectMedia(
   );
 }
 
+/** Largest page the media endpoint serves. */
+const PROJECT_MEDIA_MAX_PAGE_SIZE = 100;
+
+/** Loads every media item of a project by following the cursor until the last page. */
+export async function getAllProjectMedia(projectId: string): Promise<ProjectMediaPage> {
+  const items: ProjectMedia[] = [];
+  let cursor: string | undefined;
+  do {
+    const page = await getProjectMedia(projectId, {
+      cursor,
+      limit: PROJECT_MEDIA_MAX_PAGE_SIZE,
+    });
+    items.push(...page.items);
+    cursor = page.nextCursor ?? undefined;
+  } while (cursor);
+  return { items, nextCursor: null };
+}
+
 export function attachProjectMedia(
   projectId: string,
   input: AttachProjectMediaInput,
