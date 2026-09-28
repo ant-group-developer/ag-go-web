@@ -1,5 +1,6 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
+import { APP_LANGUAGES, DEFAULT_LANGUAGE, readStoredLanguage } from './language';
 
 const resources = {
   vi: {
@@ -22,6 +23,7 @@ const resources = {
         cancel: 'Hủy',
         reset: 'Đặt lại',
         refresh: 'Tải lại',
+        language: 'Ngôn ngữ',
         sort: 'Sắp xếp',
         sortAsc: 'Tăng dần',
         sortDesc: 'Giảm dần',
@@ -1052,6 +1054,7 @@ const resources = {
         cancel: 'Cancel',
         reset: 'Reset',
         refresh: 'Refresh',
+        language: 'Language',
         sort: 'Sort',
         sortAsc: 'Ascending',
         sortDesc: 'Descending',
@@ -1949,6 +1952,8 @@ const resources = {
         siteDescription: 'Website Description',
         logoUrl: 'Logo URL',
         faviconUrl: 'Favicon URL',
+        loginBackgroundUrl: 'Login page background',
+        loginBackgroundUrlHint: 'Use a 16:9 landscape image. Leave empty to use the default one.',
         supportEmail: 'Support Email',
         supportUrl: 'Support URL',
         primaryColor: 'Primary Color',
@@ -2066,11 +2071,15 @@ const resources = {
   },
 } as const;
 
+i18n.on('languageChanged', (language) => {
+  document.documentElement.lang = language;
+});
+
 void i18n.use(initReactI18next).init({
   resources,
-  lng: 'vi',
-  fallbackLng: 'vi',
-  supportedLngs: ['vi', 'en'],
+  lng: readStoredLanguage(),
+  fallbackLng: DEFAULT_LANGUAGE,
+  supportedLngs: [...APP_LANGUAGES],
   interpolation: {
     escapeValue: false,
   },
