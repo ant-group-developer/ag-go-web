@@ -1,20 +1,39 @@
-import { Alert, Form, Input, Modal } from 'antd';
-import { useEffect } from 'react';
+import { Alert, Cascader, Form, Input, Modal } from 'antd';
+import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useUpdateFolder } from '../hooks/use-folders';
+import { cascaderSearchFilter } from '../../../shared/lib/select-search';
+import { useFolders, useUpdateFolder } from '../hooks/use-folders';
 import type { EditFolderModalProps } from '../types/edit-folder-modal-props.type';
+import type { FolderFormValues } from '../types/folder-form-values.type';
+import type { UpdateFolderInput } from '../types/update-folder-input.type';
+import { buildFolderCascaderOptions } from '../utils/build-folder-cascader-options';
 
 export function EditFolderModal({ folder, onClose }: EditFolderModalProps) {
   const { t } = useTranslation();
-  const [form] = Form.useForm<{ name: string }>();
+  const [form] = Form.useForm<FolderFormValues>();
+  const folders = useFolders(Boolean(folder));
   const update = useUpdateFolder();
+  // Moving re-parents the whole subtree and changes inherited access, so the API requires manager.
+  const canMove = folder?.myAccessLevel === 'manager';
+
+  // A folder cannot move into itself or any of its subfolders.
+  const options = useMemo(() => {
+    const items = folders.data ?? [];
+    return buildFolderCascaderOptions(
+      folder ? items.filter((item) => !(item.pathIds ?? [item.id]).includes(folder.id)) : items,
+    );
+  }, [folders.data, folder]);
 
   const { reset } = update;
 
   useEffect(() => {
     if (folder) {
       reset();
-      form.setFieldsValue({ name: folder.name });
+      const parentPath = folder.pathIds?.slice(0, -1);
+      form.setFieldsValue({
+        name: folder.name,
+        parentPath: parentPath?.length ? parentPath : undefined,
+      });
     }
   }, [folder, form, reset]);
 
@@ -42,10 +61,12 @@ export function EditFolderModal({ folder, onClose }: EditFolderModalProps) {
           if (!folder) {
             return;
           }
-          update.mutate(
-            { id: folder.id, input: { name: values.name.trim() } },
-            { onSuccess: onClose },
-          );
+          const input: UpdateFolderInput = { name: values.name.trim() };
+          const parentId = values.parentPath?.at(-1) ?? null;
+          if (canMove && parentId !== folder.parentId) {
+            input.parentId = parentId;
+          }
+          update.mutate({ id: folder.id, input }, { onSuccess: onClose });
         }}
       >
         <Form.Item
@@ -58,6 +79,21 @@ export function EditFolderModal({ folder, onClose }: EditFolderModalProps) {
         >
           <Input placeholder={t('folders.namePlaceholder')} />
         </Form.Item>
+        <Form.Item
+          name="parentPath"
+          label={t('folders.parent')}
+          extra={canMove ? t('folders.moveHint') : t('folders.moveManagerOnly')}
+        >
+          <Cascader
+            allowClear
+            changeOnSelect
+            disabled={!canMove}
+            options={options}
+            showSearch={{ filter: cascaderSearchFilter }}
+            placeholder={t('folders.moveToRootPlaceholder')}
+          />
+        </Form.Item>
+        {folders.isError ? <Alert type="error" message={folders.error.message} /> : null}
         {update.isError ? <Alert type="error" message={update.error.message} /> : null}
       </Form>
     </Modal>

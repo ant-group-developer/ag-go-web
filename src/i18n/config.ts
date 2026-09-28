@@ -189,6 +189,10 @@ const resources = {
         namePlaceholder: 'Nhập tên thư mục',
         parent: 'Thư mục cha',
         parentPlaceholder: 'Chọn thư mục cha (không bắt buộc)',
+        moveToRootPlaceholder: 'Thư mục gốc',
+        moveHint:
+          'Đổi thư mục cha để di chuyển thư mục cùng toàn bộ thư mục con và project bên trong. Để trống để chuyển ra thư mục gốc.',
+        moveManagerOnly: 'Chỉ người quản lý thư mục mới có thể đổi vị trí thư mục.',
         childCount: 'Thư mục con',
         projectCount: 'Project',
         root: 'Tất cả thư mục',
@@ -1215,6 +1219,10 @@ const resources = {
         namePlaceholder: 'Enter folder name',
         parent: 'Parent Folder',
         parentPlaceholder: 'Select parent folder (optional)',
+        moveToRootPlaceholder: 'Root folder',
+        moveHint:
+          'Change the parent to move this folder with all its subfolders and projects. Leave empty to move it to the root.',
+        moveManagerOnly: 'Only folder managers can move a folder.',
         childCount: 'Subfolders',
         projectCount: 'Projects',
         root: 'All folders',
