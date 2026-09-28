@@ -77,3 +77,9 @@ export function describeAuditLog(item: AuditLog, t: TFunction): string | null {
     failed: data.failedItems ?? 0,
   });
 }
+
+/** True when the entry was part of a bulk action (one entry per file). */
+export function isBulkAuditLog(item: AuditLog): boolean {
+  const metadata = item.metadata as { source?: string } | null | undefined;
+  return metadata?.source === 'bulk_approve';
+}

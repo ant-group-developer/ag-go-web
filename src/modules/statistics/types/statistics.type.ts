@@ -131,7 +131,7 @@ export type StatisticsOperations = {
   };
 };
 
-export type StatisticsActivityItem = Omit<AuditLog, 'beforeData'> & {
+export type StatisticsActivityItem = AuditLog & {
   projectId: string;
   projectName: string;
 };

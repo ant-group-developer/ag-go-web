@@ -8,6 +8,9 @@ export type AuditLog = {
   createdAt: string;
   beforeData?: unknown;
   afterData?: unknown;
+  metadata?: unknown;
+  /** Current name of the file the entry is about, when it still exists. */
+  mediaFileName?: string | null;
 };
 
 export function getProjectAudit(projectId: string) {
