@@ -49,6 +49,14 @@ body {
   align-items: center;
 }
 
+/*
+ * Dropdown submenu titles are `display: flex` without the `align-items: center` that plain
+ * items get, so a lucide svg sticks to the top of the line instead of centring on the label.
+ */
+.ant-dropdown-menu-submenu-title {
+  align-items: center;
+}
+
 /* Icon-only Radio.Button: same baseline issue inside the label's content span. */
 .ant-radio-button-wrapper.icon-radio-button {
   display: inline-flex;
@@ -295,6 +303,20 @@ body {
     color-mix(in srgb, var(--login-accent) 70%, #7c3aed) 100%
   );
   box-shadow: 0 8px 20px color-mix(in srgb, var(--login-accent) 40%, transparent);
+}
+
+/* Language switch, top-right over the backdrop */
+.login-language.ant-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 2;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.login-language.ant-btn:not(:disabled):hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
 }
 
 /* Footer */

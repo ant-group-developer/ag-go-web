@@ -1,5 +1,6 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
+import { APP_LANGUAGES, DEFAULT_LANGUAGE, readStoredLanguage } from './language';
 
 const resources = {
   vi: {
@@ -22,6 +23,7 @@ const resources = {
         cancel: 'Hủy',
         reset: 'Đặt lại',
         refresh: 'Tải lại',
+        language: 'Ngôn ngữ',
         sort: 'Sắp xếp',
         sortAsc: 'Tăng dần',
         sortDesc: 'Giảm dần',
@@ -189,6 +191,10 @@ const resources = {
         namePlaceholder: 'Nhập tên thư mục',
         parent: 'Thư mục cha',
         parentPlaceholder: 'Chọn thư mục cha (không bắt buộc)',
+        moveToRootPlaceholder: 'Thư mục gốc',
+        moveHint:
+          'Đổi thư mục cha để di chuyển thư mục cùng toàn bộ thư mục con và project bên trong. Để trống để chuyển ra thư mục gốc.',
+        moveManagerOnly: 'Chỉ người quản lý thư mục mới có thể đổi vị trí thư mục.',
         childCount: 'Thư mục con',
         projectCount: 'Project',
         root: 'Tất cả thư mục',
@@ -1048,6 +1054,7 @@ const resources = {
         cancel: 'Cancel',
         reset: 'Reset',
         refresh: 'Refresh',
+        language: 'Language',
         sort: 'Sort',
         sortAsc: 'Ascending',
         sortDesc: 'Descending',
@@ -1215,6 +1222,10 @@ const resources = {
         namePlaceholder: 'Enter folder name',
         parent: 'Parent Folder',
         parentPlaceholder: 'Select parent folder (optional)',
+        moveToRootPlaceholder: 'Root folder',
+        moveHint:
+          'Change the parent to move this folder with all its subfolders and projects. Leave empty to move it to the root.',
+        moveManagerOnly: 'Only folder managers can move a folder.',
         childCount: 'Subfolders',
         projectCount: 'Projects',
         root: 'All folders',
@@ -1941,6 +1952,8 @@ const resources = {
         siteDescription: 'Website Description',
         logoUrl: 'Logo URL',
         faviconUrl: 'Favicon URL',
+        loginBackgroundUrl: 'Login page background',
+        loginBackgroundUrlHint: 'Use a 16:9 landscape image. Leave empty to use the default one.',
         supportEmail: 'Support Email',
         supportUrl: 'Support URL',
         primaryColor: 'Primary Color',
@@ -2058,11 +2071,15 @@ const resources = {
   },
 } as const;
 
+i18n.on('languageChanged', (language) => {
+  document.documentElement.lang = language;
+});
+
 void i18n.use(initReactI18next).init({
   resources,
-  lng: 'vi',
-  fallbackLng: 'vi',
-  supportedLngs: ['vi', 'en'],
+  lng: readStoredLanguage(),
+  fallbackLng: DEFAULT_LANGUAGE,
+  supportedLngs: [...APP_LANGUAGES],
   interpolation: {
     escapeValue: false,
   },

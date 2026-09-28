@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { App as AntApp, ConfigProvider, theme as antdTheme } from 'antd';
+import enUS from 'antd/locale/en_US';
 import viVN from 'antd/locale/vi_VN';
 import type { PropsWithChildren, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -43,12 +44,12 @@ const CustomRequiredMark = ({ label, required }: { label: ReactNode; required: b
 };
 
 export function AppProviders({ children }: PropsWithChildren) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   return (
     <QueryClientProvider client={queryClient}>
       <ConfigProvider
-        locale={viVN}
+        locale={i18n.resolvedLanguage === 'en' ? enUS : viVN}
         theme={theme}
         form={{
           validateMessages: {

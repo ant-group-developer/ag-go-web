@@ -1,4 +1,3 @@
-import { LogoutOutlined } from '@ant-design/icons';
 import { ProLayout, type ProLayoutProps } from '@ant-design/pro-components';
 import { useAuth0 } from '@auth0/auth0-react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -23,6 +22,7 @@ import {
   Globe,
   LayoutDashboard,
   List,
+  LogOut,
   MapPinned,
   Plus,
   ScrollText,
@@ -43,6 +43,7 @@ import {
   useParams,
   useSearchParams,
 } from 'react-router-dom';
+import { APP_LANGUAGES, changeLanguage, currentLanguage, LANGUAGE_NAMES } from '../i18n/language';
 import { useAccountApplications } from '../modules/account/hooks/use-account-applications';
 import { usePermissions } from '../modules/account/hooks/use-current-account';
 import { usePublicSettings } from '../modules/settings/hooks/use-settings';
@@ -194,7 +195,12 @@ export function App() {
     [applications.data],
   );
 
+  const language = currentLanguage();
+
   const avatarDropdownMenu: MenuProps = {
+    // Only the language entries are selectable; the selection marks the active language.
+    selectable: true,
+    selectedKeys: [`language:${language}`],
     items: [
       {
         key: 'user',
@@ -228,8 +234,18 @@ export function App() {
         type: 'divider',
       },
       {
+        key: 'language',
+        icon: <Globe size={14} />,
+        label: `${t('common.language')}: ${LANGUAGE_NAMES[language]}`,
+        children: APP_LANGUAGES.map((key) => ({
+          key: `language:${key}`,
+          label: LANGUAGE_NAMES[key],
+          onClick: () => void changeLanguage(key),
+        })),
+      },
+      {
         key: 'logout',
-        icon: <LogoutOutlined />,
+        icon: <LogOut size={14} />,
         label: t('menu.logout'),
         onClick: handleLogout,
         danger: true,
