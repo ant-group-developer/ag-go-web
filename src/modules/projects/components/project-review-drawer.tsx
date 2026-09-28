@@ -124,9 +124,38 @@ const previewPlaceholderStyle = {
   background: '#f5f5f5',
   color: '#8c8c8c',
   display: 'flex',
+  flexDirection: 'column',
+  gap: 12,
   minHeight: 420,
   justifyContent: 'center',
+  padding: 24,
+  textAlign: 'center',
 } as const;
+
+/** Tells the reviewer what the system is doing while no preview can be shown yet. */
+function PreviewPlaceholder({ status, loading }: { status: string; loading?: boolean }) {
+  const { t } = useTranslation();
+  const states: Record<string, { message: string; busy: boolean }> = {
+    uploading: { message: t('projects.previewUploading'), busy: true },
+    importing: { message: t('projects.previewUploading'), busy: true },
+    uploaded: { message: t('projects.previewProcessing'), busy: true },
+    processing: { message: t('projects.previewProcessing'), busy: true },
+    failed: { message: t('projects.previewFailed'), busy: false },
+    cancelled: { message: t('projects.previewCancelled'), busy: false },
+  };
+  const state = loading
+    ? { message: t('projects.previewLoading'), busy: true }
+    : (states[status] ?? { message: t('projects.previewUnavailable'), busy: false });
+
+  return (
+    <div style={previewPlaceholderStyle}>
+      {state.busy ? <Spin /> : <FileImageOutlined style={{ fontSize: 32 }} />}
+      <Typography.Text type={status === 'failed' && !loading ? 'danger' : 'secondary'}>
+        {state.message}
+      </Typography.Text>
+    </div>
+  );
+}
 
 /**
  * Evaluation shows the original file at full quality. Formats the browser cannot display
@@ -184,11 +213,7 @@ function OriginalMediaPreview({
   }, [original.isError, onUnavailable]);
 
   if (!uploaded || !original.data) {
-    return (
-      <div style={previewPlaceholderStyle}>
-        {uploaded ? <Spin size="small" /> : t('projects.previewUnavailable')}
-      </div>
-    );
+    return <PreviewPlaceholder status={media.asset.processingStatus} loading={uploaded} />;
   }
 
   return (
@@ -229,7 +254,6 @@ function OriginalMediaPreview({
 }
 
 function RenderedMediaPreview({ media }: { media: ProjectMedia }) {
-  const { t } = useTranslation();
   const frameRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   // Playback position survives switching to another size (manually or when the frame resizes).
@@ -250,9 +274,7 @@ function RenderedMediaPreview({ media }: { media: ProjectMedia }) {
   }, [media.id]);
 
   const content = !previewUrl ? (
-    <div style={previewPlaceholderStyle}>
-      {isReady ? <Spin size="small" /> : t('projects.previewUnavailable')}
-    </div>
+    <PreviewPlaceholder status={media.asset.processingStatus} loading={isReady} />
   ) : isVideo ? (
     <video
       ref={videoRef}
