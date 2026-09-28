@@ -76,6 +76,8 @@ export type ProjectMediaEvaluation = {
   evaluationStatus: ProjectMedia['evaluationStatus'];
   comment: string | null;
   evaluatedBy: string;
+  /** Account of `evaluatedBy`; null when the account service could not resolve it. */
+  evaluatedByUser?: { id: string; name?: string; email?: string; avatar?: string } | null;
   createdAt: string;
 };
 
@@ -131,6 +133,46 @@ export function updateProjectMedia(
   return apiClient<ProjectMedia>(`/project-media/${mediaId}`, {
     method: 'PATCH',
     body: JSON.stringify(input),
+  });
+}
+
+export type BulkApprovalResult = {
+  /** Files switched to "approved" by this call. */
+  approvedCount: number;
+  /** Selected files that were already approved. */
+  unchangedCount: number;
+  projects: Array<{
+    projectId: string;
+    evaluationStatus: 'draft' | 'pending' | 'completed' | 'partially_completed' | 'failed';
+    totalMedia: number;
+    pendingCount: number;
+    approvedCount: number;
+    rejectedCount: number;
+  }>;
+};
+
+export function bulkApproveProjectMedia(
+  mediaIds: string[],
+  comment?: string | null,
+): Promise<BulkApprovalResult> {
+  return apiClient<BulkApprovalResult>('/project-media/bulk-approve', {
+    method: 'POST',
+    body: JSON.stringify({ mediaIds, comment: comment || undefined }),
+  });
+}
+
+/**
+ * Approves every pending file of the projects (rejected ones too with `overrideRejected`);
+ * each project's status then follows from its files.
+ */
+export function bulkApproveProjects(input: {
+  projectIds: string[];
+  overrideRejected?: boolean;
+  comment?: string | null;
+}): Promise<BulkApprovalResult> {
+  return apiClient<BulkApprovalResult>('/projects/bulk-approve', {
+    method: 'POST',
+    body: JSON.stringify({ ...input, comment: input.comment || undefined }),
   });
 }
 

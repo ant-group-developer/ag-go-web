@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import {
   Avatar,
   Button,
+  Checkbox,
   Col,
   Empty,
   Popconfirm,
@@ -17,6 +18,7 @@ import {
   theme,
 } from 'antd';
 import {
+  BadgeCheck,
   Camera,
   CheckCircle,
   Clapperboard,
@@ -156,6 +158,13 @@ interface ProjectGridViewProps {
   onDelete: (item: ProjectGridItem) => void;
   onEvaluate?: (item: ProjectGridItem) => void;
   isDeletingId?: string | null;
+  /** Shows a selection checkbox on each card. */
+  selectable?: boolean;
+  canSelect?: (item: ProjectGridItem) => boolean;
+  selectedIds?: string[];
+  onSelectChange?: (id: string, selected: boolean) => void;
+  /** Quick "approve the whole project" action, shown on cards `canSelect` accepts. */
+  onApprove?: (item: ProjectGridItem) => void;
 }
 
 export function ProjectGridView({
@@ -168,6 +177,11 @@ export function ProjectGridView({
   onDelete,
   onEvaluate,
   isDeletingId,
+  selectable = false,
+  canSelect = () => true,
+  selectedIds = [],
+  onSelectChange,
+  onApprove,
 }: ProjectGridViewProps) {
   const { token } = theme.useToken();
   const { t } = useTranslation();
@@ -257,16 +271,36 @@ export function ProjectGridView({
       <Row gutter={[24, 24]}>
         {items.map((item) => {
           const status = getProjectStatus(item.evaluation_status ?? '');
+          const selected = selectedIds.includes(item.id);
+          const approvable = canSelect(item);
 
           return (
             <Col span={colSpan} key={item.id}>
-              <div className={styles.card}>
+              <div
+                className={styles.card}
+                style={
+                  selected
+                    ? { outline: `2px solid ${token.colorPrimary}`, outlineOffset: -2 }
+                    : undefined
+                }
+              >
                 {/* Ảnh full card */}
                 <ProjectGridCover item={item} />
 
                 <div className={styles.gradient} />
 
-                <div className={styles.statusTag}>
+                {selectable ? (
+                  <div className={styles.selectBox}>
+                    <Checkbox
+                      aria-label={item.title}
+                      checked={selected}
+                      disabled={!approvable}
+                      onChange={(event) => onSelectChange?.(item.id, event.target.checked)}
+                    />
+                  </div>
+                ) : null}
+
+                <div className={styles.statusTag} style={selectable ? { left: 44 } : undefined}>
                   <Tag color={status.color}>{t(status.label)}</Tag>
                 </div>
 
@@ -418,6 +452,20 @@ export function ProjectGridView({
                           onClick={() => onEvaluate(item)}
                           className={styles.actionButton}
                           aria-label={t('projects.review')}
+                        />
+                      </Tooltip>
+                    )}
+
+                    {onApprove && approvable && (
+                      <Tooltip title={t('projects.markApproved')}>
+                        <Button
+                          type="default"
+                          shape="circle"
+                          size="large"
+                          icon={<BadgeCheck size={18} color={token.colorSuccess} />}
+                          onClick={() => onApprove(item)}
+                          className={styles.actionButton}
+                          aria-label={t('projects.markApproved')}
                         />
                       </Tooltip>
                     )}

@@ -21,7 +21,7 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
-import { ClipboardCheck, LayoutGrid, List, Pencil, Trash2 } from 'lucide-react';
+import { BadgeCheck, ClipboardCheck, LayoutGrid, List, Pencil, Trash2 } from 'lucide-react';
 
 import {
   parseAsArrayOf,
@@ -35,12 +35,15 @@ import {
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
+import { GO_PERMISSIONS } from '../../../shared/auth/permissions';
 import { SortDropdown } from '../../../shared/components/sort-dropdown';
 import { lazyWithReload } from '../../../shared/lib/app-update';
 import { PAGE_TABLE_STICKY } from '../../../shared/lib/sticky-table-header';
+import { usePermissions } from '../../account/hooks/use-current-account';
 import { CountryFlag } from '../../countries/components';
 import { useAssetPreviewUrl } from '../../media/hooks/use-asset-preview-url';
 import { getProjects } from '../api/projects';
+import { BulkApproveModal, type BulkApproveTarget } from '../components/bulk-approve-modal';
 import { CreateProjectModal } from '../components/create-project-modal';
 import type { ProjectFilterValues } from '../components/project-filter-popover';
 import { ProjectFilterPopover } from '../components/project-filter-popover';
@@ -62,6 +65,11 @@ import { getProjectStatus } from '../utils/project-status.util';
 const ProjectGridView = lazyWithReload(() =>
   import('../components/project-grid-view').then((m) => ({ default: m.ProjectGridView })),
 );
+
+/** Projects with files still to approve; drafts have none and completed ones are all approved. */
+function canQuickApprove(project: Pick<Project, 'evaluationStatus'>): boolean {
+  return project.evaluationStatus !== 'draft' && project.evaluationStatus !== 'completed';
+}
 
 const PROJECT_SORT_FIELDS = [
   'name',
@@ -182,6 +190,15 @@ export function ProjectsPage({ scope = 'evaluated' }: { scope?: ProjectListScope
   const [createOpen, setCreateOpen] = useState(false);
   const [reviewProjectId, setReviewProjectId] = useState<string>();
   const [reviewMode, setReviewMode] = useState<ProjectDrawerMode>('view');
+  const { can } = usePermissions();
+  const canEvaluate = can(GO_PERMISSIONS.PROJECT_EVALUATE);
+  const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
+  const [approveTarget, setApproveTarget] = useState<BulkApproveTarget>();
+  const quickApprove = (projects: Array<Pick<Project, 'id' | 'name'>>) =>
+    setApproveTarget({
+      kind: 'projects',
+      projects: projects.map((project) => ({ id: project.id, name: project.name })),
+    });
   const openProject = (projectId: string, mode: ProjectDrawerMode) => {
     setReviewMode(mode);
     setReviewProjectId(projectId);
@@ -441,7 +458,7 @@ export function ProjectsPage({ scope = 'evaluated' }: { scope?: ProjectListScope
     {
       title: t('projects.actions'),
       key: 'actions',
-      width: 140,
+      width: canEvaluate ? 176 : 140,
       fixed: 'right',
       hideInSetting: true,
       render: (_, project) => (
@@ -454,6 +471,16 @@ export function ProjectsPage({ scope = 'evaluated' }: { scope?: ProjectListScope
               onClick={() => openProject(project.id, 'evaluate')}
             />
           </Tooltip>
+          {canEvaluate && canQuickApprove(project) ? (
+            <Tooltip title={t('projects.markApproved')}>
+              <Button
+                aria-label={t('projects.markApproved')}
+                icon={<BadgeCheck size={16} color={token.colorSuccess} />}
+                type="text"
+                onClick={() => quickApprove([project])}
+              />
+            </Tooltip>
+          ) : null}
           <Tooltip title={t('projects.edit')}>
             <Button
               aria-label={t('projects.edit')}
@@ -580,6 +607,10 @@ export function ProjectsPage({ scope = 'evaluated' }: { scope?: ProjectListScope
               });
               setListError(undefined);
               setGridData(result.items);
+              // Selection only spans the page being shown.
+              setSelectedProjectIds((current) =>
+                current.filter((id) => result.items.some((item) => item.id === id)),
+              );
               setTotalCount(result.total);
               return { data: result.items, success: true, total: result.total };
             } catch (error) {
@@ -590,6 +621,16 @@ export function ProjectsPage({ scope = 'evaluated' }: { scope?: ProjectListScope
             }
           }}
           rowKey="id"
+          rowSelection={
+            canEvaluate
+              ? {
+                  selectedRowKeys: selectedProjectIds,
+                  getCheckboxProps: (project) => ({ disabled: !canQuickApprove(project) }),
+                  onChange: (keys) => setSelectedProjectIds(keys.map(String)),
+                }
+              : false
+          }
+          tableAlertRender={false}
           locale={{ emptyText: t(scopeConfig.emptyKey) }}
           search={false}
           scroll={{ x: 1680 }}
@@ -597,6 +638,35 @@ export function ProjectsPage({ scope = 'evaluated' }: { scope?: ProjectListScope
           tableRender={(_props, _defaultDom, domList) => (
             <>
               {domList.toolbar}
+              {selectedProjectIds.length > 0 ? (
+                <Alert
+                  showIcon
+                  type="info"
+                  style={{ marginBottom: 16 }}
+                  message={t('projects.bulkApproveSelectedProjects', {
+                    count: selectedProjectIds.length,
+                  })}
+                  action={
+                    <Space>
+                      <Button size="small" type="link" onClick={() => setSelectedProjectIds([])}>
+                        {t('projects.clearSelection')}
+                      </Button>
+                      <Button
+                        size="small"
+                        type="primary"
+                        icon={<BadgeCheck size={14} />}
+                        onClick={() =>
+                          quickApprove(
+                            gridData.filter((project) => selectedProjectIds.includes(project.id)),
+                          )
+                        }
+                      >
+                        {t('projects.bulkApprove')} ({selectedProjectIds.length})
+                      </Button>
+                    </Space>
+                  }
+                />
+              ) : null}
               {viewMode === 'grid' ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   <Suspense
@@ -663,6 +733,23 @@ export function ProjectsPage({ scope = 'evaluated' }: { scope?: ProjectListScope
                       onDelete={(item) => void handleDelete(item.id)}
                       onEvaluate={(item) => openProject(item.id, 'evaluate')}
                       canEvaluate
+                      selectable={canEvaluate}
+                      canSelect={(item) =>
+                        canQuickApprove({ evaluationStatus: item.evaluation_status ?? '' })
+                      }
+                      selectedIds={selectedProjectIds}
+                      onSelectChange={(id, selected) =>
+                        setSelectedProjectIds((current) =>
+                          selected
+                            ? [...new Set([...current, id])]
+                            : current.filter((value) => value !== id),
+                        )
+                      }
+                      onApprove={
+                        canEvaluate
+                          ? (item) => quickApprove([{ id: item.id, name: item.title }])
+                          : undefined
+                      }
                     />
                   </Suspense>
                   <div
@@ -738,6 +825,15 @@ export function ProjectsPage({ scope = 'evaluated' }: { scope?: ProjectListScope
           setCreateOpen(false);
           void message.success(t('projects.createSuccess'));
           navigate(`/projects/${project.id}/edit`, { state: { from: NEW_PROJECT_LIST_PATH } });
+        }}
+      />
+      <BulkApproveModal
+        target={approveTarget}
+        onClose={() => setApproveTarget(undefined)}
+        onApproved={() => {
+          setSelectedProjectIds([]);
+          // Approved projects can leave this list (e.g. the evaluation queue).
+          void actionRef.current?.reload();
         }}
       />
       <ProjectReviewDrawer
