@@ -1,12 +1,37 @@
-import { EyeOutlined } from '@ant-design/icons';
-import { Button, Flex, Progress, Space, Table, Tag, Typography } from 'antd';
+import {
+  EyeOutlined,
+  PauseCircleOutlined,
+  PlayCircleOutlined,
+  StopOutlined,
+} from '@ant-design/icons';
+import {
+  App,
+  Button,
+  Flex,
+  Popconfirm,
+  Progress,
+  Space,
+  Table,
+  Tag,
+  Tooltip,
+  Typography,
+} from 'antd';
 import type { ColumnsType, TableProps } from 'antd/es/table';
 import { useTranslation } from 'react-i18next';
 import { TableRefreshButton } from '../../../shared/components/table-refresh-button';
 import { formatDate } from '../../../shared/lib/format-date';
 import { PAGE_TABLE_STICKY } from '../../../shared/lib/sticky-table-header';
 import type { RenderBatch } from '../api/render';
-import { RENDER_STATUS_COLORS, renderStatusLabel } from '../utils/render-format';
+import {
+  useCancelRenderBatch,
+  usePauseRenderBatch,
+  useResumeRenderBatch,
+} from '../hooks/use-render';
+import {
+  RENDER_PAUSABLE_STATUSES,
+  RENDER_STATUS_COLORS,
+  renderStatusLabel,
+} from '../utils/render-format';
 import { RenderBatchScope } from './render-batch-scope';
 
 type RenderBatchTableProps = {
@@ -35,6 +60,13 @@ export function RenderBatchTable({
   refreshing,
 }: RenderBatchTableProps) {
   const { t } = useTranslation();
+  const { message } = App.useApp();
+  const pauseBatch = usePauseRenderBatch();
+  const resumeBatch = useResumeRenderBatch();
+  const cancelBatch = useCancelRenderBatch();
+  const onError = (error: Error) => void message.error(error.message);
+  const isPending = (mutation: { isPending: boolean; variables?: string }, batch: RenderBatch) =>
+    mutation.isPending && mutation.variables === batch.id;
   const columns: ColumnsType<RenderBatch> = [
     {
       key: 'createdAt',
@@ -105,12 +137,58 @@ export function RenderBatchTable({
     },
     {
       key: 'actions',
-      width: 120,
+      width: 110,
       fixed: 'right',
       render: (_, batch) => (
-        <Button size="small" icon={<EyeOutlined />} onClick={() => onViewJobs(batch)}>
-          {t('common.viewJobs')}
-        </Button>
+        <Space size={4}>
+          <Tooltip title={t('common.viewJobs')}>
+            <Button
+              size="small"
+              icon={<EyeOutlined />}
+              aria-label={t('common.viewJobs')}
+              onClick={() => onViewJobs(batch)}
+            />
+          </Tooltip>
+          {RENDER_PAUSABLE_STATUSES.includes(batch.status) ? (
+            <Tooltip title={t('render.pauseBatch')}>
+              <Button
+                size="small"
+                icon={<PauseCircleOutlined />}
+                aria-label={t('render.pauseBatch')}
+                loading={isPending(pauseBatch, batch)}
+                onClick={() => pauseBatch.mutate(batch.id, { onError })}
+              />
+            </Tooltip>
+          ) : null}
+          {batch.status === 'paused' ? (
+            <Tooltip title={t('render.resumeBatch')}>
+              <Button
+                size="small"
+                icon={<PlayCircleOutlined />}
+                aria-label={t('render.resumeBatch')}
+                loading={isPending(resumeBatch, batch)}
+                onClick={() => resumeBatch.mutate(batch.id, { onError })}
+              />
+            </Tooltip>
+          ) : null}
+          {[...RENDER_PAUSABLE_STATUSES, 'paused'].includes(batch.status) ? (
+            <Popconfirm
+              title={t('render.cancelBatchConfirm')}
+              okButtonProps={{ danger: true }}
+              onConfirm={() => cancelBatch.mutateAsync(batch.id).catch(onError)}
+            >
+              <Tooltip title={t('render.cancelBatch')}>
+                <Button
+                  size="small"
+                  danger
+                  icon={<StopOutlined />}
+                  aria-label={t('render.cancelBatch')}
+                  loading={isPending(cancelBatch, batch)}
+                />
+              </Tooltip>
+            </Popconfirm>
+          ) : null}
+        </Space>
       ),
     },
   ];

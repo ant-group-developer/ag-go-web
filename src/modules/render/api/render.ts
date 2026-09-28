@@ -318,3 +318,11 @@ export function getRenderBatch(id: string) {
 export function cancelRenderBatch(id: string) {
   return apiClient<RenderBatch>(`/render-batches/${id}/cancel`, { method: 'POST' });
 }
+
+export function pauseRenderBatch(id: string) {
+  return apiClient<RenderBatch>(`/render-batches/${id}/pause`, { method: 'POST' });
+}
+
+export function resumeRenderBatch(id: string) {
+  return apiClient<RenderBatch>(`/render-batches/${id}/resume`, { method: 'POST' });
+}
