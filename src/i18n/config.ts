@@ -1483,7 +1483,8 @@ const resources = {
         searchPlaceholder: 'Search...',
         searchFolderPlaceholder: 'Search folder name...',
         selectedFoldersCount: '{{count}} folder(s) selected',
-        selectFoldersToFilter: 'Select one or more folders (including subfolders) to filter projects',
+        selectFoldersToFilter:
+          'Select one or more folders (including subfolders) to filter projects',
         status: 'Status',
         createdAt: 'Created At',
         updatedAt: 'Updated At',
