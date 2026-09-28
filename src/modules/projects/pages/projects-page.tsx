@@ -160,16 +160,19 @@ function ProjectThumbnailCell({ assetId }: { assetId?: string | null }) {
   const { t } = useTranslation();
   const previewUrl = useAssetPreviewUrl(assetId);
 
+  // Fixed box that never shrinks, so long names can't squeeze the thumbnail.
   return (
-    <Image
-      alt={previewUrl ? '' : t('projects.noThumbnail')}
-      fallback="/images/error-image.png"
-      height={48}
-      preview={Boolean(previewUrl)}
-      src={previewUrl || '/images/error-image.png'}
-      style={{ borderRadius: 6, objectFit: 'cover' }}
-      width={64}
-    />
+    <div style={{ flex: '0 0 auto', width: 72, height: 54 }}>
+      <Image
+        alt={previewUrl ? '' : t('projects.noThumbnail')}
+        fallback="/images/error-image.png"
+        height={54}
+        preview={Boolean(previewUrl)}
+        src={previewUrl || '/images/error-image.png'}
+        style={{ borderRadius: 6, objectFit: 'cover' }}
+        width={72}
+      />
+    </div>
   );
 }
 
