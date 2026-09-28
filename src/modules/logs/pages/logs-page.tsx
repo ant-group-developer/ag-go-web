@@ -43,7 +43,7 @@ export function LogsPage() {
   }));
 
   return (
-    <PageContainer title={t('logs.title')}>
+    <PageContainer pageHeaderRender={false}>
       <Tabs
         activeKey={activeTab}
         onChange={(key) => void setTab(key as LogPageTab)}
