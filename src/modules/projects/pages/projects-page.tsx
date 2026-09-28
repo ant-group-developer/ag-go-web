@@ -73,6 +73,7 @@ function canQuickApprove(project: Pick<Project, 'evaluationStatus'>): boolean {
 
 const PROJECT_SORT_FIELDS = [
   'name',
+  'folder',
   'createdAt',
   'updatedAt',
 ] as const satisfies readonly ProjectSortField[];
@@ -325,6 +326,7 @@ export function ProjectsPage({ scope = 'evaluated' }: { scope?: ProjectListScope
 
   const sortFieldLabels: Record<ProjectSortField, string> = {
     name: t('projects.sortName'),
+    folder: t('projects.folder'),
     createdAt: t('projects.createdAt'),
     updatedAt: t('projects.updatedAt'),
   };

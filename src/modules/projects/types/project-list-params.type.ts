@@ -1,4 +1,4 @@
-export type ProjectSortField = 'name' | 'createdAt' | 'updatedAt';
+export type ProjectSortField = 'name' | 'folder' | 'createdAt' | 'updatedAt';
 export type ProjectSortOrder = 'asc' | 'desc';
 export const PROJECT_EVALUATION_STATUSES = [
   'draft',
