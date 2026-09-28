@@ -9,7 +9,10 @@ import { usePermissions } from '../../account/hooks/use-current-account';
 import { useFolders } from '../hooks/use-folders';
 import type { FolderCascaderOption } from '../types/folder-cascader-option.type';
 import type { Folder } from '../types/folder.type';
-import { buildFolderCascaderOptions } from '../utils/build-folder-cascader-options';
+import {
+  buildFolderCascaderOptions,
+  buildFolderOptionPaths,
+} from '../utils/build-folder-cascader-options';
 import { CreateFolderModal } from './create-folder-modal';
 
 export interface FolderCascaderProps extends Omit<
@@ -50,6 +53,15 @@ export function FolderCascader({
     return buildFolderCascaderOptions(filterFolders ? items.filter(filterFolders) : items);
   }, [folders.data, filterFolders]);
 
+  // `value` holds the full path from the real root, but users granted access only to a
+  // subfolder see that subfolder as a root option. Re-anchor the path to the visible tree
+  // so the cascader can resolve labels instead of rendering raw ids.
+  const optionPaths = useMemo(() => buildFolderOptionPaths(options), [options]);
+  const cascaderValue = useMemo(() => {
+    const leafId = value?.at(-1);
+    return (leafId && optionPaths.get(leafId)) || value;
+  }, [value, optionPaths]);
+
   const openCreate = () => {
     setOpen(false);
     setCreateOpen(true);
@@ -59,7 +71,7 @@ export function FolderCascader({
     <>
       <Cascader<FolderCascaderOption, 'value'>
         options={options}
-        value={value}
+        value={cascaderValue}
         onChange={(nextValue) => onChange?.(nextValue as string[] | undefined)}
         showSearch={
           showSearch

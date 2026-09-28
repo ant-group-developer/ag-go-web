@@ -18,6 +18,9 @@ export function getProjects(params: ProjectListParams = {}): Promise<ProjectPage
   if (params.folderId) {
     query.set('folderId', params.folderId);
   }
+  if (params.folderIds?.length) {
+    query.set('folderIds', params.folderIds.join(','));
+  }
   if (params.countryId) {
     query.set('countryId', params.countryId);
   }
@@ -26,6 +29,9 @@ export function getProjects(params: ProjectListParams = {}): Promise<ProjectPage
   }
   if (params.categoryId) {
     query.set('categoryId', params.categoryId);
+  }
+  if (params.categoryIds?.length) {
+    query.set('categoryIds', params.categoryIds.join(','));
   }
   if (params.tagIds?.length) {
     query.set('tagIds', params.tagIds.join(','));

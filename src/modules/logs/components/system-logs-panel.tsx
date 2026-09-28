@@ -16,17 +16,18 @@ const { RangePicker } = DatePicker;
 export function SystemLogsPanel() {
   const { t } = useTranslation();
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   const [category, setCategory] = useState<string>();
   const [action, setAction] = useState<string>();
   const [level, setLevel] = useState<'info' | 'warn' | 'error'>();
   const [range, setRange] = useState<[string, string]>();
   const [selected, setSelected] = useState<SystemLog>();
   const query = useQuery({
-    queryKey: ['logs', { page, category, action, level, range }],
+    queryKey: ['logs', { page, pageSize, category, action, level, range }],
     queryFn: () =>
       getLogs({
         page,
-        pageSize: 25,
+        pageSize,
         category,
         level,
         action,
@@ -37,6 +38,7 @@ export function SystemLogsPanel() {
 
   const onTableChange = (pagination: TablePaginationConfig) => {
     setPage(pagination.current ?? 1);
+    setPageSize(pagination.pageSize ?? 25);
   };
 
   return (
@@ -115,8 +117,10 @@ export function SystemLogsPanel() {
         }}
         pagination={{
           current: query.data?.page ?? page,
-          pageSize: query.data?.pageSize ?? 25,
+          pageSize: query.data?.pageSize ?? pageSize,
           total: query.data?.total ?? 0,
+          showTotal: (total, range) =>
+            t('common.paginationTotal', { start: range[0], end: range[1], total }),
         }}
         bordered
         onChange={onTableChange}
