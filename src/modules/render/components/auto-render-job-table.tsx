@@ -9,7 +9,7 @@ import { RenderJobTable } from './render-job-table';
 const DEFAULT_PAGE_SIZE = 20;
 const PAGE_SIZE_OPTIONS = [20, 50, 100];
 const SEARCH_DEBOUNCE_MS = 400;
-const EMPTY_COUNTS = { all: 0, active: 0, completed: 0, failed: 0 };
+const EMPTY_COUNTS = { all: 0, active: 0, completed: 0, failed: 0, cancelled: 0 };
 
 type AutoRenderJobTableProps = {
   /** Limit to one project; omit for every project the user can view. */
