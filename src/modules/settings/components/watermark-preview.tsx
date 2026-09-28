@@ -1,9 +1,10 @@
 import { useEffect, useRef } from 'react';
 import type { WatermarkConfig } from '../../render/api/render';
+import { getWatermarkCssFont, loadWatermarkFont } from '../../render/utils/watermark-fonts';
 import {
-  fitWithin,
   getOverlayPosition,
   getSingleWatermarkTileScale,
+  getWatermarkMargin,
   getWatermarkTileGeometry,
   getWatermarkUnitScale,
   WATERMARK_REFERENCE_WIDTH,
@@ -43,8 +44,8 @@ function drawTile(
   logo: HTMLImageElement | undefined,
   fontSize: number,
 ): HTMLCanvasElement {
-  const geometry = getWatermarkTileGeometry(fontSize, Boolean(logo));
-  const font = `${fontSize}px ${config.fontFamily}`;
+  const geometry = getWatermarkTileGeometry(fontSize, Boolean(logo), config.logoScale);
+  const font = getWatermarkCssFont(config.fontFamily, config.fontWeight, fontSize);
   const measure = document.createElement('canvas').getContext('2d');
   if (measure) {
     measure.font = font;
@@ -58,17 +59,18 @@ function drawTile(
     return tile;
   }
   if (logo) {
-    // Same as preserveAspectRatio="xMidYMid meet" on the server.
+    // Fitted inside the logo square on whole pixels, like the server's pre-resized logo.
     const ratio = Math.min(
       geometry.logoSize / logo.naturalWidth,
       geometry.logoSize / logo.naturalHeight,
     );
-    const width = logo.naturalWidth * ratio;
-    const height = logo.naturalHeight * ratio;
+    const width = Math.max(1, Math.round(logo.naturalWidth * ratio));
+    const height = Math.max(1, Math.round(logo.naturalHeight * ratio));
+    context.imageSmoothingQuality = 'high';
     context.drawImage(
       logo,
-      (geometry.logoSize - width) / 2,
-      geometry.logoY + (geometry.logoSize - height) / 2,
+      Math.floor((geometry.logoSize - width) / 2),
+      geometry.logoY + Math.floor((geometry.logoSize - height) / 2),
       width,
       height,
     );
@@ -121,6 +123,7 @@ export function WatermarkPreview({ sampleUrl, logoUrl, config, enabled }: Waterm
       const [image, logo] = await Promise.all([
         loadImage(sampleUrl || DEFAULT_SAMPLE),
         logoUrl ? loadImage(logoUrl) : Promise.resolve(undefined),
+        loadWatermarkFont(config.fontFamily, config.fontWeight),
       ]);
       if (disposed) {
         return;
@@ -143,7 +146,7 @@ export function WatermarkPreview({ sampleUrl, logoUrl, config, enabled }: Waterm
       }
 
       const unitScale = getWatermarkUnitScale(width);
-      const margin = Math.round(config.margin * unitScale);
+      const margin = getWatermarkMargin(config.margin, width, height);
       context.save();
       context.globalAlpha = config.opacity;
       if (config.repeat) {
@@ -159,22 +162,28 @@ export function WatermarkPreview({ sampleUrl, logoUrl, config, enabled }: Waterm
           }
         }
       } else {
-        const referenceWidth = drawTile(config, text, logo, config.fontSize).width;
+        // Sized from the default logo size so `logoScale` resizes the logo, not the text.
+        const referenceWidth = drawTile(
+          { ...config, logoScale: 1 },
+          text,
+          logo,
+          config.fontSize,
+        ).width;
         const tileScale = getSingleWatermarkTileScale(referenceWidth, width, config.scale);
         const tile = rotateTile(
           drawTile(config, text, logo, config.fontSize * tileScale),
           config.rotate,
         );
-        const fitted = fitWithin(tile.width, tile.height, width - margin * 2, height - margin * 2);
+        // Oversized watermarks hang off the frame and are clipped, like on the server.
         const position = getOverlayPosition(
           width,
           height,
-          fitted.width,
-          fitted.height,
+          tile.width,
+          tile.height,
           config.position,
           margin,
         );
-        context.drawImage(tile, position.left, position.top, fitted.width, fitted.height);
+        context.drawImage(tile, position.left, position.top);
       }
       context.restore();
     };
