@@ -35,3 +35,19 @@ export function buildFolderCascaderOptions(folders: Folder[]): FolderCascaderOpt
 
   return roots;
 }
+
+/** Maps each option value to its path within the given options tree (from the visible root). */
+export function buildFolderOptionPaths(options: FolderCascaderOption[]): Map<string, string[]> {
+  const paths = new Map<string, string[]>();
+  const visit = (items: FolderCascaderOption[], parentPath: string[]) => {
+    for (const item of items) {
+      const path = [...parentPath, item.value];
+      paths.set(item.value, path);
+      if (item.children) {
+        visit(item.children, path);
+      }
+    }
+  };
+  visit(options, []);
+  return paths;
+}
