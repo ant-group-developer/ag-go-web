@@ -8,9 +8,12 @@ import {
   getRenderBatch,
   getRenderBatchJobs,
   getRenderProfiles,
+  pauseRenderBatch,
+  resumeRenderBatch,
   retryRenderJob,
   updateRenderProfile,
   type AutoRenderJobsParams,
+  type RenderBatch,
 } from '../api/render';
 
 const keys = {
@@ -38,20 +41,20 @@ export function useUpdateRenderProfile() {
   });
 }
 
+const TERMINAL_STATUSES = ['completed', 'partial', 'failed', 'cancelled'];
+const POLL_INTERVAL_MS = 5_000;
+
 export function useRenderBatch(id: string) {
   return useQuery({
     queryKey: keys.batch(id),
     queryFn: () => getRenderBatch(id),
     enabled: Boolean(id),
     refetchInterval: (query) =>
-      query.state.data && ['completed', 'failed', 'cancelled'].includes(query.state.data.status)
+      query.state.data && TERMINAL_STATUSES.includes(query.state.data.status)
         ? false
-        : 5_000,
+        : POLL_INTERVAL_MS,
   });
 }
-
-const TERMINAL_STATUSES = ['completed', 'partial', 'failed', 'cancelled'];
-const POLL_INTERVAL_MS = 5_000;
 
 /** Poll while anything in the list is still queued or processing. */
 function pollWhileActive<T extends { status: string }>(items: T[] | undefined) {
@@ -126,12 +129,28 @@ export function useCreateRenderBatch() {
   });
 }
 
-export function useCancelRenderBatch() {
+/** A pause/resume/cancel of a batch: refreshes it, its jobs and the lists showing it. */
+function useBatchMutation(mutationFn: (id: string) => Promise<RenderBatch>) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: cancelRenderBatch,
+    mutationFn,
     onSuccess: (batch) => {
       void client.invalidateQueries({ queryKey: keys.batch(batch.id) });
+      void client.invalidateQueries({ queryKey: keys.jobs(batch.id) });
+      void client.invalidateQueries({ queryKey: [...keys.all, 'project-batches'] });
+      void client.invalidateQueries({ queryKey: keys.allBatches() });
     },
   });
+}
+
+export function useCancelRenderBatch() {
+  return useBatchMutation(cancelRenderBatch);
+}
+
+export function usePauseRenderBatch() {
+  return useBatchMutation(pauseRenderBatch);
+}
+
+export function useResumeRenderBatch() {
+  return useBatchMutation(resumeRenderBatch);
 }
