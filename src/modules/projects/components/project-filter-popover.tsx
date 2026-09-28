@@ -13,7 +13,7 @@ import {
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Select } from '../../../shared/components/select';
-import { CategorySelect } from '../../categories/components/category-select';
+import { useCategories } from '../../categories/hooks/use-categories';
 import { CountrySelect } from '../../countries/components/country-select';
 import { useFolders } from '../../folders/hooks/use-folders';
 import type { Folder as FolderType } from '../../folders/types/folder.type';
@@ -24,11 +24,10 @@ import { getProjectStatus } from '../utils/project-status.util';
 
 export type ProjectFilterValues = {
   keyword?: string;
-  folderId?: string;
   folderIds?: string[];
   countryId?: string;
   provinceId?: string;
-  categoryId?: string;
+  categoryIds?: string[];
   tagIds?: string[];
   evaluationStatuses?: ProjectEvaluationStatus[];
 };
@@ -140,6 +139,102 @@ function buildFolderTree(
   };
 }
 
+/** Drops folders whose ancestor is also selected, since the API already includes descendants. */
+function withoutSelectedDescendants(ids: string[], folders: FolderType[]): string[] {
+  const parentById = new Map(folders.map((f) => [f.id, f.parentId]));
+  const selected = new Set(ids);
+  return [...selected].filter((id) => {
+    let parentId = parentById.get(id);
+    while (parentId) {
+      if (selected.has(parentId)) return false;
+      parentId = parentById.get(parentId);
+    }
+    return true;
+  });
+}
+
+// ─── Searchable Checkbox List (categories, tags) ─────────────────────────────
+function CheckboxListFilter({
+  options,
+  loading,
+  value,
+  onChange,
+  searchPlaceholder,
+  emptyText,
+  notFoundText,
+}: {
+  options: Array<{ value: string; label: string }>;
+  loading: boolean;
+  value?: string[];
+  onChange: (ids: string[] | undefined) => void;
+  searchPlaceholder: string;
+  emptyText: string;
+  notFoundText: string;
+}) {
+  const [search, setSearch] = useState('');
+  const visibleOptions = useMemo(() => {
+    const lc = search.trim().toLowerCase();
+    return lc ? options.filter((o) => o.label.toLowerCase().includes(lc)) : options;
+  }, [options, search]);
+
+  return (
+    <>
+      <Input
+        allowClear
+        placeholder={searchPlaceholder}
+        prefix={<Search size={16} style={{ color: '#9ca3af' }} />}
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+      />
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          maxHeight: 260,
+          overflowY: 'auto',
+          border: '1px solid #e5e7eb',
+          borderRadius: 8,
+          padding: '8px 12px',
+          background: '#fafafa',
+        }}
+      >
+        {loading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 0' }}>
+            <Spin size="small" />
+          </div>
+        ) : visibleOptions.length === 0 ? (
+          <Empty
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+            description={
+              <span style={{ color: '#6b7280', fontSize: 13 }}>
+                {search.trim() ? notFoundText : emptyText}
+              </span>
+            }
+          />
+        ) : (
+          <Checkbox.Group
+            value={value ?? []}
+            onChange={(checked) => {
+              // Selections hidden by the search stay selected.
+              const visible = new Set(visibleOptions.map((o) => o.value));
+              const hidden = (value ?? []).filter((id) => !visible.has(id));
+              const next = [...hidden, ...checked];
+              onChange(next.length ? next : undefined);
+            }}
+            style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
+          >
+            {visibleOptions.map((o) => (
+              <Checkbox key={o.value} value={o.value}>
+                {highlightText(o.label, search)}
+              </Checkbox>
+            ))}
+          </Checkbox.Group>
+        )}
+      </div>
+    </>
+  );
+}
+
 // ─── Sidebar Category Definitions ────────────────────────────────────────────
 
 function getCategoryFilterCount(key: FilterCategory, value: ProjectFilterValues): number {
@@ -149,9 +244,9 @@ function getCategoryFilterCount(key: FilterCategory, value: ProjectFilterValues)
     case 'status':
       return value.evaluationStatuses?.length ?? 0;
     case 'folder':
-      return value.folderId?.trim() ? 1 : 0;
+      return value.folderIds?.length ?? 0;
     case 'category':
-      return value.categoryId ? 1 : 0;
+      return value.categoryIds?.length ?? 0;
     case 'tags':
       return value.tagIds?.length ?? 0;
     case 'location': {
@@ -185,6 +280,7 @@ function FilterContent({
   const [autoExpandParent, setAutoExpandParent] = useState(true);
 
   const folders = useFolders();
+  const categories = useCategories();
   const tags = useTags();
   const countryId = value.countryId;
   const provinces = useProvinces({ page: 1, pageSize: 100, countryId }, Boolean(countryId));
@@ -193,6 +289,18 @@ function FilterContent({
     () => buildFolderTree(folders.data ?? [], folderSearch),
     [folders.data, folderSearch],
   );
+
+  const visibleFolderKeys = useMemo(() => {
+    const keys = new Set<string>();
+    const collect = (nodes: DataNode[]) =>
+      nodes.forEach((n) => {
+        keys.add(String(n.key));
+        if (n.children) collect(n.children);
+      });
+    collect(folderTree);
+    return keys;
+  }, [folderTree]);
+  const isFolderSearching = Boolean(folderSearch.trim());
 
   // Keep tree expanded when folders load or search changes
   useEffect(() => {
@@ -209,9 +317,9 @@ function FilterContent({
       [
         value.keyword?.trim(),
         value.evaluationStatuses?.length,
-        value.folderId?.trim(),
+        value.folderIds?.length,
         value.countryId || value.provinceId,
-        value.categoryId,
+        value.categoryIds?.length,
         value.tagIds?.length,
       ].filter(Boolean).length,
     [value],
@@ -252,12 +360,10 @@ function FilterContent({
             </div>
             <Input
               allowClear
-              size="large"
               placeholder={t('projects.keywordPlaceholderSearch')}
               prefix={<Search size={16} style={{ color: '#9ca3af' }} />}
               value={value.keyword ?? ''}
               onChange={(e) => onChange({ ...value, keyword: e.target.value || undefined })}
-              style={{ borderRadius: 8, fontSize: 14 }}
             />
             <Typography.Text type="secondary" style={{ fontSize: 13 }}>
               {t('projects.keywordPlaceholder')}
@@ -317,11 +423,11 @@ function FilterContent({
                   {t('projects.folder')}
                 </Typography.Text>
               </div>
-              {value.folderId?.trim() && (
+              {Boolean(value.folderIds?.length) && (
                 <Button
                   type="link"
                   size="small"
-                  onClick={() => onChange({ ...value, folderId: undefined })}
+                  onClick={() => onChange({ ...value, folderIds: undefined })}
                   style={{ padding: 0, fontSize: 12 }}
                 >
                   {t('projects.clearFolder')}
@@ -331,12 +437,10 @@ function FilterContent({
 
             <Input
               allowClear
-              size="middle"
               placeholder={t('projects.searchFolderPlaceholder')}
               prefix={<Search size={16} style={{ color: '#9ca3af' }} />}
               value={folderSearch}
               onChange={(e) => setFolderSearch(e.target.value)}
-              style={{ borderRadius: 8, fontSize: 14 }}
             />
 
             <div
@@ -379,10 +483,12 @@ function FilterContent({
               ) : (
                 <Tree
                   checkable
-                  checkStrictly={false}
+                  // While searching, the tree only holds matches and their ancestors, so cascading
+                  // would check a parent whose hidden children were never picked.
+                  checkStrictly={isFolderSearching}
                   selectable={false}
                   treeData={folderTree}
-                  checkedKeys={value.folderId ? [value.folderId] : []}
+                  checkedKeys={(value.folderIds ?? []).filter((id) => visibleFolderKeys.has(id))}
                   expandedKeys={expandedKeys}
                   autoExpandParent={autoExpandParent}
                   onExpand={(keys) => {
@@ -391,43 +497,58 @@ function FilterContent({
                   }}
                   onCheck={(checked) => {
                     const keys = Array.isArray(checked) ? checked : checked.checked;
-                    const ids = (keys as string[]).map(String);
-                    onChange({
-                      ...value,
-                      // folderIds: ids.length > 0 ? ids : undefined,
-                      folderId: ids.length > 0 ? ids[0] : undefined,
-                    });
+                    // Selections hidden by the folder search stay selected.
+                    const hidden = (value.folderIds ?? []).filter(
+                      (id) => !visibleFolderKeys.has(id),
+                    );
+                    const ids = withoutSelectedDescendants(
+                      [...hidden, ...keys.map(String)],
+                      folders.data ?? [],
+                    );
+                    onChange({ ...value, folderIds: ids.length > 0 ? ids : undefined });
                   }}
                   style={{ background: 'transparent', fontSize: 13.5 }}
                 />
               )}
             </div>
 
-            {/* <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography.Text type="secondary" style={{ fontSize: 12.5 }}>
-                {(value.folderIds?.length ?? 0) > 0
-                  ? t('projects.selectedFoldersCount', { count: value.folderIds!.length })
-                  : t('projects.selectFoldersToFilter')}
-              </Typography.Text>
-            </div> */}
+            <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+              {value.folderIds?.length
+                ? t('projects.selectedFoldersCount', { count: value.folderIds.length })
+                : t('projects.selectFoldersToFilter')}
+            </Typography.Text>
           </div>
         );
 
       case 'category':
         return (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Layers size={18} style={{ color: '#1677ff' }} />
-              <Typography.Text strong style={{ fontSize: 16 }}>
-                {t('projects.category')}
-              </Typography.Text>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Layers size={18} style={{ color: '#1677ff' }} />
+                <Typography.Text strong style={{ fontSize: 16 }}>
+                  {t('projects.category')}
+                </Typography.Text>
+              </div>
+              {Boolean(value.categoryIds?.length) && (
+                <Button
+                  type="link"
+                  size="small"
+                  onClick={() => onChange({ ...value, categoryIds: undefined })}
+                  style={{ padding: 0, fontSize: 12 }}
+                >
+                  {t('projects.clearSelection')}
+                </Button>
+              )}
             </div>
-            <CategorySelect
-              allowCreate={false}
-              size="middle"
-              value={value.categoryId}
-              onChange={(v) => onChange({ ...value, categoryId: v })}
-              style={{ width: '100%', fontSize: 14 }}
+            <CheckboxListFilter
+              options={(categories.data ?? []).map((c) => ({ value: c.id, label: c.name }))}
+              loading={categories.isPending}
+              value={value.categoryIds}
+              onChange={(ids) => onChange({ ...value, categoryIds: ids })}
+              searchPlaceholder={t('projects.searchCategoryPlaceholder')}
+              emptyText={t('projects.emptyCategory')}
+              notFoundText={t('projects.noCategoryFound')}
             />
             <Typography.Text type="secondary" style={{ fontSize: 13 }}>
               {t('projects.categoryDescription')}
@@ -437,23 +558,33 @@ function FilterContent({
 
       case 'tags':
         return (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <TagIcon size={18} style={{ color: '#1677ff' }} />
-              <Typography.Text strong style={{ fontSize: 16 }}>
-                {t('projects.tags')}
-              </Typography.Text>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <TagIcon size={18} style={{ color: '#1677ff' }} />
+                <Typography.Text strong style={{ fontSize: 16 }}>
+                  {t('projects.tags')}
+                </Typography.Text>
+              </div>
+              {Boolean(value.tagIds?.length) && (
+                <Button
+                  type="link"
+                  size="small"
+                  onClick={() => onChange({ ...value, tagIds: undefined })}
+                  style={{ padding: 0, fontSize: 12 }}
+                >
+                  {t('projects.clearSelection')}
+                </Button>
+              )}
             </div>
-            <Select
-              allowClear
-              mode="multiple"
-              size="middle"
-              options={tags.data?.map((tag) => ({ value: tag.id, label: tag.name }))}
-              placeholder={t('projects.tagsFilterPlaceholder')}
-              showSearch
+            <CheckboxListFilter
+              options={(tags.data ?? []).map((tag) => ({ value: tag.id, label: tag.name }))}
+              loading={tags.isPending}
               value={value.tagIds}
-              onChange={(v) => onChange({ ...value, tagIds: v?.length ? v : undefined })}
-              style={{ width: '100%' }}
+              onChange={(ids) => onChange({ ...value, tagIds: ids })}
+              searchPlaceholder={t('projects.searchTagPlaceholder')}
+              emptyText={t('projects.emptyTag')}
+              notFoundText={t('projects.noTagFound')}
             />
             <Typography.Text type="secondary" style={{ fontSize: 13 }}>
               {t('projects.tagDescription')}
@@ -475,7 +606,6 @@ function FilterContent({
                 {t('projects.country')}
               </Typography.Text>
               <CountrySelect
-                size="large"
                 value={value.countryId}
                 onChange={(v) => onChange({ ...value, countryId: v, provinceId: undefined })}
                 style={{ width: '100%' }}
@@ -487,7 +617,6 @@ function FilterContent({
               </Typography.Text>
               <Select
                 allowClear
-                size="middle"
                 disabled={!countryId}
                 loading={provinces.isPending}
                 options={provinces.data?.items.map((p) => ({ value: p.id, label: p.name }))}
@@ -528,10 +657,8 @@ function FilterContent({
               allowClear
               placeholder={t('projects.searchPlaceholder')}
               prefix={<Search size={14} style={{ color: '#9ca3af' }} />}
-              size="middle"
               value={sidebarSearch}
               onChange={(e) => setSidebarSearch(e.target.value)}
-              style={{ borderRadius: 6, fontSize: 13 }}
             />
           </div>
 

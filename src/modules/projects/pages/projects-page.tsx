@@ -81,12 +81,13 @@ const PROJECT_SORT_ORDERS = ['asc', 'desc'] as const satisfies readonly ProjectS
 
 const projectUrlParams = {
   keyword: parseAsString,
+  /** Legacy single-folder link (e.g. from statistics); merged into `folderIds`. */
   folderId: parseAsString,
   folderIds: parseAsArrayOf(parseAsString).withDefault([]),
   tagIds: parseAsArrayOf(parseAsString).withDefault([]),
   countryId: parseAsString,
   provinceId: parseAsString,
-  categoryId: parseAsString,
+  categoryIds: parseAsArrayOf(parseAsString).withDefault([]),
   evaluationStatuses: parseAsArrayOf(parseAsStringLiteral(PROJECT_EVALUATION_STATUSES)).withDefault(
     [],
   ),
@@ -253,9 +254,14 @@ export function ProjectsPage({ scope = 'evaluated' }: { scope?: ProjectListScope
 
   const [filterValues, setFilterValues] = useState<ProjectFilterValues>({
     keyword: urlState.keyword ?? undefined,
+    folderIds: urlState.folderIds.length
+      ? urlState.folderIds
+      : urlState.folderId
+        ? [urlState.folderId]
+        : undefined,
     countryId: urlState.countryId ?? undefined,
     provinceId: urlState.provinceId ?? undefined,
-    categoryId: urlState.categoryId ?? undefined,
+    categoryIds: urlState.categoryIds.length ? urlState.categoryIds : undefined,
     tagIds: urlState.tagIds?.length ? urlState.tagIds : undefined,
     evaluationStatuses: urlState.evaluationStatuses.length
       ? urlState.evaluationStatuses
@@ -271,9 +277,9 @@ export function ProjectsPage({ scope = 'evaluated' }: { scope?: ProjectListScope
       [
         filterValues.keyword?.trim(),
         filterValues.evaluationStatuses?.length,
-        filterValues.folderId,
+        filterValues.folderIds?.length,
         filterValues.countryId || filterValues.provinceId,
-        filterValues.categoryId,
+        filterValues.categoryIds?.length,
         filterValues.tagIds?.length,
       ].filter(Boolean).length,
     [filterValues],
@@ -282,11 +288,12 @@ export function ProjectsPage({ scope = 'evaluated' }: { scope?: ProjectListScope
   const applyFilter = async (values: ProjectFilterValues) => {
     await setUrlState({
       keyword: values.keyword?.trim() || null,
-      folderId: values.folderId ?? null,
+      folderId: null,
+      folderIds: values.folderIds?.length ? values.folderIds : null,
       tagIds: values.tagIds?.length ? values.tagIds : null,
       countryId: values.countryId ?? null,
       provinceId: values.provinceId ?? null,
-      categoryId: values.categoryId ?? null,
+      categoryIds: values.categoryIds?.length ? values.categoryIds : null,
       evaluationStatuses: values.evaluationStatuses?.length ? values.evaluationStatuses : null,
       page: 1,
     });
@@ -307,11 +314,11 @@ export function ProjectsPage({ scope = 'evaluated' }: { scope?: ProjectListScope
     void setUrlState({
       keyword: null,
       folderId: null,
-      // folderIds: null,
+      folderIds: null,
       tagIds: null,
       countryId: null,
       provinceId: null,
-      categoryId: null,
+      categoryIds: null,
       evaluationStatuses: null,
       page: 1,
     });
@@ -554,7 +561,6 @@ export function ProjectsPage({ scope = 'evaluated' }: { scope?: ProjectListScope
               />
               <Input.Search
                 allowClear
-                size="middle"
                 placeholder={t('projects.keywordPlaceholder')}
                 value={keywordInput}
                 onChange={(e) => setKeywordInput(e.target.value)}
@@ -586,7 +592,7 @@ export function ProjectsPage({ scope = 'evaluated' }: { scope?: ProjectListScope
             );
             const params: ProjectListParams = {
               ...(urlState.keyword ? { keyword: urlState.keyword } : {}),
-              ...(urlState.folderIds?.length
+              ...(urlState.folderIds.length
                 ? { folderIds: urlState.folderIds }
                 : urlState.folderId
                   ? { folderId: urlState.folderId }
@@ -594,7 +600,7 @@ export function ProjectsPage({ scope = 'evaluated' }: { scope?: ProjectListScope
               ...(urlState.tagIds.length ? { tagIds: urlState.tagIds } : {}),
               ...(urlState.countryId ? { countryId: urlState.countryId } : {}),
               ...(urlState.provinceId ? { provinceId: urlState.provinceId } : {}),
-              ...(urlState.categoryId ? { categoryId: urlState.categoryId } : {}),
+              ...(urlState.categoryIds.length ? { categoryIds: urlState.categoryIds } : {}),
               ...scopeConfig.filters,
               ...(selectedStatuses.length ? { evaluationStatuses: selectedStatuses } : {}),
               sortBy: urlState.sortBy,
