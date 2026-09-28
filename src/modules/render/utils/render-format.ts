@@ -3,6 +3,7 @@ import type { RenderJob, RenderJobOutput } from '../api/render';
 export const RENDER_STATUS_COLORS: Record<string, string> = {
   queued: 'default',
   processing: 'processing',
+  paused: 'gold',
   completed: 'success',
   partial: 'warning',
   failed: 'error',
@@ -14,6 +15,7 @@ export function renderStatusLabel(status: string, t: (key: string) => string): s
     {
       queued: t('render.status.queued'),
       processing: t('render.status.processing'),
+      paused: t('render.status.paused'),
       completed: t('render.status.completed'),
       partial: t('render.status.partial'),
       failed: t('render.status.failed'),
@@ -21,6 +23,9 @@ export function renderStatusLabel(status: string, t: (key: string) => string): s
     }[status] ?? status
   );
 }
+
+/** Batch statuses that can be paused; a paused batch can be resumed or cancelled. */
+export const RENDER_PAUSABLE_STATUSES = ['queued', 'processing'];
 
 export function renderJobSourceLabel(source: string, t: (key: string) => string): string {
   return (
