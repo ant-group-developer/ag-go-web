@@ -1,4 +1,5 @@
 import {
+  CheckOutlined,
   DownloadOutlined,
   FileImageOutlined,
   FileOutlined,
@@ -39,11 +40,9 @@ import { useRefreshProjectMediaOnImportProgress } from '../../google-drive/hooks
 import {
   getAssetOriginalUrl,
   getProjectMedia,
-  getProjectMediaEvaluationHistory,
   retryAssetProcessing,
   updateProjectMedia,
   type ProjectMedia,
-  type ProjectMediaEvaluation,
 } from '../../media/api/media';
 import { ProjectMediaSortDropdown } from '../../media/components/project-media-sort-dropdown';
 import { RenditionPicker } from '../../media/components/rendition-picker';
@@ -59,6 +58,8 @@ import {
 import { ProjectImportHistoryCard } from '../../render/components/project-processing-history-cards';
 import { getProject } from '../api/projects';
 import { projectQueryKeys } from '../queries/project-query-keys';
+import { BulkApproveModal, type BulkApproveTarget } from './bulk-approve-modal';
+import { MediaEvaluationHistory } from './media-evaluation-history';
 import { ProjectAuditLogCard } from './project-audit-log-card';
 import { ProjectOverviewCard } from './project-overview-card';
 
@@ -396,10 +397,6 @@ function MediaDetails({
   const [commentTouched, setCommentTouched] = useState(false);
   const commentValid = comment.trim().length >= MIN_COMMENT_LENGTH;
   const showCommentError = commentTouched && !commentValid;
-  const history = useQuery({
-    queryKey: mediaQueryKeys.evaluationHistory(media.id),
-    queryFn: () => getProjectMediaEvaluationHistory(media.id),
-  });
   const evaluate = useMutation({
     mutationFn: (evaluationStatus: EvaluationDecision) =>
       updateProjectMedia(media.id, { evaluationStatus, comment: comment.trim() }),
@@ -520,31 +517,7 @@ function MediaDetails({
         </>
       ) : null}
       <Divider />
-      <Typography.Text strong>{t('projects.evaluationHistory')}</Typography.Text>
-      <List
-        dataSource={history.data ?? []}
-        loading={history.isPending}
-        locale={{ emptyText: t('projects.noEvaluationHistory') }}
-        renderItem={(item: ProjectMediaEvaluation) => {
-          const itemStatus = getEvaluationStatus(item.evaluationStatus, t);
-          return (
-            <List.Item>
-              <List.Item.Meta
-                description={
-                  <Space direction="vertical" size={2}>
-                    <Typography.Text>{item.comment || '-'}</Typography.Text>
-                    <Typography.Text type="secondary">
-                      {item.evaluatedBy} · {formatDate(item.createdAt)}
-                    </Typography.Text>
-                  </Space>
-                }
-                title={<Tag color={itemStatus.color}>{itemStatus.label}</Tag>}
-              />
-            </List.Item>
-          );
-        }}
-        size="small"
-      />
+      <MediaEvaluationHistory mediaId={media.id} />
     </Card>
   );
 }
@@ -564,6 +537,7 @@ export function ProjectDetailDrawer({
   const { message } = AntApp.useApp();
   const [selectedMediaId, setSelectedMediaId] = useState<string>();
   const [selectedMediaIds, setSelectedMediaIds] = useState<string[]>([]);
+  const [approveTarget, setApproveTarget] = useState<BulkApproveTarget>();
   const [downloadJobId, setDownloadJobId] = useState<string>();
   const [mediaSort, setMediaSort] = useState<ProjectMediaSort>(DEFAULT_PROJECT_MEDIA_SORT);
   const project = useQuery({
@@ -600,6 +574,8 @@ export function ProjectDetailDrawer({
   // Files imported from Google Drive show up in the list while the import is running.
   useRefreshProjectMediaOnImportProgress(open ? (projectId ?? '') : '');
   const selectedMedia = mediaItems.find((item) => item.id === selectedMediaId) ?? mediaItems[0];
+  const allMediaSelected =
+    mediaItems.length > 0 && mediaItems.every((item) => selectedMediaIds.includes(item.id));
   const downloadJob = useQuery({
     queryKey: ['download', downloadJobId],
     queryFn: () => getDownload(downloadJobId ?? ''),
@@ -727,6 +703,37 @@ export function ProjectDetailDrawer({
                     borderBottom: `1px solid ${token.colorBorderSecondary}`,
                   }}
                 >
+                  <Checkbox
+                    checked={allMediaSelected}
+                    disabled={mediaItems.length === 0}
+                    indeterminate={selectedMediaIds.length > 0 && !allMediaSelected}
+                    style={{ alignSelf: 'center' }}
+                    onChange={(event) =>
+                      setSelectedMediaIds(
+                        event.target.checked ? mediaItems.map((item) => item.id) : [],
+                      )
+                    }
+                  >
+                    {t('projects.bulkApproveSelectAll')}
+                  </Checkbox>
+                  {canEvaluate ? (
+                    <Button
+                      disabled={selectedMediaIds.length === 0}
+                      icon={<CheckOutlined />}
+                      size="small"
+                      style={
+                        selectedMediaIds.length > 0
+                          ? { color: token.colorSuccess, borderColor: token.colorSuccess }
+                          : undefined
+                      }
+                      onClick={() =>
+                        setApproveTarget({ kind: 'media', mediaIds: selectedMediaIds })
+                      }
+                    >
+                      {t('projects.bulkApprove')}
+                      {selectedMediaIds.length > 0 ? ` (${selectedMediaIds.length})` : ''}
+                    </Button>
+                  ) : null}
                   <Button
                     icon={<DownloadOutlined />}
                     loading={download.isPending}
@@ -901,6 +908,11 @@ export function ProjectDetailDrawer({
           ) : null}
         </>
       ) : null}
+      <BulkApproveModal
+        target={approveTarget}
+        onClose={() => setApproveTarget(undefined)}
+        onApproved={() => setSelectedMediaIds([])}
+      />
     </Drawer>
   );
 }
