@@ -788,9 +788,14 @@ const resources = {
           retry: 'Chạy lại',
           other: 'Khác',
         },
+        pauseBatch: 'Tạm dừng render',
+        resumeBatch: 'Tiếp tục render',
+        cancelBatch: 'Hủy render',
+        cancelBatchConfirm: 'Hủy render batch này? Các file chưa render sẽ bị bỏ qua.',
         status: {
           queued: 'Đang chờ',
           processing: 'Đang xử lý',
+          paused: 'Tạm dừng',
           completed: 'Hoàn tất',
           partial: 'Hoàn tất một phần',
           failed: 'Thất bại',
@@ -977,8 +982,16 @@ const resources = {
         thumbnailWidth: 'Bề rộng thumbnail (px)',
         thumbnailWidthHint: 'Ảnh nhỏ hiển thị trong danh sách, không có watermark.',
         watermarkSize: 'Kích thước (% bề rộng ảnh)',
-        watermarkSizeHint: 'Bề rộng watermark so với bề rộng ảnh/video.',
+        watermarkSizeHint:
+          'Bề rộng watermark so với bề rộng ảnh/video. Trên 100% thì phần tràn ra ngoài khung sẽ bị cắt.',
         fontSizeRepeatHint: 'Cỡ chữ trên khung chuẩn rộng 960px, tự co giãn theo kích thước ảnh.',
+        fontHint: 'Các font đã cài trên server render, đều hỗ trợ tiếng Việt.',
+        fontWeight: 'Độ đậm chữ',
+        fontWeightHint:
+          'Font không có sẵn độ đậm đã chọn sẽ dùng độ đậm gần nhất (Arial, Times New Roman, Courier New chỉ có Regular và Bold).',
+        logoSize: 'Kích thước logo',
+        logoSizeHint:
+          'Tỉ lệ logo so với mặc định (1x = 1,6 lần cỡ chữ). Không làm thay đổi cỡ chữ.',
         previewNote:
           'Preview dùng font của trình duyệt; ảnh render trên server có thể khác một chút nếu server thiếu font.',
         applyToExisting: 'Áp dụng cho media hiện có',
@@ -1834,9 +1847,14 @@ const resources = {
           retry: 'Retry',
           other: 'Other',
         },
+        pauseBatch: 'Pause render',
+        resumeBatch: 'Resume render',
+        cancelBatch: 'Cancel render',
+        cancelBatchConfirm: 'Cancel this render batch? Files not rendered yet will be skipped.',
         status: {
           queued: 'Queued',
           processing: 'Processing',
+          paused: 'Paused',
           completed: 'Completed',
           partial: 'Partially completed',
           failed: 'Failed',
@@ -2024,8 +2042,16 @@ const resources = {
         thumbnailWidth: 'Thumbnail width (px)',
         thumbnailWidthHint: 'Small list image, without watermark.',
         watermarkSize: 'Size (% of image width)',
-        watermarkSizeHint: 'Watermark width relative to the image or video width.',
+        watermarkSizeHint:
+          'Watermark width relative to the image or video width. Above 100%, the part outside the frame is cropped.',
         fontSizeRepeatHint: 'Font size on a 960px wide reference frame, scaled to each image.',
+        fontHint: 'Fonts installed on the render server, all with Vietnamese support.',
+        fontWeight: 'Font weight',
+        fontWeightHint:
+          'Fonts without the selected weight use the closest one (Arial, Times New Roman and Courier New only have Regular and Bold).',
+        logoSize: 'Logo size',
+        logoSizeHint:
+          'Logo scale relative to the default (1x = 1.6x the font size). Does not change the text size.',
         previewNote:
           'The preview uses browser fonts; server renders may differ slightly if the server lacks the font.',
         applyToExisting: 'Apply to existing media',

@@ -11,12 +11,19 @@ export const WATERMARK_POSITIONS = [
 
 export type WatermarkPosition = (typeof WATERMARK_POSITIONS)[number];
 
+export const WATERMARK_FONT_WEIGHTS = [100, 200, 300, 400, 500, 600, 700, 800, 900] as const;
+
+export type WatermarkFontWeight = (typeof WATERMARK_FONT_WEIGHTS)[number];
+
 export type WatermarkConfig = {
   text: string;
   logoAssetId: string | null;
   color: string;
   fontFamily: string;
   fontSize: number;
+  fontWeight: WatermarkFontWeight;
+  /** Logo height relative to its default size (1.6x the font size). */
+  logoScale: number;
   repeat: boolean;
   gapX: number;
   gapY: number;
@@ -310,4 +317,12 @@ export function getRenderBatch(id: string) {
 
 export function cancelRenderBatch(id: string) {
   return apiClient<RenderBatch>(`/render-batches/${id}/cancel`, { method: 'POST' });
+}
+
+export function pauseRenderBatch(id: string) {
+  return apiClient<RenderBatch>(`/render-batches/${id}/pause`, { method: 'POST' });
+}
+
+export function resumeRenderBatch(id: string) {
+  return apiClient<RenderBatch>(`/render-batches/${id}/resume`, { method: 'POST' });
 }

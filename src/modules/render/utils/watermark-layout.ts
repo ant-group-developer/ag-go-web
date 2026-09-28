@@ -12,16 +12,31 @@ export function getWatermarkUnitScale(baseWidth: number): number {
   return Math.max(0.05, baseWidth / WATERMARK_REFERENCE_WIDTH);
 }
 
-/** Layout of the unrotated tile (logo on the left, text after it), in pixels for `fontSize`. */
-export function getWatermarkTileGeometry(fontSize: number, hasLogo: boolean) {
-  const logoSize = hasLogo ? fontSize * 1.6 : 0;
-  const textX = hasLogo ? logoSize * 1.3 : 0;
-  const height = Math.max(fontSize * 1.5, logoSize);
+/** Scaled margin, capped so a corner anchor stays inside very wide or very tall frames. */
+export function getWatermarkMargin(margin: number, baseWidth: number, baseHeight: number): number {
+  return Math.max(
+    0,
+    Math.min(
+      Math.round(margin * getWatermarkUnitScale(baseWidth)),
+      Math.floor((Math.min(baseWidth, baseHeight) - 1) / 2),
+    ),
+  );
+}
+
+/**
+ * Layout of the unrotated tile (logo on the left, text after it), in pixels for `fontSize`.
+ * `logoScale` resizes the logo relative to its default size of 1.6x the font size.
+ * Snapped to whole pixels so small watermarks stay sharp.
+ */
+export function getWatermarkTileGeometry(fontSize: number, hasLogo: boolean, logoScale = 1) {
+  const logoSize = hasLogo ? Math.max(1, Math.round(fontSize * 1.6 * logoScale)) : 0;
+  const textX = hasLogo ? Math.round(logoSize + fontSize * 0.48) : 0;
+  const height = Math.ceil(Math.max(fontSize * 1.5, logoSize));
   return {
     logoSize,
-    logoY: (height - logoSize) / 2,
+    logoY: Math.floor((height - logoSize) / 2),
     textX,
-    textBaselineY: height / 2 + fontSize * 0.35,
+    textBaselineY: Math.round(height / 2 + fontSize * 0.35),
     height,
   };
 }
@@ -35,15 +50,10 @@ export function getSingleWatermarkTileScale(
   return (baseWidth * scale) / Math.max(1, referenceTileWidth);
 }
 
-/** Shrinks (never enlarges) a box to fit inside the given bounds, keeping its aspect ratio. */
-export function fitWithin(width: number, height: number, maxWidth: number, maxHeight: number) {
-  const ratio = Math.min(1, Math.max(1, maxWidth) / width, Math.max(1, maxHeight) / height);
-  return {
-    width: Math.max(1, Math.round(width * ratio)),
-    height: Math.max(1, Math.round(height * ratio)),
-  };
-}
-
+/**
+ * Anchors the overlay at `position`. An overlay larger than the frame keeps its anchor and hangs
+ * off the opposite edges (negative offsets); the frame clips it.
+ */
 export function getOverlayPosition(
   baseWidth: number,
   baseHeight: number,
@@ -52,8 +62,8 @@ export function getOverlayPosition(
   position: WatermarkPosition,
   margin: number,
 ): { top: number; left: number } {
-  const right = Math.max(0, baseWidth - overlayWidth - margin);
-  const bottom = Math.max(0, baseHeight - overlayHeight - margin);
+  const right = baseWidth - overlayWidth - margin;
+  const bottom = baseHeight - overlayHeight - margin;
   switch (position) {
     case 'top-left':
       return { top: margin, left: margin };
@@ -63,8 +73,8 @@ export function getOverlayPosition(
       return { top: bottom, left: margin };
     case 'center':
       return {
-        top: Math.max(0, Math.round((baseHeight - overlayHeight) / 2)),
-        left: Math.max(0, Math.round((baseWidth - overlayWidth) / 2)),
+        top: Math.round((baseHeight - overlayHeight) / 2),
+        left: Math.round((baseWidth - overlayWidth) / 2),
       };
     case 'bottom-right':
     default:

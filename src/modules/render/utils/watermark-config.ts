@@ -1,12 +1,25 @@
-import { WATERMARK_POSITIONS, type WatermarkConfig, type WatermarkPosition } from '../api/render';
+import {
+  WATERMARK_POSITIONS,
+  type WatermarkConfig,
+  type WatermarkFontWeight,
+  type WatermarkPosition,
+} from '../api/render';
 
 // Mirrors ag-go-api/src/modules/render/watermark-config.ts.
+export const WATERMARK_LIMITS = {
+  fontSize: { min: 8, max: 400 },
+  scale: { min: 0.05, max: 3 },
+  logoScale: { min: 0.2, max: 6 },
+} as const;
+
 export const DEFAULT_WATERMARK_CONFIG: WatermarkConfig = {
   text: 'AG Go Preview',
   logoAssetId: null,
   color: '#FFFFFF',
   fontFamily: 'Arial',
   fontSize: 24,
+  fontWeight: 400,
+  logoScale: 1,
   repeat: false,
   gapX: 220,
   gapY: 100,
@@ -44,7 +57,22 @@ export function normalizeWatermarkConfig(
       typeof config?.fontFamily === 'string' && config.fontFamily.trim().length > 0
         ? config.fontFamily.trim().slice(0, 80)
         : defaults.fontFamily,
-    fontSize: clampNumber(config?.fontSize, 8, 240, defaults.fontSize, true),
+    fontSize: clampNumber(
+      config?.fontSize,
+      WATERMARK_LIMITS.fontSize.min,
+      WATERMARK_LIMITS.fontSize.max,
+      defaults.fontSize,
+      true,
+    ),
+    fontWeight: (typeof config?.fontWeight === 'number' && Number.isFinite(config.fontWeight)
+      ? Math.min(900, Math.max(100, Math.round(config.fontWeight / 100) * 100))
+      : defaults.fontWeight) as WatermarkFontWeight,
+    logoScale: clampNumber(
+      config?.logoScale,
+      WATERMARK_LIMITS.logoScale.min,
+      WATERMARK_LIMITS.logoScale.max,
+      defaults.logoScale,
+    ),
     repeat: typeof config?.repeat === 'boolean' ? config.repeat : defaults.repeat,
     gapX: clampNumber(config?.gapX, 40, 2000, defaults.gapX, true),
     gapY: clampNumber(config?.gapY, 40, 2000, defaults.gapY, true),
@@ -57,7 +85,12 @@ export function normalizeWatermarkConfig(
       ? (config?.position as WatermarkPosition)
       : defaults.position,
     opacity: clampNumber(config?.opacity, 0, 1, defaults.opacity),
-    scale: clampNumber(config?.scale, 0.05, 1, defaults.scale),
+    scale: clampNumber(
+      config?.scale,
+      WATERMARK_LIMITS.scale.min,
+      WATERMARK_LIMITS.scale.max,
+      defaults.scale,
+    ),
     margin: clampNumber(config?.margin, 0, 500, defaults.margin, true),
   };
 }
