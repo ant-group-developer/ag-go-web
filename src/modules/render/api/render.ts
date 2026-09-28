@@ -242,7 +242,7 @@ export function getRenderBatchJobs(batchId: string) {
 }
 
 /** Status tabs of a render job list; 'active' groups queued and processing jobs. */
-export type RenderJobStatusFilter = 'all' | 'active' | 'completed' | 'failed';
+export type RenderJobStatusFilter = 'all' | 'active' | 'completed' | 'failed' | 'cancelled';
 
 export type RenderJobStatusCounts = Record<RenderJobStatusFilter, number>;
 

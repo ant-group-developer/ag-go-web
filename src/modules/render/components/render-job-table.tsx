@@ -104,6 +104,7 @@ export function RenderJobTable({
       active: jobs.filter((job) => ACTIVE_STATUSES.includes(job.status)).length,
       completed: jobs.filter((job) => job.status === 'completed').length,
       failed: jobs.filter((job) => job.status === 'failed').length,
+      cancelled: jobs.filter((job) => job.status === 'cancelled').length,
     }),
     [jobs],
   );
@@ -138,6 +139,10 @@ export function RenderJobTable({
               label: `${t('render.status.completed')} (${counts.completed})`,
             },
             { value: 'failed', label: `${t('render.status.failed')} (${counts.failed})` },
+            {
+              value: 'cancelled',
+              label: `${t('render.status.cancelled')} (${counts.cancelled})`,
+            },
           ]}
         />
         <Flex gap={8}>
