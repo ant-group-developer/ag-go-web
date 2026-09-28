@@ -29,6 +29,7 @@ import {
   getWatermarkLogoUrl,
   rerenderWatermark,
   uploadWatermarkLogo,
+  WATERMARK_FONT_WEIGHTS,
   WATERMARK_POSITIONS,
   type RenderProfile,
 } from '../../render/api/render';
@@ -43,9 +44,42 @@ import {
   THUMBNAIL_WIDTH_MAX,
   THUMBNAIL_WIDTH_MIN,
 } from '../../render/utils/render-sizes';
-import { normalizeWatermarkConfig } from '../../render/utils/watermark-config';
+import { normalizeWatermarkConfig, WATERMARK_LIMITS } from '../../render/utils/watermark-config';
+import { WATERMARK_FONTS } from '../../render/utils/watermark-fonts';
 import { WatermarkPreview } from '../components/watermark-preview';
 import { useSettings, useUpdateSettings } from '../hooks/use-settings';
+
+const FONT_CATEGORIES = ['sans-serif', 'serif', 'monospace'] as const;
+
+/** Font picker options grouped by category; keeps a saved family that is no longer listed. */
+function getFontOptions(current: string) {
+  const groups = FONT_CATEGORIES.map((category) => ({
+    label: category,
+    options: WATERMARK_FONTS.filter((font) => font.category === category).map((font) => ({
+      value: font.family,
+      label: <span style={{ fontFamily: `"${font.family}", ${category}` }}>{font.family}</span>,
+      searchText: font.family,
+    })),
+  }));
+  return WATERMARK_FONTS.some((font) => font.family === current)
+    ? groups
+    : [
+        ...groups,
+        { label: 'other', options: [{ value: current, label: current, searchText: current }] },
+      ];
+}
+
+const FONT_WEIGHT_NAMES: Record<number, string> = {
+  100: 'Thin',
+  200: 'Extra Light',
+  300: 'Light',
+  400: 'Regular',
+  500: 'Medium',
+  600: 'Semi Bold',
+  700: 'Bold',
+  800: 'Extra Bold',
+  900: 'Black',
+};
 
 function RenderProfileEditor({
   profile,
@@ -294,27 +328,40 @@ function RenderProfileEditor({
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={8}>
-                  <Form.Item name={['watermarkConfig', 'fontFamily']} label={t('settings.font')}>
+                  <Form.Item
+                    name={['watermarkConfig', 'fontFamily']}
+                    label={t('settings.font')}
+                    tooltip={t('settings.fontHint')}
+                  >
+                    <Select options={getFontOptions(config.fontFamily)} />
+                  </Form.Item>
+                </Col>
+                <Col xs={12} md={6}>
+                  <Form.Item
+                    name={['watermarkConfig', 'fontWeight']}
+                    label={t('settings.fontWeight')}
+                    tooltip={t('settings.fontWeightHint')}
+                  >
                     <Select
-                      options={[
-                        'Arial',
-                        'Times New Roman',
-                        'Courier New',
-                        'Verdana',
-                        'Georgia',
-                        'Impact',
-                        'Tahoma',
-                      ].map((value) => ({ value, label: value }))}
+                      showSearch={false}
+                      options={WATERMARK_FONT_WEIGHTS.map((value) => ({
+                        value,
+                        label: `${value} · ${FONT_WEIGHT_NAMES[value]}`,
+                      }))}
                     />
                   </Form.Item>
                 </Col>
-                <Col xs={12} md={8} hidden={!config.repeat}>
+                <Col xs={12} md={6} hidden={!config.repeat}>
                   <Form.Item
                     name={['watermarkConfig', 'fontSize']}
                     label={t('settings.fontSize')}
                     tooltip={t('settings.fontSizeRepeatHint')}
                   >
-                    <InputNumber min={8} max={240} style={{ width: '100%' }} />
+                    <InputNumber
+                      min={WATERMARK_LIMITS.fontSize.min}
+                      max={WATERMARK_LIMITS.fontSize.max}
+                      style={{ width: '100%' }}
+                    />
                   </Form.Item>
                 </Col>
                 <Col xs={12} md={8}>
@@ -400,7 +447,28 @@ function RenderProfileEditor({
                     label={t('settings.watermarkSize')}
                     tooltip={t('settings.watermarkSizeHint')}
                   >
-                    <Slider min={0.05} max={1} step={0.01} />
+                    <Slider
+                      min={WATERMARK_LIMITS.scale.min}
+                      max={WATERMARK_LIMITS.scale.max}
+                      step={0.01}
+                      marks={{ 1: '100%' }}
+                      tooltip={{ formatter: (value) => `${Math.round((value ?? 0) * 100)}%` }}
+                    />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={8} hidden={!logoUrl}>
+                  <Form.Item
+                    name={['watermarkConfig', 'logoScale']}
+                    label={t('settings.logoSize')}
+                    tooltip={t('settings.logoSizeHint')}
+                  >
+                    <Slider
+                      min={WATERMARK_LIMITS.logoScale.min}
+                      max={WATERMARK_LIMITS.logoScale.max}
+                      step={0.05}
+                      marks={{ 1: '1x' }}
+                      tooltip={{ formatter: (value) => `${value}x` }}
+                    />
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={8}>
