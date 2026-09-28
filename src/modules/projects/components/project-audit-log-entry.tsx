@@ -3,7 +3,8 @@ import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatDate } from '../../../shared/lib/format-date';
 import type { AuditLog } from '../../audit/api/audit';
-import { describeAuditLog } from './project-audit-log-details';
+import { AuditLogBody } from './project-audit-log-body';
+import { isBulkAuditLog } from './project-audit-log-details';
 
 /** One audit timeline entry: action label, details, actor and time. `extra` sits after the label. */
 export function AuditLogEntry({ item, extra }: { item: AuditLog; extra?: ReactNode }) {
@@ -11,7 +12,6 @@ export function AuditLogEntry({ item, extra }: { item: AuditLog; extra?: ReactNo
   const { token } = theme.useToken();
   const actor = item.actorUser?.name || item.actorUser?.email || item.actorUserId;
   const label = t(`projects.auditActions.${item.action}`, { defaultValue: item.action });
-  const details = describeAuditLog(item, t);
 
   return (
     <Flex vertical gap={4} style={{ paddingBottom: 4 }}>
@@ -25,8 +25,13 @@ export function AuditLogEntry({ item, extra }: { item: AuditLog; extra?: ReactNo
             {item.action}
           </Tag>
         )}
+        {isBulkAuditLog(item) ? (
+          <Tag bordered={false} color="purple" style={{ marginInlineEnd: 0 }}>
+            {t('projects.auditDetails.bulk')}
+          </Tag>
+        ) : null}
       </Space>
-      {details ? <Typography.Text type="secondary">{details}</Typography.Text> : null}
+      <AuditLogBody item={item} />
       <Space size={6} style={{ color: token.colorTextSecondary, fontSize: token.fontSizeSM }}>
         <Avatar size={18} src={item.actorUser?.avatar || undefined}>
           {actor.charAt(0).toUpperCase()}

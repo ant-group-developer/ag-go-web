@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 import { LEGAL_PATHS } from '../modules/legal/legal-routes';
 import type { WebSettings } from '../modules/settings/api/settings';
 import { usePublicSettings } from '../modules/settings/hooks/use-settings';
+import { LanguageSwitch } from '../shared/components/language-switch';
 
 const { Title, Text } = Typography;
 
@@ -37,6 +38,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
     <div className="login-screen" style={accentStyle}>
       <div className="login-backdrop" style={{ backgroundImage: `url("${backgroundImage}")` }} />
       <div className="login-overlay" />
+      <LanguageSwitch className="login-language" />
 
       <div className="login-layout">
         <section className="login-hero">

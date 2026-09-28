@@ -1,5 +1,6 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
+import { APP_LANGUAGES, DEFAULT_LANGUAGE, readStoredLanguage } from './language';
 
 const resources = {
   vi: {
@@ -22,6 +23,7 @@ const resources = {
         cancel: 'Hủy',
         reset: 'Đặt lại',
         refresh: 'Tải lại',
+        language: 'Ngôn ngữ',
         sort: 'Sắp xếp',
         sortAsc: 'Tăng dần',
         sortDesc: 'Giảm dần',
@@ -189,6 +191,10 @@ const resources = {
         namePlaceholder: 'Nhập tên thư mục',
         parent: 'Thư mục cha',
         parentPlaceholder: 'Chọn thư mục cha (không bắt buộc)',
+        moveToRootPlaceholder: 'Thư mục gốc',
+        moveHint:
+          'Đổi thư mục cha để di chuyển thư mục cùng toàn bộ thư mục con và project bên trong. Để trống để chuyển ra thư mục gốc.',
+        moveManagerOnly: 'Chỉ người quản lý thư mục mới có thể đổi vị trí thư mục.',
         childCount: 'Thư mục con',
         projectCount: 'Project',
         root: 'Tất cả thư mục',
@@ -446,6 +452,28 @@ const resources = {
         fileEvaluation: 'Đánh giá file',
         markApproved: 'Đánh giá đạt',
         markRejected: 'Đánh giá không đạt',
+        bulkApprove: 'Đạt',
+        bulkApproveSelectAll: 'Chọn tất cả',
+        bulkApproveFilesTitle: 'Đánh giá đạt {{count}} file đã chọn?',
+        bulkApproveFilesDescription:
+          'Các file đã chọn sẽ chuyển sang "Đạt", kể cả file đang "Không đạt". File đã đạt sẽ được bỏ qua.',
+        bulkApproveProjectsTitle: 'Đánh giá đạt {{count}} dự án?',
+        bulkApproveProjectTitle: 'Đánh giá đạt dự án "{{name}}"?',
+        bulkApproveProjectsDescription:
+          'Toàn bộ file chưa đánh giá trong dự án sẽ chuyển sang "Đạt". Trạng thái dự án được tính lại theo các file.',
+        bulkApproveOverrideRejected: 'Ghi đè cả các file đang "Không đạt"',
+        bulkApproveOverrideRejectedHint:
+          'Nếu không chọn, file "Không đạt" được giữ nguyên và dự án sẽ ở trạng thái "Hoàn tất một phần".',
+        bulkApproveCommentPlaceholder: 'Nhận xét (không bắt buộc)',
+        bulkApproveConfirm: 'Xác nhận đạt',
+        bulkApproveSuccess: 'Đã đánh giá đạt {{count}} file.',
+        bulkApproveNothingChanged: 'Không có file nào cần đánh giá đạt.',
+        bulkApproveUnchanged: '{{count}} file đã đạt từ trước.',
+        bulkApproveRejectedKept: '{{count}} file "Không đạt" được giữ nguyên.',
+        bulkApproveEmptyProjects: '{{count}} dự án chưa có file nên không thay đổi.',
+        bulkApproveFailed: 'Không thể đánh giá đạt hàng loạt.',
+        bulkApproveSelectedProjects: 'Đã chọn {{count}} dự án',
+        clearSelection: 'Bỏ chọn',
         evaluationPending: 'Chưa đánh giá',
         evaluationApproved: 'Đạt',
         evaluationRejected: 'Không đạt',
@@ -456,6 +484,7 @@ const resources = {
         evaluationCommentMinLength: 'Vui lòng nhập bình luận (ít nhất {{min}} ký tự).',
         evaluationHistory: 'Lịch sử đánh giá',
         noEvaluationHistory: 'Chưa có lịch sử đánh giá',
+        evaluationHistoryLatest: 'Mới nhất',
         ownerUserId: 'User ID người tạo',
         originalSize: 'Dung lượng gốc',
         renderedSize: 'Dung lượng đã render',
@@ -528,6 +557,20 @@ const resources = {
           uploadSummary: '{{count}} file ({{images}} ảnh, {{videos}} video) · {{size}}',
           uploadFiles: '{{summary}} — {{names}}',
           uploadFilesMore: '{{summary}} — {{names}} và {{count}} file khác',
+          unknownFile: 'File đã bị xóa',
+          emptyValue: '(trống)',
+          bulk: 'Hàng loạt',
+        },
+        auditFields: {
+          name: 'Tên',
+          description: 'Mô tả',
+          folder: 'Thư mục',
+          category: 'Danh mục',
+          country: 'Quốc gia',
+          province: 'Tỉnh/thành',
+          tags: 'Tag',
+          caption: 'Chú thích',
+          sortOrder: 'Thứ tự',
         },
       },
       evaluations: {
@@ -1011,6 +1054,7 @@ const resources = {
         cancel: 'Cancel',
         reset: 'Reset',
         refresh: 'Refresh',
+        language: 'Language',
         sort: 'Sort',
         sortAsc: 'Ascending',
         sortDesc: 'Descending',
@@ -1178,6 +1222,10 @@ const resources = {
         namePlaceholder: 'Enter folder name',
         parent: 'Parent Folder',
         parentPlaceholder: 'Select parent folder (optional)',
+        moveToRootPlaceholder: 'Root folder',
+        moveHint:
+          'Change the parent to move this folder with all its subfolders and projects. Leave empty to move it to the root.',
+        moveManagerOnly: 'Only folder managers can move a folder.',
         childCount: 'Subfolders',
         projectCount: 'Projects',
         root: 'All folders',
@@ -1438,6 +1486,28 @@ const resources = {
         fileEvaluation: 'File Evaluation',
         markApproved: 'Mark Approved',
         markRejected: 'Mark Rejected',
+        bulkApprove: 'Approve',
+        bulkApproveSelectAll: 'Select all',
+        bulkApproveFilesTitle: 'Approve {{count}} selected file(s)?',
+        bulkApproveFilesDescription:
+          'The selected files become "Approved", including rejected ones. Files already approved are skipped.',
+        bulkApproveProjectsTitle: 'Approve {{count}} project(s)?',
+        bulkApproveProjectTitle: 'Approve project "{{name}}"?',
+        bulkApproveProjectsDescription:
+          'Every pending file of the project becomes "Approved". The project status is recalculated from its files.',
+        bulkApproveOverrideRejected: 'Also override files marked "Rejected"',
+        bulkApproveOverrideRejectedHint:
+          'If unchecked, rejected files stay rejected and the project becomes "Partially completed".',
+        bulkApproveCommentPlaceholder: 'Comment (optional)',
+        bulkApproveConfirm: 'Approve',
+        bulkApproveSuccess: '{{count}} file(s) approved.',
+        bulkApproveNothingChanged: 'No file needed approving.',
+        bulkApproveUnchanged: '{{count}} file(s) were already approved.',
+        bulkApproveRejectedKept: '{{count}} rejected file(s) were kept.',
+        bulkApproveEmptyProjects: '{{count}} project(s) have no files and were not changed.',
+        bulkApproveFailed: 'Failed to approve in bulk.',
+        bulkApproveSelectedProjects: '{{count}} project(s) selected',
+        clearSelection: 'Clear selection',
         evaluationPending: 'Pending',
         evaluationApproved: 'Approved',
         evaluationRejected: 'Rejected',
@@ -1448,6 +1518,7 @@ const resources = {
         evaluationCommentMinLength: 'Please enter a comment (at least {{min}} characters).',
         evaluationHistory: 'Evaluation History',
         noEvaluationHistory: 'No evaluation history',
+        evaluationHistoryLatest: 'Latest',
         ownerUserId: 'Owner User ID',
         originalSize: 'Original size',
         renderedSize: 'Rendered size',
@@ -1520,6 +1591,20 @@ const resources = {
           uploadSummary: '{{count}} files ({{images}} images, {{videos}} videos) · {{size}}',
           uploadFiles: '{{summary}} — {{names}}',
           uploadFilesMore: '{{summary}} — {{names}} and {{count}} more',
+          unknownFile: 'Deleted file',
+          emptyValue: '(empty)',
+          bulk: 'Bulk',
+        },
+        auditFields: {
+          name: 'Name',
+          description: 'Description',
+          folder: 'Folder',
+          category: 'Category',
+          country: 'Country',
+          province: 'Province',
+          tags: 'Tags',
+          caption: 'Caption',
+          sortOrder: 'Order',
         },
       },
       evaluations: {
@@ -1867,6 +1952,8 @@ const resources = {
         siteDescription: 'Website Description',
         logoUrl: 'Logo URL',
         faviconUrl: 'Favicon URL',
+        loginBackgroundUrl: 'Login page background',
+        loginBackgroundUrlHint: 'Use a 16:9 landscape image. Leave empty to use the default one.',
         supportEmail: 'Support Email',
         supportUrl: 'Support URL',
         primaryColor: 'Primary Color',
@@ -1984,11 +2071,15 @@ const resources = {
   },
 } as const;
 
+i18n.on('languageChanged', (language) => {
+  document.documentElement.lang = language;
+});
+
 void i18n.use(initReactI18next).init({
   resources,
-  lng: 'vi',
-  fallbackLng: 'vi',
-  supportedLngs: ['vi', 'en'],
+  lng: readStoredLanguage(),
+  fallbackLng: DEFAULT_LANGUAGE,
+  supportedLngs: [...APP_LANGUAGES],
   interpolation: {
     escapeValue: false,
   },
