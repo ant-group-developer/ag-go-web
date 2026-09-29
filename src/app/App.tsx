@@ -30,6 +30,7 @@ import {
   Shield,
   Tags,
   User,
+  VideoIcon,
 } from 'lucide-react';
 import { Suspense, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -124,6 +125,11 @@ const SettingsPage = lazyWithReload(() =>
 const LogsPage = lazyWithReload(() =>
   import('../modules/logs/pages/logs-page').then(({ LogsPage }) => ({
     default: LogsPage,
+  })),
+);
+const FootagePage = lazyWithReload(() =>
+  import('../modules/footage/pages/footage-page').then(({ FootagePage }) => ({
+    default: FootagePage,
   })),
 );
 
@@ -307,6 +313,15 @@ export function App() {
                   path: '/my-projects',
                   name: t('menu.myProjects'),
                   icon: <User size={16} />,
+                },
+              ]
+            : []),
+          ...(can(GO_PERMISSIONS.FOOTAGE_SEARCH)
+            ? [
+                {
+                  path: '/footage',
+                  name: t('menu.footage'),
+                  icon: <VideoIcon size={16} />,
                 },
               ]
             : []),
@@ -624,6 +639,14 @@ export function App() {
             element={
               <PermissionGate permissions={LOG_PAGE_PERMISSIONS}>
                 <LogsPage />
+              </PermissionGate>
+            }
+          />
+          <Route
+            path="/footage"
+            element={
+              <PermissionGate permissions={[GO_PERMISSIONS.FOOTAGE_SEARCH]}>
+                <FootagePage />
               </PermissionGate>
             }
           />
