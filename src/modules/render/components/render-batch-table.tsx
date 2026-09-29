@@ -33,6 +33,7 @@ import {
   renderStatusLabel,
 } from '../utils/render-format';
 import { RenderBatchScope } from './render-batch-scope';
+import { RetryFailedBatchButton } from './retry-failed-batch-button';
 
 type RenderBatchTableProps = {
   batches: RenderBatch[];
@@ -137,7 +138,7 @@ export function RenderBatchTable({
     },
     {
       key: 'actions',
-      width: 110,
+      width: 140,
       fixed: 'right',
       render: (_, batch) => (
         <Space size={4}>
@@ -171,6 +172,7 @@ export function RenderBatchTable({
               />
             </Tooltip>
           ) : null}
+          <RetryFailedBatchButton batch={batch} />
           {[...RENDER_PAUSABLE_STATUSES, 'paused'].includes(batch.status) ? (
             <Popconfirm
               title={t('render.cancelBatchConfirm')}

@@ -319,6 +319,14 @@ export function cancelRenderBatch(id: string) {
   return apiClient<RenderBatch>(`/render-batches/${id}/cancel`, { method: 'POST' });
 }
 
+/** Queues every failed job of the batch again; `retriedJobs` is how many were queued. */
+export function retryFailedRenderBatchJobs(id: string) {
+  return apiClient<{ batch: RenderBatch; retriedJobs: number }>(
+    `/render-batches/${id}/retry-failed`,
+    { method: 'POST' },
+  );
+}
+
 export function pauseRenderBatch(id: string) {
   return apiClient<RenderBatch>(`/render-batches/${id}/pause`, { method: 'POST' });
 }
