@@ -1,4 +1,10 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from '@tanstack/react-query';
 import {
   cancelRenderBatch,
   createRenderBatch,
@@ -10,6 +16,7 @@ import {
   getRenderProfiles,
   pauseRenderBatch,
   resumeRenderBatch,
+  retryFailedRenderBatchJobs,
   retryRenderJob,
   updateRenderProfile,
   type AutoRenderJobsParams,
@@ -129,17 +136,28 @@ export function useCreateRenderBatch() {
   });
 }
 
-/** A pause/resume/cancel of a batch: refreshes it, its jobs and the lists showing it. */
+/** Refreshes a batch, its jobs and the lists showing it. */
+function invalidateBatch(client: QueryClient, batchId: string) {
+  void client.invalidateQueries({ queryKey: keys.batch(batchId) });
+  void client.invalidateQueries({ queryKey: keys.jobs(batchId) });
+  void client.invalidateQueries({ queryKey: [...keys.all, 'project-batches'] });
+  void client.invalidateQueries({ queryKey: keys.allBatches() });
+}
+
+/** A pause/resume/cancel of a batch. */
 function useBatchMutation(mutationFn: (id: string) => Promise<RenderBatch>) {
   const client = useQueryClient();
   return useMutation({
     mutationFn,
-    onSuccess: (batch) => {
-      void client.invalidateQueries({ queryKey: keys.batch(batch.id) });
-      void client.invalidateQueries({ queryKey: keys.jobs(batch.id) });
-      void client.invalidateQueries({ queryKey: [...keys.all, 'project-batches'] });
-      void client.invalidateQueries({ queryKey: keys.allBatches() });
-    },
+    onSuccess: (batch) => invalidateBatch(client, batch.id),
+  });
+}
+
+export function useRetryFailedRenderBatchJobs() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: retryFailedRenderBatchJobs,
+    onSuccess: ({ batch }) => invalidateBatch(client, batch.id),
   });
 }
 

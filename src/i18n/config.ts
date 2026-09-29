@@ -792,6 +792,9 @@ const resources = {
         resumeBatch: 'Tiếp tục render',
         cancelBatch: 'Hủy render',
         cancelBatchConfirm: 'Hủy render batch này? Các file chưa render sẽ bị bỏ qua.',
+        retryFailedJobs: 'Chạy lại file lỗi',
+        retryFailedJobsConfirm: 'Render lại {{count}} file lỗi của batch này?',
+        retryFailedJobsQueued: 'Đã xếp lại {{count}} file vào hàng đợi render',
         status: {
           queued: 'Đang chờ',
           processing: 'Đang xử lý',
@@ -1851,6 +1854,9 @@ const resources = {
         resumeBatch: 'Resume render',
         cancelBatch: 'Cancel render',
         cancelBatchConfirm: 'Cancel this render batch? Files not rendered yet will be skipped.',
+        retryFailedJobs: 'Retry failed files',
+        retryFailedJobsConfirm: 'Render the {{count}} failed file(s) of this batch again?',
+        retryFailedJobsQueued: 'Queued {{count}} file(s) for rendering again',
         status: {
           queued: 'Queued',
           processing: 'Processing',
