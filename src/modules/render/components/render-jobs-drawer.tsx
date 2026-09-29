@@ -1,4 +1,4 @@
-import { Alert, Descriptions, Drawer, Flex, Progress, Tag } from 'antd';
+import { Alert, Descriptions, Drawer, Flex, Progress, Space, Tag } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { formatDate } from '../../../shared/lib/format-date';
 import { CONTAINER_TABLE_STICKY } from '../../../shared/lib/sticky-table-header';
@@ -7,6 +7,7 @@ import { useRenderBatchJobs } from '../hooks/use-render';
 import { RENDER_STATUS_COLORS, renderStatusLabel } from '../utils/render-format';
 import { RenderBatchScope } from './render-batch-scope';
 import { RenderJobTable } from './render-job-table';
+import { RetryFailedBatchButton } from './retry-failed-batch-button';
 
 type RenderJobsDrawerProps = {
   batch?: RenderBatch;
@@ -26,7 +27,12 @@ export function RenderJobsDrawer({ batch, open, onClose }: RenderJobsDrawerProps
       title={t('render.batchDetail')}
       extra={
         batch ? (
-          <Tag color={RENDER_STATUS_COLORS[batch.status]}>{renderStatusLabel(batch.status, t)}</Tag>
+          <Space size={8}>
+            <RetryFailedBatchButton batch={batch} withLabel />
+            <Tag color={RENDER_STATUS_COLORS[batch.status]}>
+              {renderStatusLabel(batch.status, t)}
+            </Tag>
+          </Space>
         ) : null
       }
       destroyOnHidden

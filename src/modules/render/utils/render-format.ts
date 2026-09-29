@@ -27,6 +27,14 @@ export function renderStatusLabel(status: string, t: (key: string) => string): s
 /** Batch statuses that can be paused; a paused batch can be resumed or cancelled. */
 export const RENDER_PAUSABLE_STATUSES = ['queued', 'processing'];
 
+/**
+ * True when the batch has failed jobs it can queue again: a cancelled batch cannot, and a
+ * paused one retries them itself when resumed.
+ */
+export function canRetryFailedRenderJobs(batch: { status: string; failedJobs: number }): boolean {
+  return batch.failedJobs > 0 && !['cancelled', 'paused'].includes(batch.status);
+}
+
 export function renderJobSourceLabel(source: string, t: (key: string) => string): string {
   return (
     {
