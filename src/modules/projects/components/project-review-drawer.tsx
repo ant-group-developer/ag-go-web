@@ -48,6 +48,10 @@ import {
 } from '../../media/api/media';
 import { ProjectMediaSortDropdown } from '../../media/components/project-media-sort-dropdown';
 import { RenditionPicker } from '../../media/components/rendition-picker';
+import {
+  VideoPlayer,
+  type VideoPlayerHandle,
+} from '../../media/components/video-player/video-player';
 import { useAssetPreviewUrl } from '../../media/hooks/use-asset-preview-url';
 import { useRenditionSelection } from '../../media/hooks/use-rendition-selection';
 import { mediaQueryKeys } from '../../media/queries/media-query-keys';
@@ -265,35 +269,49 @@ export type RenderedMediaPreviewHandle = {
 const RenderedMediaPreview = forwardRef<RenderedMediaPreviewHandle, { media: ProjectMedia }>(
   function RenderedMediaPreview({ media }, ref) {
     const frameRef = useRef<HTMLDivElement>(null);
+    const playerRef = useRef<VideoPlayerHandle>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
-    // Playback position survives switching to another size (manually or when the frame resizes).
-    const playbackRef = useRef({ time: 0, playing: false });
     const isReady = media.asset.processingStatus === 'ready';
     const isVideo = media.asset.assetType === 'video';
+    const [videoFailed, setVideoFailed] = useState(false);
     const variants = useMemo(() => media.previewVariants ?? [], [media.previewVariants]);
+    // The video player picks its own quality (auto/manual); this selection is only for images.
     const { quality, autoVariant, selected, setQuality } = useRenditionSelection(
       variants,
       frameRef,
     );
     const selectedUrl = useAssetPreviewUrl(
-      isReady && selected ? media.assetId : null,
+      !isVideo && isReady && selected ? media.assetId : null,
       selected?.variantCode ?? 'preview',
     );
     // Older API responses without preview sizes still carry a single preview URL.
     const previewUrl = variants.length > 0 ? selectedUrl : (media.previewUrl ?? undefined);
 
     useEffect(() => {
-      playbackRef.current = { time: 0, playing: false };
+      setVideoFailed(false);
     }, [media.id]);
 
+    // Clicking an analysed segment seeks whichever player is showing the video.
     useImperativeHandle(ref, () => ({
       seekTo: (seconds: number) => {
-        playbackRef.current.time = seconds;
-        if (videoRef.current) {
+        if (playerRef.current) {
+          playerRef.current.seekTo(seconds);
+        } else if (videoRef.current) {
           videoRef.current.currentTime = seconds;
         }
       },
     }));
+
+    if (isVideo && variants.length > 0 && !videoFailed) {
+      return (
+        <VideoPlayer
+          ref={playerRef}
+          assetId={media.assetId}
+          variants={variants}
+          onError={() => setVideoFailed(true)}
+        />
+      );
+    }
 
     const content = !previewUrl ? (
       <PreviewPlaceholder status={media.asset.processingStatus} loading={isReady} />
@@ -303,25 +321,6 @@ const RenderedMediaPreview = forwardRef<RenderedMediaPreviewHandle, { media: Pro
         controls
         preload="metadata"
         src={previewUrl}
-        onTimeUpdate={(event) => {
-          playbackRef.current.time = event.currentTarget.currentTime;
-        }}
-        onPlay={() => {
-          playbackRef.current.playing = true;
-        }}
-        onPause={() => {
-          playbackRef.current.playing = false;
-        }}
-        onLoadedMetadata={(event) => {
-          const video = event.currentTarget;
-          const { time, playing } = playbackRef.current;
-          if (time > 0) {
-            video.currentTime = time;
-          }
-          if (playing) {
-            void video.play().catch(() => undefined);
-          }
-        }}
         style={{
           background: '#000',
           display: 'block',
@@ -343,7 +342,7 @@ const RenderedMediaPreview = forwardRef<RenderedMediaPreviewHandle, { media: Pro
     return (
       <div ref={frameRef}>
         {content}
-        {variants.length > 1 ? (
+        {!isVideo && variants.length > 1 ? (
           <Flex justify="flex-end" style={{ marginTop: 8 }}>
             <RenditionPicker
               variants={variants}

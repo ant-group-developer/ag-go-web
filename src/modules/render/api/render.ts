@@ -35,9 +35,15 @@ export type WatermarkConfig = {
   margin: number;
 };
 
-/** Preview widths (watermarked) and thumbnail width (no watermark); heights follow the file. */
+/** One rendered preview: `resolution` is the target short edge in px ("720p" = 1280×720). */
+export type RenderVariantSpec = {
+  resolution: number;
+  watermark: boolean;
+};
+
+/** Preview variants (resolution + watermark on/off) and the un-watermarked thumbnail width. */
 export type RenderSizes = {
-  previewWidths: number[];
+  variants: RenderVariantSpec[];
   thumbnailWidth: number;
 };
 
@@ -84,10 +90,21 @@ export type RenderJobOutput = {
   mimeType: string;
   width: number | null;
   height: number | null;
+  /** Short edge in px; null for the thumbnail. */
+  resolution: number | null;
   fileSizeBytes: string;
   hasWatermark: boolean;
   renderVersion: number;
+  /** True when this job reused the variant instead of rendering it again. */
+  reused: boolean;
 };
+
+/** Variant codes rendered/reused/removed by a finished job; null while it has not finished. */
+export type RenderJobSummary = {
+  rendered: string[];
+  reused: string[];
+  removed: string[];
+} | null;
 
 /** What queued a render job: a batch, an upload, a Drive import or a per-file retry. */
 export type RenderJobSource = 'batch' | 'upload' | 'import' | 'retry' | 'other';
@@ -107,6 +124,9 @@ export type RenderJob = {
   startedAt?: string | null;
   finishedAt: string | null;
   renderVersion?: number;
+  /** Whether existing, unchanged variants were reused instead of re-rendered (default true). */
+  reuseExisting: boolean;
+  renderSummary: RenderJobSummary;
   asset?: {
     id: string;
     assetType: 'image' | 'video';
@@ -155,6 +175,8 @@ export type RerenderWatermarkInput = {
   dateTo?: string;
   categoryIds?: string[];
   mediaType?: 'ALL' | 'IMAGE' | 'VIDEO';
+  /** Only render variants that are missing or whose settings changed (default true). */
+  reuseExisting?: boolean;
 };
 
 export function rerenderWatermark(input: RerenderWatermarkInput) {
@@ -229,6 +251,8 @@ export function createRenderBatch(input: {
   folderId?: string;
   projectMediaIds?: string[];
   renderProfileId?: string;
+  /** Only render variants that are missing or whose settings changed (default true). */
+  reuseExisting?: boolean;
 }) {
   return apiClient<RenderBatch>('/render-batches', {
     method: 'POST',
