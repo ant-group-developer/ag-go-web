@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next';
 import type { RenderJob, RenderJobOutput } from '../api/render';
 
 export const RENDER_STATUS_COLORS: Record<string, string> = {
@@ -57,6 +58,13 @@ export function formatResolution(width?: number | null, height?: number | null):
   return width && height ? `${width}×${height}` : '-';
 }
 
+/** "720p" from the short edge; falls back to width×height (e.g. legacy/thumbnail outputs). */
+export function formatOutputResolution(output: RenderJobOutput): string {
+  return output.resolution
+    ? `${output.resolution}p`
+    : formatResolution(output.width, output.height);
+}
+
 /** Elapsed time between two timestamps, e.g. "1m 05s". */
 export function formatElapsed(from?: string | null, to?: string | null): string {
   if (!from || !to) {
@@ -72,11 +80,35 @@ export function isThumbnailOutput(output: RenderJobOutput): boolean {
   return output.variantCode === 'thumbnail';
 }
 
+/** Variant label for the job outputs table: the thumbnail, or "Preview 720p" (falls back to width). */
+export function formatVariantLabel(output: RenderJobOutput, t: TFunction): string {
+  if (isThumbnailOutput(output)) {
+    return t('render.thumbnail');
+  }
+  return output.resolution
+    ? t('render.previewResolution', { resolution: output.resolution })
+    : t('render.previewSize', { width: output.width ?? '-' });
+}
+
+/** Compact "2 mới · 1 dùng lại" summary of a job's render summary, or undefined until it exists. */
+export function formatJobSummary(
+  renderSummary: RenderJob['renderSummary'],
+  t: TFunction,
+): string | undefined {
+  if (!renderSummary) {
+    return undefined;
+  }
+  return t('render.jobSummary', {
+    rendered: renderSummary.rendered.length,
+    reused: renderSummary.reused.length,
+  });
+}
+
 /** Rendered previews (watermarked sizes), smallest first; the thumbnail is reported separately. */
 export function previewOutputs(job: RenderJob): RenderJobOutput[] {
   return (job.outputs ?? [])
     .filter((output) => !isThumbnailOutput(output))
-    .sort((a, b) => (a.width ?? 0) - (b.width ?? 0));
+    .sort((a, b) => (a.resolution ?? a.width ?? 0) - (b.resolution ?? b.width ?? 0));
 }
 
 export function totalOutputBytes(job: RenderJob): number {

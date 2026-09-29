@@ -11,11 +11,19 @@ export type Asset = {
   processingError?: string | null;
 };
 
-/** A watermarked preview size; heights follow the file's aspect ratio. */
+/** A preview variant the requester may view; heights follow the file's aspect ratio. */
 export type PreviewVariant = {
   variantCode: string;
   width: number | null;
   height: number | null;
+  /** Short edge in px (min(width, height)); null for legacy variants. */
+  resolution: number | null;
+  hasWatermark: boolean;
+  mimeType: string;
+  /** bigint as string. */
+  fileSizeBytes: string;
+  /** Average bitrate for videos (fileSize*8/duration); null for images. */
+  bitrateBps: number | null;
 };
 
 export type ProjectMedia = {

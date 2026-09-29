@@ -5,6 +5,7 @@ import {
   App as AntApp,
   Button,
   Card,
+  Checkbox,
   Col,
   Flex,
   Form,
@@ -20,8 +21,8 @@ import {
   Upload,
 } from 'antd';
 import type { RcFile } from 'antd/es/upload';
-import { ImagePlus, RotateCcw, UploadCloud } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { ImagePlus, Plus, RotateCcw, Trash2, UploadCloud } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Select } from '../../../shared/components/select';
 import {
@@ -32,17 +33,20 @@ import {
   WATERMARK_FONT_WEIGHTS,
   WATERMARK_POSITIONS,
   type RenderProfile,
+  type RenderVariantSpec,
 } from '../../render/api/render';
 import { useUpdateRenderProfile } from '../../render/hooks/use-render';
 import {
-  isValidPreviewWidth,
-  normalizePreviewWidths,
+  isValidResolution,
   normalizeRenderSizes,
-  PREVIEW_WIDTH_MAX,
-  PREVIEW_WIDTH_MIN,
-  PREVIEW_WIDTHS_MAX_COUNT,
+  normalizeRenderVariants,
+  RESOLUTION_MAX,
+  RESOLUTION_MIN,
+  RESOLUTION_PRESETS,
+  resolutionLabel,
   THUMBNAIL_WIDTH_MAX,
   THUMBNAIL_WIDTH_MIN,
+  VARIANTS_MAX_COUNT,
 } from '../../render/utils/render-sizes';
 import { normalizeWatermarkConfig, WATERMARK_LIMITS } from '../../render/utils/watermark-config';
 import { WATERMARK_FONTS } from '../../render/utils/watermark-fonts';
@@ -81,6 +85,61 @@ const FONT_WEIGHT_NAMES: Record<number, string> = {
   900: 'Black',
 };
 
+const CUSTOM_RESOLUTION = 'custom';
+
+/** Resolution picker of one variant row: the usual presets, or a custom 144–4320 value. */
+function ResolutionSelect({
+  value,
+  onChange,
+}: {
+  value?: number;
+  onChange?: (value: number) => void;
+}) {
+  const { t } = useTranslation();
+  const isPreset = RESOLUTION_PRESETS.includes(value as (typeof RESOLUTION_PRESETS)[number]);
+  const [customMode, setCustomMode] = useState(!isPreset);
+
+  useEffect(() => {
+    setCustomMode(!RESOLUTION_PRESETS.includes(value as (typeof RESOLUTION_PRESETS)[number]));
+  }, [value]);
+
+  return (
+    // Fixed width so the watermark switches line up whether or not the custom input shows.
+    <Flex gap={8} style={{ width: 268, maxWidth: '100%' }}>
+      <Select
+        style={{ width: 140, flexShrink: 0 }}
+        value={customMode ? CUSTOM_RESOLUTION : value}
+        options={[
+          ...RESOLUTION_PRESETS.map((resolution) => ({
+            value: resolution,
+            label: resolutionLabel(resolution),
+          })),
+          { value: CUSTOM_RESOLUTION, label: t('settings.variantResolutionCustom') },
+        ]}
+        onChange={(next) => {
+          if (next === CUSTOM_RESOLUTION) {
+            setCustomMode(true);
+            return;
+          }
+          setCustomMode(false);
+          onChange?.(Number(next));
+        }}
+      />
+      {customMode ? (
+        <InputNumber
+          min={RESOLUTION_MIN}
+          max={RESOLUTION_MAX}
+          precision={0}
+          addonAfter="p"
+          value={isPreset ? undefined : value}
+          style={{ width: 120 }}
+          onChange={(next) => onChange?.(Number(next) || 0)}
+        />
+      ) : null}
+    </Flex>
+  );
+}
+
 function RenderProfileEditor({
   profile,
   onSuccess,
@@ -96,7 +155,12 @@ function RenderProfileEditor({
   const [sampleUrl, setSampleUrl] = useState<string>();
   const [logoUploading, setLogoUploading] = useState(false);
   const config = normalizeWatermarkConfig(Form.useWatch('watermarkConfig', form));
-  const watermarkEnabled = Boolean(Form.useWatch('watermarkEnabled', form));
+  const variants: Partial<RenderVariantSpec>[] =
+    Form.useWatch(['renderSizes', 'variants'], form) ?? [];
+  // watermarkEnabled is derived server-side from the variants; used here only to preview it.
+  const watermarkEnabled = variants.some((variant) => Boolean(variant?.watermark));
+  // Read inside the modal's onOk, which is bound once when the modal opens; a ref stays current.
+  const reuseExistingOnRerenderRef = useRef(true);
 
   useEffect(() => {
     const logoAssetId = profile.watermarkConfig?.logoAssetId;
@@ -128,7 +192,11 @@ function RenderProfileEditor({
 
   const applyToExistingMedia = async () => {
     try {
-      const result = await rerenderWatermark({ scope: 'FILTER', mediaType: 'ALL' });
+      const result = await rerenderWatermark({
+        scope: 'FILTER',
+        mediaType: 'ALL',
+        reuseExisting: reuseExistingOnRerenderRef.current,
+      });
       void message.success(
         result.enqueuedJobs > 0
           ? t('settings.applyToExistingSuccess', {
@@ -145,9 +213,27 @@ function RenderProfileEditor({
   };
 
   const confirmApplyToExistingMedia = () => {
+    reuseExistingOnRerenderRef.current = true;
     modal.confirm({
       title: t('settings.applyToExistingTitle'),
-      content: t('settings.applyToExistingContent'),
+      content: (
+        <Flex vertical gap={8}>
+          <Typography.Paragraph style={{ marginBottom: 0 }}>
+            {t('settings.applyToExistingContent')}
+          </Typography.Paragraph>
+          <Checkbox
+            defaultChecked
+            onChange={(event) => {
+              reuseExistingOnRerenderRef.current = event.target.checked;
+            }}
+          >
+            {t('render.reuseExisting')}
+          </Checkbox>
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+            {t('render.reuseExistingHint')}
+          </Typography.Text>
+        </Flex>
+      ),
       okText: t('settings.applyToExistingOk'),
       cancelText: t('settings.applyToExistingLater'),
       onOk: applyToExistingMedia,
@@ -175,10 +261,9 @@ function RenderProfileEditor({
         layout="vertical"
         initialValues={{
           name: profile.name,
-          renderSizes: normalizeRenderSizes(profile.renderSizes ?? { previewWidths: [] }),
+          renderSizes: normalizeRenderSizes(profile.renderSizes, profile.watermarkEnabled),
           imageQuality: profile.imageQuality,
           videoBitrateBps: profile.videoBitrateBps ?? '',
-          watermarkEnabled: profile.watermarkEnabled,
           watermarkConfig: normalizeWatermarkConfig(profile.watermarkConfig),
         }}
         onFinish={(values) => {
@@ -188,12 +273,11 @@ function RenderProfileEditor({
               input: {
                 name: values.name,
                 renderSizes: {
-                  previewWidths: normalizePreviewWidths(values.renderSizes?.previewWidths),
+                  variants: normalizeRenderVariants(values.renderSizes?.variants),
                   thumbnailWidth: values.renderSizes?.thumbnailWidth,
                 },
                 imageQuality: values.imageQuality,
                 videoBitrateBps: values.videoBitrateBps || null,
-                watermarkEnabled: values.watermarkEnabled,
                 watermarkConfig: normalizeWatermarkConfig(values.watermarkConfig),
               },
             },
@@ -237,57 +321,101 @@ function RenderProfileEditor({
 
             <Card size="small" title={t('settings.renderSizes')} style={{ marginBottom: 16 }}>
               <Row gutter={16}>
-                <Col xs={24} md={16}>
-                  <Form.Item
-                    name={['renderSizes', 'previewWidths']}
-                    label={t('settings.previewWidths')}
-                    extra={t('settings.previewWidthsHint')}
+                <Col xs={24}>
+                  <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+                    {t('settings.variantsHint')}
+                  </Typography.Text>
+                  <Form.List
+                    name={['renderSizes', 'variants']}
                     rules={[
                       {
-                        validator: (_, value: unknown[] = []) => {
+                        validator: async (_, value: RenderVariantSpec[] = []) => {
                           if (value.length === 0) {
-                            return Promise.reject(new Error(t('settings.previewWidthsRequired')));
+                            return Promise.reject(new Error(t('settings.variantsRequired')));
                           }
-                          if (!value.every(isValidPreviewWidth)) {
+                          if (value.length > VARIANTS_MAX_COUNT) {
                             return Promise.reject(
                               new Error(
-                                t('settings.previewWidthsInvalid', {
-                                  min: PREVIEW_WIDTH_MIN,
-                                  max: PREVIEW_WIDTH_MAX,
-                                }),
+                                t('settings.variantsTooMany', { count: VARIANTS_MAX_COUNT }),
                               ),
                             );
                           }
-                          if (new Set(value.map(Number)).size > PREVIEW_WIDTHS_MAX_COUNT) {
-                            return Promise.reject(
-                              new Error(
-                                t('settings.previewWidthsTooMany', {
-                                  count: PREVIEW_WIDTHS_MAX_COUNT,
-                                }),
-                              ),
-                            );
+                          const keys = value.map(
+                            (variant) => `${variant?.resolution}:${Boolean(variant?.watermark)}`,
+                          );
+                          if (new Set(keys).size !== keys.length) {
+                            return Promise.reject(new Error(t('settings.variantsDuplicate')));
                           }
                           return Promise.resolve();
                         },
                       },
                     ]}
-                    normalize={(value: unknown[]) =>
-                      value.every(isValidPreviewWidth) ? normalizePreviewWidths(value) : value
-                    }
                   >
-                    <Select
-                      mode="tags"
-                      tokenSeparators={[',', ' ']}
-                      placeholder="480, 960, 1920"
-                      suffixIcon={<span>px</span>}
-                      options={[360, 480, 720, 960, 1280, 1920, 2560, 3840].map((width) => ({
-                        value: width,
-                        label: `${width}px`,
-                      }))}
-                    />
-                  </Form.Item>
+                    {(fields, { add, remove }, { errors }) => (
+                      <>
+                        {fields.map((field) => (
+                          <Flex
+                            key={field.key}
+                            gap={12}
+                            align="baseline"
+                            style={{ marginBottom: 12 }}
+                          >
+                            <Form.Item
+                              {...field}
+                              name={[field.name, 'resolution']}
+                              label={t('settings.variantResolution')}
+                              style={{ marginBottom: 0 }}
+                              rules={[
+                                {
+                                  validator: (_, value: unknown) =>
+                                    isValidResolution(value)
+                                      ? Promise.resolve()
+                                      : Promise.reject(
+                                          new Error(
+                                            t('settings.variantResolutionInvalid', {
+                                              min: RESOLUTION_MIN,
+                                              max: RESOLUTION_MAX,
+                                            }),
+                                          ),
+                                        ),
+                                },
+                              ]}
+                            >
+                              <ResolutionSelect />
+                            </Form.Item>
+                            <Form.Item
+                              {...field}
+                              name={[field.name, 'watermark']}
+                              label={t('settings.variantWatermark')}
+                              valuePropName="checked"
+                              style={{ marginBottom: 0 }}
+                            >
+                              <Switch />
+                            </Form.Item>
+                            <Button
+                              type="text"
+                              danger
+                              icon={<Trash2 size={16} />}
+                              aria-label={t('settings.removeVariant')}
+                              disabled={fields.length <= 1}
+                              onClick={() => remove(field.name)}
+                            />
+                          </Flex>
+                        ))}
+                        <Form.ErrorList errors={errors} />
+                        <Button
+                          type="dashed"
+                          icon={<Plus size={16} />}
+                          disabled={fields.length >= VARIANTS_MAX_COUNT}
+                          onClick={() => add({ resolution: 720, watermark: false })}
+                        >
+                          {t('settings.addVariant')}
+                        </Button>
+                      </>
+                    )}
+                  </Form.List>
                 </Col>
-                <Col xs={24} md={8}>
+                <Col xs={24} md={12} style={{ marginTop: 16 }}>
                   <Form.Item
                     name={['renderSizes', 'thumbnailWidth']}
                     label={t('settings.thumbnailWidth')}
@@ -308,14 +436,13 @@ function RenderProfileEditor({
 
             <Card size="small" title={t('settings.watermark')} style={{ marginBottom: 16 }}>
               <Row gutter={16}>
-                <Col xs={24} md={6}>
-                  <Form.Item
-                    name="watermarkEnabled"
-                    label={t('settings.watermarkEnabled')}
-                    valuePropName="checked"
-                  >
-                    <Switch />
-                  </Form.Item>
+                <Col xs={24}>
+                  <Alert
+                    type="info"
+                    showIcon
+                    message={t('settings.watermarkAppliesHint')}
+                    style={{ marginBottom: 16 }}
+                  />
                 </Col>
                 <Col xs={24} md={18}>
                   <Form.Item name={['watermarkConfig', 'text']} label={t('settings.text')}>

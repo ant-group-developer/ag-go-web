@@ -1,4 +1,4 @@
-import { Alert, Button, Card, Space } from 'antd';
+import { Alert, Button, Card, Checkbox, Space, Tooltip } from 'antd';
 import type { TableProps } from 'antd/es/table';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -79,6 +79,7 @@ export function ProjectRenderBatchesCard({ projectId, id, scrollY }: ProjectHist
   const createBatch = useCreateRenderBatch();
   const [selectedBatchId, setSelectedBatchId] = useState('');
   const [profileId, setProfileId] = useState<string>();
+  const [reuseExisting, setReuseExisting] = useState(true);
 
   return (
     <Card id={id} title={t('render.batchesTab')}>
@@ -93,6 +94,14 @@ export function ProjectRenderBatchesCard({ projectId, id, scrollY }: ProjectHist
             label: `${profile.name} · v${profile.profileVersion}`,
           }))}
         />
+        <Tooltip title={t('render.reuseExistingHint')}>
+          <Checkbox
+            checked={reuseExisting}
+            onChange={(event) => setReuseExisting(event.target.checked)}
+          >
+            {t('render.reuseExisting')}
+          </Checkbox>
+        </Tooltip>
         <Button
           type="primary"
           loading={createBatch.isPending}
@@ -100,6 +109,7 @@ export function ProjectRenderBatchesCard({ projectId, id, scrollY }: ProjectHist
           onClick={() =>
             createBatch.mutate({
               projectId,
+              reuseExisting,
               ...(profileId ? { renderProfileId: profileId } : {}),
             })
           }
