@@ -77,26 +77,39 @@ function PrivacyEn({ context, language }: ContentProps) {
           the connection to your {siteName} account.
         </li>
         <li>
-          <code>https://www.googleapis.com/auth/drive.readonly</code> — to read the files and
-          folders you explicitly select in the Google Picker so they can be imported.
+          <code>https://www.googleapis.com/auth/drive.readonly</code> — to let you browse your Drive
+          inside {siteName} and to read the files and folders you choose to import.
         </li>
       </ul>
-      <p>When you start an import, we access only the items you selected and we read:</p>
+      <p>We read the following from Google Drive:</p>
       <ul>
         <li>
-          File metadata: file ID, name, MIME type, size, file extension, modification time and
-          revision ID.
+          While you browse Drive in {siteName}: names, types, sizes and thumbnails of folders and
+          files in the location you open (Shared drives, My Drive or Shared with me). This listing
+          is requested directly by your browser with a short-lived access token, is shown only to
+          you and is not stored on our servers.
         </li>
         <li>
-          For a selected folder, the list of files inside it (including sub-folders) so the whole
-          folder can be imported.
+          When you start an import, for the files and folders you selected only:
+          <ul>
+            <li>
+              File metadata: file ID, name, MIME type, size, file extension, modification time and
+              revision ID.
+            </li>
+            <li>
+              For a selected folder, the list of files inside it (including sub-folders) so the
+              whole folder can be imported.
+            </li>
+            <li>
+              The content of those files, which is copied into the {siteName} project you chose.
+            </li>
+          </ul>
         </li>
-        <li>The content of those files, which is copied into the {siteName} project you chose.</li>
       </ul>
       <p>
-        {siteName} never creates, modifies or deletes anything in your Google Drive, does not scan
-        files you did not select, and does not keep your Drive in sync. Each import is a one-time
-        copy started by you.
+        {siteName} never creates, modifies or deletes anything in your Google Drive, does not import
+        or copy anything you did not select, and does not keep your Drive in sync. Each import is a
+        one-time copy started by you.
       </p>
       <h3>1.4 Technical and usage information</h3>
       <p>
@@ -177,7 +190,7 @@ function PrivacyEn({ context, language }: ContentProps) {
         <li>
           Google OAuth refresh tokens are encrypted at the application level before being stored and
           are never sent to the browser. Short-lived access tokens are provided to your browser only
-          to open the Google Picker.
+          to browse your Drive folders inside the app.
         </li>
         <li>
           Access to projects and files is restricted by role-based permissions and folder-level
@@ -284,26 +297,37 @@ function PrivacyVi({ context, language }: ContentProps) {
           kết kết nối với tài khoản {siteName} của bạn.
         </li>
         <li>
-          <code>https://www.googleapis.com/auth/drive.readonly</code> — để đọc các file và thư mục
-          bạn chủ động chọn trong Google Picker nhằm nhập chúng vào hệ thống.
+          <code>https://www.googleapis.com/auth/drive.readonly</code> — để bạn duyệt Drive ngay
+          trong {siteName} và để đọc các file, thư mục bạn chọn nhập vào hệ thống.
         </li>
       </ul>
-      <p>Khi bạn bắt đầu một lượt nhập, chúng tôi chỉ truy cập các mục bạn đã chọn và đọc:</p>
+      <p>Chúng tôi đọc các thông tin sau từ Google Drive:</p>
       <ul>
         <li>
-          Metadata của file: ID, tên, loại MIME, dung lượng, phần mở rộng, thời gian sửa đổi và ID
-          phiên bản.
+          Khi bạn duyệt Drive trong {siteName}: tên, loại, dung lượng và ảnh thu nhỏ của thư mục và
+          file ở vị trí bạn mở (Shared drives, My Drive hoặc Shared with me). Danh sách này do trình
+          duyệt của bạn lấy trực tiếp bằng access token ngắn hạn, chỉ hiển thị cho bạn và không được
+          lưu trên máy chủ của chúng tôi.
         </li>
         <li>
-          Với thư mục được chọn: danh sách file bên trong (kể cả thư mục con) để nhập toàn bộ thư
-          mục.
+          Khi bạn bắt đầu một lượt nhập, chỉ với các file và thư mục bạn đã chọn:
+          <ul>
+            <li>
+              Metadata của file: ID, tên, loại MIME, dung lượng, phần mở rộng, thời gian sửa đổi và
+              ID phiên bản.
+            </li>
+            <li>
+              Với thư mục được chọn: danh sách file bên trong (kể cả thư mục con) để nhập toàn bộ
+              thư mục.
+            </li>
+            <li>Nội dung các file đó, được sao chép vào project {siteName} mà bạn chọn.</li>
+          </ul>
         </li>
-        <li>Nội dung các file đó, được sao chép vào project {siteName} mà bạn chọn.</li>
       </ul>
       <p>
         {siteName} không bao giờ tạo, sửa hay xóa bất kỳ nội dung nào trong Google Drive của bạn,
-        không quét các file bạn không chọn và không đồng bộ Drive. Mỗi lượt nhập là một bản sao một
-        lần do chính bạn khởi tạo.
+        không nhập hay sao chép bất cứ thứ gì bạn không chọn và không đồng bộ Drive. Mỗi lượt nhập
+        là một bản sao một lần do chính bạn khởi tạo.
       </p>
       <h3>1.4 Thông tin kỹ thuật và sử dụng</h3>
       <p>
@@ -375,7 +399,8 @@ function PrivacyVi({ context, language }: ContentProps) {
         <li>Mọi kết nối giữa trình duyệt, máy chủ và Google đều được mã hóa bằng HTTPS.</li>
         <li>
           Refresh token Google OAuth được mã hóa ở tầng ứng dụng trước khi lưu và không bao giờ gửi
-          về trình duyệt. Access token ngắn hạn chỉ được cấp cho trình duyệt để mở Google Picker.
+          về trình duyệt. Access token ngắn hạn chỉ được cấp cho trình duyệt để bạn duyệt thư mục
+          Drive trong ứng dụng.
         </li>
         <li>
           Quyền truy cập project và file được giới hạn bằng phân quyền theo vai trò và theo thư mục;
