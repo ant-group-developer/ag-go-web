@@ -1,0 +1,250 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { apiClient } from '../../../shared/lib/api-client';
+import {
+  buildFacetsQueryString,
+  buildFootageFolderTree,
+  buildSearchQueryString,
+  formatMs,
+  formatRange,
+  getFootageFacets,
+  getFootageFolders,
+  getFootageSegmentMedia,
+  qualityStars,
+  searchFootage,
+  type FootageFolder,
+  type FootageSearchParams,
+} from './footage';
+
+vi.mock('../../../shared/lib/api-client', () => ({
+  apiClient: vi.fn(),
+  apiUrl: (path: string) => path,
+}));
+
+// ─── buildSearchQueryString ───────────────────────────────────────────────────
+
+describe('buildSearchQueryString', () => {
+  it('returns empty string when no params provided', () => {
+    expect(buildSearchQueryString({})).toBe('');
+  });
+
+  it('sets q param', () => {
+    expect(buildSearchQueryString({ q: 'hoa sen' })).toBe('q=hoa+sen');
+  });
+
+  it('joins folderIds with commas', () => {
+    const qs = buildSearchQueryString({ folderIds: ['f1', 'f2', 'f3'] });
+    expect(new URLSearchParams(qs).get('folderIds')).toBe('f1,f2,f3');
+  });
+
+  it('joins shotSizes with commas', () => {
+    const qs = buildSearchQueryString({ shotSizes: ['wide', 'medium'] });
+    expect(new URLSearchParams(qs).get('shotSizes')).toBe('wide,medium');
+  });
+
+  it('joins timesOfDay with commas', () => {
+    const qs = buildSearchQueryString({ timesOfDay: ['day', 'night'] });
+    expect(new URLSearchParams(qs).get('timesOfDay')).toBe('day,night');
+  });
+
+  it('sets minDurationMs and maxDurationMs', () => {
+    const qs = buildSearchQueryString({ minDurationMs: 1000, maxDurationMs: 5000 });
+    const p = new URLSearchParams(qs);
+    expect(p.get('minDurationMs')).toBe('1000');
+    expect(p.get('maxDurationMs')).toBe('5000');
+  });
+
+  it('sets usableOnly=false explicitly', () => {
+    const qs = buildSearchQueryString({ usableOnly: false });
+    expect(new URLSearchParams(qs).get('usableOnly')).toBe('false');
+  });
+
+  it('sets cursor and limit', () => {
+    const qs = buildSearchQueryString({ cursor: 'abc123', limit: 20 });
+    const p = new URLSearchParams(qs);
+    expect(p.get('cursor')).toBe('abc123');
+    expect(p.get('limit')).toBe('20');
+  });
+
+  it('omits empty arrays', () => {
+    const qs = buildSearchQueryString({ folderIds: [], tags: [], shotSizes: [] });
+    expect(qs).toBe('');
+  });
+});
+
+// ─── buildFacetsQueryString ───────────────────────────────────────────────────
+
+describe('buildFacetsQueryString', () => {
+  it('produces the same output as buildSearchQueryString for shared params', () => {
+    const params: FootageSearchParams = { q: 'biển', folderIds: ['f1'] };
+    expect(buildFacetsQueryString(params)).toBe(buildSearchQueryString(params));
+  });
+});
+
+// ─── searchFootage ────────────────────────────────────────────────────────────
+
+describe('searchFootage', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(apiClient).mockResolvedValue({ items: [], nextCursor: null });
+  });
+
+  it('calls /footage/search without qs when no params', async () => {
+    await searchFootage({});
+    expect(apiClient).toHaveBeenCalledWith('/footage/search');
+  });
+
+  it('appends query string when params provided', async () => {
+    await searchFootage({ q: 'hoa', folderIds: ['f1'] });
+    const call = vi.mocked(apiClient).mock.calls[0][0] as string;
+    expect(call).toMatch(/^\/footage\/search\?/);
+    expect(call).toContain('q=hoa');
+    expect(call).toContain('folderIds=f1');
+  });
+});
+
+// ─── getFootageFacets ─────────────────────────────────────────────────────────
+
+describe('getFootageFacets', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(apiClient).mockResolvedValue({
+      tags: [],
+      shotSizes: [],
+      timesOfDay: [],
+      orientations: [],
+      categories: [],
+      provinces: [],
+    });
+  });
+
+  it('calls /footage/facets without qs when no params', async () => {
+    await getFootageFacets({});
+    expect(apiClient).toHaveBeenCalledWith('/footage/facets');
+  });
+
+  it('appends filters when provided', async () => {
+    await getFootageFacets({ folderIds: ['f1', 'f2'] });
+    const call = vi.mocked(apiClient).mock.calls[0][0] as string;
+    expect(call).toMatch(/^\/footage\/facets\?/);
+    expect(call).toContain('folderIds=f1%2Cf2');
+  });
+});
+
+// ─── getFootageFolders ────────────────────────────────────────────────────────
+
+describe('getFootageFolders', () => {
+  it('calls /footage/folders', async () => {
+    vi.mocked(apiClient).mockResolvedValue({ folders: [] });
+    await getFootageFolders();
+    expect(apiClient).toHaveBeenCalledWith('/footage/folders');
+  });
+});
+
+// ─── getFootageSegmentMedia ───────────────────────────────────────────────────
+
+describe('getFootageSegmentMedia', () => {
+  it('calls /footage/segments/:segmentId/media', async () => {
+    vi.mocked(apiClient).mockResolvedValue({
+      segmentId: 'seg-1',
+      assetId: 'asset-1',
+      startMs: 0,
+      endMs: 5000,
+      durationMs: 5000,
+      keyframeUrls: [],
+      previewUrl: null,
+      previewWidth: null,
+    });
+    await getFootageSegmentMedia('seg-1');
+    expect(apiClient).toHaveBeenCalledWith('/footage/segments/seg-1/media');
+  });
+});
+
+// ─── buildFootageFolderTree ───────────────────────────────────────────────────
+
+describe('buildFootageFolderTree', () => {
+  const mkFolder = (id: string, parentId: string | null, name: string): FootageFolder => ({
+    id,
+    parentId,
+    name,
+    path: name,
+    analyzedSegments: 0,
+    usableSegments: 0,
+  });
+
+  it('returns empty array for empty input', () => {
+    expect(buildFootageFolderTree([])).toEqual([]);
+  });
+
+  it('places root folders at top level', () => {
+    const result = buildFootageFolderTree([mkFolder('r1', null, 'Root')]);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('r1');
+    expect(result[0].children).toHaveLength(0);
+  });
+
+  it('nests children under their parent', () => {
+    const folders = [
+      mkFolder('r1', null, 'Root'),
+      mkFolder('c1', 'r1', 'Child1'),
+      mkFolder('c2', 'r1', 'Child2'),
+      mkFolder('gc1', 'c1', 'GrandChild1'),
+    ];
+    const result = buildFootageFolderTree(folders);
+    expect(result).toHaveLength(1);
+    const root = result[0];
+    expect(root.children).toHaveLength(2);
+    const child1 = root.children.find((c) => c.id === 'c1')!;
+    expect(child1.children).toHaveLength(1);
+    expect(child1.children[0].id).toBe('gc1');
+  });
+
+  it('places orphaned folders (missing parent) at top level', () => {
+    const folders = [mkFolder('orphan', 'missing-parent', 'Orphan')];
+    const result = buildFootageFolderTree(folders);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('orphan');
+  });
+
+  it('preserves usableSegments count', () => {
+    const folder: FootageFolder = {
+      id: 'f1',
+      parentId: null,
+      name: 'F1',
+      path: 'F1',
+      analyzedSegments: 10,
+      usableSegments: 7,
+    };
+    const result = buildFootageFolderTree([folder]);
+    expect(result[0].usableSegments).toBe(7);
+  });
+});
+
+// ─── formatMs ─────────────────────────────────────────────────────────────────
+
+describe('formatMs', () => {
+  it('formats 0 as "0:00"', () => expect(formatMs(0)).toBe('0:00'));
+  it('formats 1000 ms as "0:01"', () => expect(formatMs(1000)).toBe('0:01'));
+  it('formats 60000 ms as "1:00"', () => expect(formatMs(60000)).toBe('1:00'));
+  it('formats 75000 ms as "1:15"', () => expect(formatMs(75000)).toBe('1:15'));
+  it('formats 3600000 ms (1h) as "60:00"', () => expect(formatMs(3_600_000)).toBe('60:00'));
+  it('pads seconds below 10', () => expect(formatMs(5000)).toBe('0:05'));
+});
+
+// ─── formatRange ──────────────────────────────────────────────────────────────
+
+describe('formatRange', () => {
+  it('formats a range as "mm:ss–mm:ss"', () => {
+    expect(formatRange(10_000, 25_000)).toBe('0:10–0:25');
+  });
+});
+
+// ─── qualityStars ─────────────────────────────────────────────────────────────
+
+describe('qualityStars', () => {
+  it('returns empty string for null', () => expect(qualityStars(null)).toBe(''));
+  it('returns 3 stars for quality 3', () => expect(qualityStars(3)).toBe('★★★'));
+  it('returns 5 stars for quality 5', () => expect(qualityStars(5)).toBe('★★★★★'));
+  it('returns 0 stars for quality 0', () => expect(qualityStars(0)).toBe(''));
+  it('clamps above 5 to 5 stars', () => expect(qualityStars(7)).toBe('★★★★★'));
+  it('clamps below 0 to 0 stars', () => expect(qualityStars(-1)).toBe(''));
+});
