@@ -90,8 +90,8 @@ function TermsEn({ context, language }: ContentProps) {
       <ul>
         <li>
           Connecting Google Drive is optional. When you connect it, you authorize {siteName} to
-          read, with read-only access, the files and folders you select in the Google Picker so they
-          can be copied into a project.
+          read, with read-only access, your Drive so you can browse it inside {siteName} and copy
+          the files and folders you select into a project.
         </li>
         <li>
           {siteName} never modifies or deletes files in your Google Drive. Imported files are
@@ -217,7 +217,8 @@ function TermsVi({ context, language }: ContentProps) {
       <ul>
         <li>
           Kết nối Google Drive là tùy chọn. Khi kết nối, bạn cho phép {siteName} đọc (chỉ đọc) các
-          file và thư mục bạn chọn trong Google Picker để sao chép vào project.
+          Drive để bạn duyệt ngay trong {siteName} và sao chép các file, thư mục bạn chọn vào
+          project.
         </li>
         <li>
           {siteName} không bao giờ sửa hay xóa file trong Google Drive của bạn. File đã nhập là bản
