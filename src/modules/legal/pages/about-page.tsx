@@ -120,11 +120,13 @@ export function AboutPage() {
         <>
           <p>
             Kết nối Google Drive là tùy chọn. Khi bạn kết nối, {siteName} yêu cầu quyền chỉ đọc (
-            <code>drive.readonly</code>) để bạn chọn file hoặc thư mục bằng Google Picker và sao
-            chép chúng vào một project. Chúng tôi:
+            <code>drive.readonly</code>) để bạn duyệt Drive ngay trong {siteName}, chọn file hoặc
+            thư mục và sao chép chúng vào một project. Chúng tôi:
           </p>
           <ul>
-            <li>chỉ đọc các file và thư mục bạn chủ động chọn;</li>
+            <li>
+              chỉ nhập các file và thư mục bạn chủ động chọn, không lưu danh sách Drive của bạn;
+            </li>
             <li>không tạo, sửa hay xóa bất cứ thứ gì trong Google Drive của bạn;</li>
             <li>
               không dùng dữ liệu Google cho quảng cáo, không bán và không dùng để huấn luyện AI;
@@ -136,11 +138,14 @@ export function AboutPage() {
         <>
           <p>
             Connecting Google Drive is optional. When you connect it, {siteName} requests read-only
-            access (<code>drive.readonly</code>) so you can pick files or folders with the Google
-            Picker and copy them into a project. We:
+            access (<code>drive.readonly</code>) so you can browse your Drive inside {siteName},
+            pick files or folders and copy them into a project. We:
           </p>
           <ul>
-            <li>read only the files and folders you explicitly select;</li>
+            <li>
+              import only the files and folders you explicitly select, and never store your Drive
+              listing;
+            </li>
             <li>never create, modify or delete anything in your Google Drive;</li>
             <li>
               never use Google data for advertising, never sell it and never use it to train AI
