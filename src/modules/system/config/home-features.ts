@@ -14,6 +14,7 @@ import {
   Shield,
   Tags,
   User,
+  VideoIcon,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -72,6 +73,13 @@ export const HOME_FEATURES: HomeFeature[] = [
     icon: ClipboardCheck,
     group: 'content',
     permission: GO_PERMISSIONS.PROJECT_EVALUATE,
+  },
+  {
+    key: 'footage',
+    path: '/footage',
+    icon: VideoIcon,
+    group: 'content',
+    permission: GO_PERMISSIONS.FOOTAGE_SEARCH,
   },
   {
     key: 'statistics',

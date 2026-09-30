@@ -1,4 +1,4 @@
-import { Col, Progress, Row, Skeleton, theme } from 'antd';
+import { Col, Progress, Row, theme } from 'antd';
 import { CheckCheck, Clock3, Film, FolderKanban, Gauge, HardDrive } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { StatisticsSummary } from '../types/statistics.type';
@@ -10,7 +10,7 @@ import {
   formatStorage,
   percentOf,
 } from '../utils/statistics-format';
-import { StatisticsKpiCard } from './statistics-kpi-card';
+import { StatisticsKpiCard, StatisticsKpiCardSkeleton } from './statistics-kpi-card';
 import { StatisticsLoadError, type StatisticsQueryState } from './statistics-section-card';
 
 const KPI_COLUMN = { xs: 24, sm: 12, lg: 8, xxl: 4 } as const;
@@ -32,7 +32,7 @@ export function StatisticsKpiRow({
       <Row gutter={[16, 16]}>
         {Array.from({ length: 6 }, (_, index) => (
           <Col key={index} {...KPI_COLUMN}>
-            <Skeleton.Node active style={{ width: '100%', height: 150 }} />
+            <StatisticsKpiCardSkeleton />
           </Col>
         ))}
       </Row>

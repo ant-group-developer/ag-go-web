@@ -9,6 +9,8 @@ import type { RenderJob } from '../api/render';
 import type { useRetryRenderJob } from '../hooks/use-render';
 import {
   formatElapsed,
+  formatJobSummary,
+  formatOutputResolution,
   formatResolution,
   isThumbnailOutput,
   previewOutputs,
@@ -169,19 +171,23 @@ export function buildRenderJobColumns({
         if (previews.length === 0 && !thumbnail) {
           return '-';
         }
+        const jobSummary = formatJobSummary(job.renderSummary, t);
         return (
           <Space direction="vertical" size={2}>
             <Space size={[4, 4]} wrap>
               {previews.map((output) => (
                 <Tooltip
                   key={output.variantCode}
-                  title={`${formatFileSize(output.fileSizeBytes)} · ${output.mimeType}`}
+                  title={`${formatFileSize(output.fileSizeBytes)} · ${output.mimeType} · ${
+                    output.reused ? t('render.reused') : t('render.renderedNew')
+                  }`}
                 >
                   <Tag
                     color={output.hasWatermark ? 'blue' : 'default'}
+                    bordered={!output.reused}
                     style={{ marginInlineEnd: 0 }}
                   >
-                    {formatResolution(output.width, output.height)}
+                    {formatOutputResolution(output)}
                   </Tag>
                 </Tooltip>
               ))}
@@ -192,6 +198,11 @@ export function buildRenderJobColumns({
                 thumbnail: thumbnail ? formatResolution(thumbnail.width, thumbnail.height) : '-',
               })}
             </Typography.Text>
+            {jobSummary ? (
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                {jobSummary}
+              </Typography.Text>
+            ) : null}
           </Space>
         );
       },

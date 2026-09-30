@@ -45,10 +45,15 @@ export function ImportItemsTable({
     {
       key: 'file',
       title: t('common.file'),
+      width: 300,
+      ellipsis: { showTitle: false },
       render: (_, item) => {
         const name = displayFilename(item.sourceName, item.sourceMimeType);
         return (
-          <Typography.Text ellipsis={{ tooltip: name }} style={{ maxWidth: 240 }}>
+          <Typography.Text
+            ellipsis={{ tooltip: name }}
+            style={{ maxWidth: '100%', display: 'block' }}
+          >
             {name}
           </Typography.Text>
         );
@@ -139,7 +144,7 @@ export function ImportItemsTable({
           : undefined
       }
       loading={loading}
-      scroll={{ x: 1100, y: scrollY }}
+      scroll={{ x: 1300, y: scrollY }}
       columns={columns}
       dataSource={items}
       pagination={

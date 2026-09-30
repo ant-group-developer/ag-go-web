@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useAllRenderBatches, useRenderProfiles } from '../hooks/use-render';
-import { normalizeRenderSizes } from '../utils/render-sizes';
+import { normalizeRenderSizes, sortVariantsDesc } from '../utils/render-sizes';
 import { AutoRenderJobTable } from './auto-render-job-table';
 import { RenderBatchTable } from './render-batch-table';
 import { RenderJobsDrawer } from './render-jobs-drawer';
@@ -53,9 +53,17 @@ export function RenderPanel() {
             </Descriptions.Item>
             <Descriptions.Item label={t('render.previewSizes')}>
               <Space size={[4, 4]} wrap>
-                {sizes.previewWidths.map((width) => (
-                  <Tag key={width} style={{ marginInlineEnd: 0 }}>
-                    {width}px
+                {sortVariantsDesc(sizes.variants).map((variant) => (
+                  <Tag
+                    key={`${variant.resolution}-${variant.watermark}`}
+                    style={{ marginInlineEnd: 0 }}
+                  >
+                    {t(
+                      variant.watermark
+                        ? 'render.variantWithWatermark'
+                        : 'render.variantWithoutWatermark',
+                      { resolution: variant.resolution },
+                    )}
                   </Tag>
                 ))}
               </Space>

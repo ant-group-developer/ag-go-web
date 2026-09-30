@@ -1,5 +1,17 @@
 import { DeleteOutlined, FolderFilled } from '@ant-design/icons';
-import { Alert, Button, Card, List, Progress, Radio, Space, Tag, theme, Typography } from 'antd';
+import {
+  Alert,
+  Button,
+  Card,
+  Flex,
+  List,
+  Progress,
+  Radio,
+  Space,
+  Tag,
+  theme,
+  Typography,
+} from 'antd';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatFileSize } from '../../../shared/lib/format-file-size';
@@ -267,6 +279,7 @@ export function ProjectGoogleDriveImportPanel({ projectId }: { projectId: string
                 dataSource={selected}
                 renderItem={(source) => (
                   <List.Item
+                    style={{ minWidth: 0 }}
                     actions={[
                       <Button
                         key="remove"
@@ -279,34 +292,55 @@ export function ProjectGoogleDriveImportPanel({ projectId }: { projectId: string
                     ]}
                   >
                     {source.mimeType === FOLDER_MIME_TYPE ? (
-                      <Space align="start">
-                        <FolderFilled style={{ fontSize: 18, color: token.colorWarning }} />
-                        <Space direction="vertical" size={0}>
+                      <Flex align="flex-start" gap={8} style={{ minWidth: 0, width: '100%' }}>
+                        <FolderFilled
+                          style={{
+                            fontSize: 18,
+                            color: token.colorWarning,
+                            flexShrink: 0,
+                            marginTop: 2,
+                          }}
+                        />
+                        <Flex vertical style={{ minWidth: 0, flex: 1 }}>
                           <Typography.Link
                             strong
                             href={driveFolderUrl(source.fileId)}
                             target="_blank"
                             rel="noreferrer"
+                            ellipsis
+                            title={source.name ?? source.fileId}
+                            style={{ display: 'block', maxWidth: '100%' }}
                           >
                             {source.name ?? source.fileId}
                           </Typography.Link>
                           {source.location ? (
-                            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                            <Typography.Text
+                              type="secondary"
+                              ellipsis={{ tooltip: source.location }}
+                              style={{ fontSize: 12, display: 'block', maxWidth: '100%' }}
+                            >
                               {source.location}
                             </Typography.Text>
                           ) : null}
-                        </Space>
-                      </Space>
+                        </Flex>
+                      </Flex>
                     ) : (
-                      <Space>
-                        <Tag>{source.mimeType?.startsWith('video/') ? 'Video' : 'Image'}</Tag>
-                        <Typography.Text>
+                      <Flex align="center" gap={8} style={{ minWidth: 0, width: '100%' }}>
+                        <Tag style={{ flexShrink: 0 }}>
+                          {source.mimeType?.startsWith('video/') ? 'Video' : 'Image'}
+                        </Tag>
+                        <Typography.Text
+                          ellipsis={{
+                            tooltip: displayFilename(source.name ?? source.fileId, source.mimeType),
+                          }}
+                          style={{ minWidth: 0, flex: 1 }}
+                        >
                           {displayFilename(source.name ?? source.fileId, source.mimeType)}
                         </Typography.Text>
-                        <Typography.Text type="secondary">
+                        <Typography.Text type="secondary" style={{ flexShrink: 0 }}>
                           {formatFileSize(source.sizeBytes)}
                         </Typography.Text>
-                      </Space>
+                      </Flex>
                     )}
                   </List.Item>
                 )}
