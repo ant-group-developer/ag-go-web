@@ -1,41 +1,40 @@
 import {
   ExpandOutlined,
   FullscreenExitOutlined,
+  LoadingOutlined,
   PauseCircleFilled,
   PlayCircleFilled,
   SettingOutlined,
   SoundFilled,
   SoundOutlined,
 } from '@ant-design/icons';
+import { useQueries, useQueryClient } from '@tanstack/react-query';
 import type { MenuProps } from 'antd';
-import { Dropdown, Flex, Slider, Tag } from 'antd';
+import { App, Dropdown, Flex, Slider, Tag, Typography } from 'antd';
 import type { CSSProperties, KeyboardEvent } from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useAssetPreviewUrl } from '../../hooks/use-asset-preview-url';
-import {
-  AUTO_QUALITY,
-  useVideoQuality,
-  type VideoQualityVariant,
-} from '../../hooks/use-video-quality';
+import { AUTO_QUALITY, useVideoQuality } from '../../hooks/use-video-quality';
 import {
   sortVariantsDescByResolution,
   variantMenuLabel,
   variantResolutionLabel,
 } from '../../utils/variant-labels';
 import styles from './video-player.module.css';
-
-export type VideoPlayerVariant = VideoQualityVariant & {
-  width: number | null;
-  height: number | null;
-};
+import { ORIGINAL_SOURCE_CODE, sourceUrlQuery, type VideoPlayerSource } from './video-source';
 
 type VideoPlayerProps = {
   assetId: string;
-  variants: VideoPlayerVariant[];
-  poster?: string;
+  /** Rendered previews on offer; auto quality picks among them. */
+  variants: VideoPlayerSource[];
+  /** The original file, offered as a manual choice (never picked by auto). */
+  original?: VideoPlayerSource | null;
+  /** Where the viewer's quality choice is remembered; one key per viewing context. */
+  qualityStorageKey: string;
+  defaultQuality?: string;
   className?: string;
   style?: CSSProperties;
+  /** No source can be played. */
   onError?: () => void;
 };
 
@@ -43,6 +42,22 @@ const SEEK_STEP_SECONDS = 5;
 const PLAYBACK_RATES = [0.5, 1, 1.25, 1.5, 2];
 /** Controls stay visible this long after the last interaction while playing. */
 const CONTROLS_IDLE_MS = 2_500;
+/** Presigned URLs live for 15 minutes by default; fetch new ones well before. */
+const SOURCE_URL_STALE_MS = 5 * 60 * 1000;
+/** The frozen frame never outlives a switch that fails to report back. */
+const FREEZE_TIMEOUT_MS = 8_000;
+
+type FullscreenDocument = Document & {
+  webkitFullscreenElement?: Element | null;
+  webkitExitFullscreen?: () => void;
+};
+type FullscreenCapableElement = HTMLElement & { webkitRequestFullscreen?: () => void };
+type IosVideoElement = HTMLVideoElement & { webkitEnterFullscreen?: () => void };
+
+function currentFullscreenElement(): Element | null {
+  const doc = document as FullscreenDocument;
+  return doc.fullscreenElement ?? doc.webkitFullscreenElement ?? null;
+}
 
 function formatTime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) {
@@ -59,33 +74,151 @@ function formatTime(seconds: number): string {
 
 /**
  * Video playback with custom controls (play/pause, seek with buffered range, volume, speed,
- * fullscreen) and an auto-quality switcher over progressive MP4 variants (see `use-video-quality`
- * for the adaptive bitrate logic). Keyboard: space/k play-pause, arrows seek ±5s, f fullscreen,
- * m mute.
+ * fullscreen) and a quality menu: auto quality over progressive MP4 previews (see
+ * `use-video-quality`), each preview, and optionally the original file. Keyboard: space/k
+ * play-pause, arrows seek ±5s, f fullscreen, m mute; double-click toggles fullscreen.
+ *
+ * Switching quality keeps the position and play state, and shows the last frame until the new
+ * source has reached that position, so the picture never blanks. URLs of every source are
+ * fetched up front and kept for the player's lifetime; a source that errors (e.g. an expired
+ * URL) is retried once with a fresh URL.
  */
 export function VideoPlayer({
   assetId,
   variants,
-  poster,
+  original,
+  qualityStorageKey,
+  defaultQuality,
   className,
   style,
   onError,
 }: VideoPlayerProps) {
   const { t } = useTranslation();
-  const frameRef = useRef<HTMLDivElement>(null);
+  const { message } = App.useApp();
+  const queryClient = useQueryClient();
+  const rootRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   // Playback position/state survives switching the source (manual or automatic quality change).
   const playbackRef = useRef({ time: 0, playing: false });
+  const [originalFailed, setOriginalFailed] = useState(false);
+  const manualOnly = useMemo(
+    () => (original && !originalFailed ? [original] : []),
+    [original, originalFailed],
+  );
   const { quality, setQuality, activeVariant, autoVariant, videoEventHandlers } = useVideoQuality(
     variants,
     videoRef,
-    frameRef,
-  );
-  const url = useAssetPreviewUrl(
-    activeVariant ? assetId : null,
-    activeVariant?.variantCode ?? 'preview',
+    rootRef,
+    { storageKey: qualityStorageKey, defaultQuality, manualOnly },
   );
 
+  // --- Source URLs: fetched for every source up front, pinned once the player uses them.
+  const sources = useMemo(() => [...manualOnly, ...variants], [manualOnly, variants]);
+  const urlResults = useQueries({
+    queries: sources.map((source) => ({
+      ...sourceUrlQuery(assetId, source.variantCode),
+      staleTime: SOURCE_URL_STALE_MS,
+      gcTime: SOURCE_URL_STALE_MS * 2,
+      retry: false,
+    })),
+  });
+  // A refetched (newer) URL of the source already playing would restart it; keep the one in use.
+  const pinnedUrlsRef = useRef(new Map<string, string>());
+  const retriedCodesRef = useRef(new Set<string>());
+  const activeIndex = activeVariant
+    ? sources.findIndex((source) => source.variantCode === activeVariant.variantCode)
+    : -1;
+  const activeResult = activeIndex >= 0 ? urlResults[activeIndex] : undefined;
+  const activeCode = activeVariant?.variantCode;
+  const desiredUrl =
+    (activeCode ? pinnedUrlsRef.current.get(activeCode) : undefined) ?? activeResult?.data;
+  if (activeCode && desiredUrl) {
+    pinnedUrlsRef.current.set(activeCode, desiredUrl);
+  }
+
+  // --- Seamless switching: freeze the last frame over the video while the next source loads.
+  const [displayedUrl, setDisplayedUrl] = useState<string>();
+  const [frozen, setFrozen] = useState(false);
+  const freezeTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  const unfreeze = useCallback(() => {
+    clearTimeout(freezeTimerRef.current);
+    setFrozen(false);
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!desiredUrl || desiredUrl === displayedUrl) {
+      return;
+    }
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (displayedUrl && video && canvas && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+      try {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d')?.drawImage(video, 0, 0, canvas.width, canvas.height);
+        setFrozen(true);
+        clearTimeout(freezeTimerRef.current);
+        freezeTimerRef.current = setTimeout(() => setFrozen(false), FREEZE_TIMEOUT_MS);
+      } catch {
+        // Without a snapshot the switch just shows the new source as it loads.
+      }
+    }
+    setDisplayedUrl(desiredUrl);
+  }, [desiredUrl, displayedUrl]);
+
+  useEffect(() => () => clearTimeout(freezeTimerRef.current), []);
+
+  const handleSourceError = useCallback(() => {
+    const code = activeCode;
+    unfreeze();
+    if (!code) {
+      onError?.();
+      return;
+    }
+    if (!retriedCodesRef.current.has(code)) {
+      // Most often an expired presigned URL: try once more with a fresh one.
+      retriedCodesRef.current.add(code);
+      pinnedUrlsRef.current.delete(code);
+      void queryClient
+        .fetchQuery({ ...sourceUrlQuery(assetId, code), staleTime: 0 })
+        .then((url) => {
+          pinnedUrlsRef.current.set(code, url);
+          setDisplayedUrl(url);
+        })
+        .catch(() => onError?.());
+      return;
+    }
+    if (code === ORIGINAL_SOURCE_CODE && variants.length > 0) {
+      // Formats the browser cannot play (HEVC, ProRes...) fall back to the rendered previews.
+      setOriginalFailed(true);
+      setQuality(AUTO_QUALITY, { remember: false });
+      void message.warning(t('media.originalUnplayable'));
+      return;
+    }
+    onError?.();
+  }, [
+    activeCode,
+    assetId,
+    message,
+    onError,
+    queryClient,
+    setQuality,
+    t,
+    unfreeze,
+    variants.length,
+  ]);
+
+  useEffect(() => {
+    if (activeResult?.isError && !pinnedUrlsRef.current.has(activeCode ?? '')) {
+      handleSourceError();
+    }
+    // Only a failed URL request of the active source matters here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeResult?.isError, activeCode]);
+
+  // --- Player state.
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -99,18 +232,9 @@ export function VideoPlayer({
   // The controls stay up while the quality menu is open.
   const menuOpenRef = useRef(false);
 
-  useEffect(() => {
-    playbackRef.current = { time: 0, playing: false };
-    setCurrentTime(0);
-    setDuration(0);
-    setBufferedEnd(0);
-  }, [assetId]);
-
   const showControls = useCallback(() => {
     setControlsHidden(false);
-    if (hideTimerRef.current) {
-      clearTimeout(hideTimerRef.current);
-    }
+    clearTimeout(hideTimerRef.current);
     hideTimerRef.current = setTimeout(() => {
       if (playbackRef.current.playing && !menuOpenRef.current) {
         setControlsHidden(true);
@@ -122,10 +246,14 @@ export function VideoPlayer({
 
   useEffect(() => {
     const handleFullscreenChange = () => {
-      setIsFullscreen(document.fullscreenElement === frameRef.current);
+      setIsFullscreen(currentFullscreenElement() === rootRef.current);
     };
     document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+    };
   }, []);
 
   const togglePlay = useCallback(() => {
@@ -191,15 +319,31 @@ export function VideoPlayer({
     setPlaybackRate(nextRate);
   }, [playbackRate]);
 
+  /**
+   * Fullscreen of the whole player (so the custom controls and quality menu stay), with the
+   * prefixed API for older Safari; iPhones only allow the video element's native fullscreen.
+   */
   const toggleFullscreen = useCallback(() => {
-    const frame = frameRef.current;
-    if (!frame) {
+    const root = rootRef.current as FullscreenCapableElement | null;
+    const video = videoRef.current as IosVideoElement | null;
+    if (!root) {
       return;
     }
-    if (document.fullscreenElement) {
-      void document.exitFullscreen().catch(() => undefined);
+    const doc = document as FullscreenDocument;
+    if (currentFullscreenElement()) {
+      if (doc.exitFullscreen) {
+        void doc.exitFullscreen().catch(() => undefined);
+      } else {
+        doc.webkitExitFullscreen?.();
+      }
+      return;
+    }
+    if (root.requestFullscreen) {
+      void root.requestFullscreen().catch(() => video?.webkitEnterFullscreen?.());
+    } else if (root.webkitRequestFullscreen) {
+      root.webkitRequestFullscreen();
     } else {
-      void frame.requestFullscreen?.().catch(() => undefined);
+      video?.webkitEnterFullscreen?.();
     }
   }, []);
 
@@ -235,14 +379,34 @@ export function VideoPlayer({
     showControls();
   };
 
+  const originalOption = manualOnly[0];
   const qualityMenuItems: MenuProps['items'] = [
-    {
-      key: AUTO_QUALITY,
-      label: autoVariant
-        ? `${t('media.qualityAuto')} (${variantResolutionLabel(autoVariant)})`
-        : t('media.qualityAuto'),
-    },
-    { type: 'divider' },
+    ...(variants.length > 0
+      ? [
+          {
+            key: AUTO_QUALITY,
+            label: autoVariant
+              ? `${t('media.qualityAuto')} (${variantResolutionLabel(autoVariant)})`
+              : t('media.qualityAuto'),
+          },
+          { type: 'divider' as const },
+        ]
+      : []),
+    ...(originalOption
+      ? [
+          {
+            key: ORIGINAL_SOURCE_CODE,
+            label: (
+              <Flex align="center" justify="space-between" gap={10}>
+                <span>{t('media.qualityOriginal')}</span>
+                <Typography.Text type="secondary">
+                  {variantResolutionLabel(originalOption)}
+                </Typography.Text>
+              </Flex>
+            ),
+          },
+        ]
+      : []),
     ...sortVariantsDescByResolution(variants).map((variant) => {
       const { text, showWatermarkBadge } = variantMenuLabel(variant, variants);
       return {
@@ -261,14 +425,24 @@ export function VideoPlayer({
     }),
   ];
 
+  // The frame keeps the video's shape from the start, so nothing jumps while a source loads.
+  // Previews first: their sizes follow the displayed (rotated) frame, the original's may not.
+  const shape = [...variants, ...manualOnly].find((source) => source.width && source.height);
+  const aspectRatio = shape ? `${shape.width} / ${shape.height}` : '16 / 9';
   const playedPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
   const bufferedPercent = duration > 0 ? (bufferedEnd / duration) * 100 : 0;
+  const rootClassName = [
+    styles.root,
+    isFullscreen ? styles.rootFullscreen : '',
+    controlsHidden ? styles.idle : '',
+    className ?? '',
+  ].join(' ');
 
   return (
     <div
-      ref={frameRef}
-      className={className}
-      style={{ ...style, position: 'relative', outline: 'none' }}
+      ref={rootRef}
+      className={rootClassName}
+      style={style}
       tabIndex={0}
       role="group"
       aria-label={t('media.videoPlayer')}
@@ -281,13 +455,13 @@ export function VideoPlayer({
         }
       }}
     >
-      <div className={styles.frame}>
+      <div className={styles.frame} style={isFullscreen ? undefined : { aspectRatio }}>
         <video
           ref={videoRef}
           className={styles.video}
           preload="metadata"
-          poster={poster}
-          src={url}
+          playsInline
+          src={displayedUrl}
           onClick={() => {
             // A tap on a touch screen first brings the hidden controls back.
             if (controlsHidden) {
@@ -296,12 +470,14 @@ export function VideoPlayer({
               togglePlay();
             }
           }}
-          onError={onError}
+          onDoubleClick={toggleFullscreen}
+          onError={handleSourceError}
           onLoadedMetadata={(event) => {
             const video = event.currentTarget;
             setDuration(video.duration || 0);
             const { time, playing } = playbackRef.current;
             if (time > 0) {
+              // The frozen frame stays up until the seek lands (onSeeked).
               video.currentTime = time;
             }
             video.playbackRate = playbackRate;
@@ -309,6 +485,16 @@ export function VideoPlayer({
             video.muted = muted;
             if (playing) {
               void video.play().catch(() => undefined);
+            }
+          }}
+          onLoadedData={(event) => {
+            if (!event.currentTarget.seeking) {
+              unfreeze();
+            }
+          }}
+          onSeeked={(event) => {
+            if (event.currentTarget.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+              unfreeze();
             }
           }}
           onTimeUpdate={(event) => {
@@ -340,6 +526,16 @@ export function VideoPlayer({
           onWaiting={videoEventHandlers.onWaiting}
           onPlaying={videoEventHandlers.onPlaying}
         />
+        <canvas
+          ref={canvasRef}
+          className={`${styles.freezeFrame} ${frozen ? styles.freezeFrameVisible : ''}`}
+          aria-hidden
+        />
+        {frozen || !displayedUrl ? (
+          <div className={styles.loading} aria-hidden>
+            <LoadingOutlined />
+          </div>
+        ) : null}
 
         <div className={`${styles.controls} ${controlsHidden ? styles.controlsHidden : ''}`}>
           <div className={styles.seekRow}>
@@ -397,7 +593,7 @@ export function VideoPlayer({
                 trigger={['click']}
                 placement="topRight"
                 // Inside the player so the menu still shows in fullscreen.
-                getPopupContainer={() => frameRef.current ?? document.body}
+                getPopupContainer={() => rootRef.current ?? document.body}
                 onOpenChange={(open) => {
                   menuOpenRef.current = open;
                   showControls();
@@ -410,17 +606,24 @@ export function VideoPlayer({
               >
                 <button
                   type="button"
-                  className={styles.iconButton}
+                  className={styles.qualityButton}
                   aria-label={t('media.quality')}
                   onClick={(event) => event.stopPropagation()}
                 >
                   <SettingOutlined />
+                  {activeVariant ? (
+                    <span className={styles.qualityLabel}>
+                      {activeVariant.variantCode === ORIGINAL_SOURCE_CODE
+                        ? t('media.qualityOriginal')
+                        : variantResolutionLabel(activeVariant)}
+                    </span>
+                  ) : null}
                 </button>
               </Dropdown>
               <button
                 type="button"
                 className={styles.iconButton}
-                aria-label={t('media.fullscreen')}
+                aria-label={isFullscreen ? t('media.exitFullscreen') : t('media.fullscreen')}
                 onClick={toggleFullscreen}
               >
                 {isFullscreen ? <FullscreenExitOutlined /> : <ExpandOutlined />}

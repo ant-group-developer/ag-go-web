@@ -42,13 +42,19 @@ import {
   getProjectMedia,
   retryAssetProcessing,
   updateProjectMedia,
+  type PreviewVariant,
   type ProjectMedia,
 } from '../../media/api/media';
 import { ProjectMediaSortDropdown } from '../../media/components/project-media-sort-dropdown';
 import { RenditionPicker } from '../../media/components/rendition-picker';
 import { VideoPlayer } from '../../media/components/video-player/video-player';
+import {
+  ORIGINAL_SOURCE_CODE,
+  type VideoPlayerSource,
+} from '../../media/components/video-player/video-source';
 import { useAssetPreviewUrl } from '../../media/hooks/use-asset-preview-url';
 import { useRenditionSelection } from '../../media/hooks/use-rendition-selection';
+import { AUTO_QUALITY } from '../../media/hooks/use-video-quality';
 import { mediaQueryKeys } from '../../media/queries/media-query-keys';
 import {
   DEFAULT_PROJECT_MEDIA_SORT,
@@ -170,6 +176,9 @@ function MediaPreview({ media, source }: { media: ProjectMedia; source: MediaSou
     setOriginalFailed(false);
   }, [media.id]);
 
+  if (media.asset.assetType === 'video') {
+    return <VideoMediaPreview key={media.id} media={media} source={source} />;
+  }
   if (source === 'original' && !originalFailed) {
     return <OriginalMediaPreview media={media} onUnavailable={() => setOriginalFailed(true)} />;
   }
@@ -185,6 +194,71 @@ function MediaPreview({ media, source }: { media: ProjectMedia; source: MediaSou
       ) : null}
       <RenderedMediaPreview media={media} />
     </>
+  );
+}
+
+/**
+ * Previews a viewer is shown: without watermark when evaluating, watermarked otherwise. With
+ * watermarking off (no watermarked preview exists) every preview is shown.
+ */
+function previewsFor(media: ProjectMedia, source: MediaSource): PreviewVariant[] {
+  const variants = media.previewVariants ?? [];
+  if (source === 'original') {
+    return variants.filter((variant) => !variant.hasWatermark);
+  }
+  const watermarked = variants.filter((variant) => variant.hasWatermark);
+  return watermarked.length > 0 ? watermarked : variants;
+}
+
+/** The original file as a player source, when it has been uploaded. */
+function originalSource(media: ProjectMedia): VideoPlayerSource | null {
+  if (['uploading', 'cancelled'].includes(media.asset.processingStatus)) {
+    return null;
+  }
+  const bytes = Number(media.asset.fileSizeBytes ?? 0);
+  return {
+    variantCode: ORIGINAL_SOURCE_CODE,
+    width: media.width,
+    height: media.height,
+    resolution: media.width && media.height ? Math.min(media.width, media.height) : null,
+    hasWatermark: false,
+    bitrateBps:
+      bytes > 0 && media.durationSeconds ? Math.round((bytes * 8) / media.durationSeconds) : null,
+  };
+}
+
+/**
+ * Videos play in the custom player. Evaluating offers the original file (chosen first) and the
+ * un-watermarked previews; viewing offers the watermarked previews. Each context remembers its
+ * own quality choice.
+ */
+function VideoMediaPreview({ media, source }: { media: ProjectMedia; source: MediaSource }) {
+  const evaluating = source === 'original';
+  const [failed, setFailed] = useState(false);
+  // The media list is refetched while files process; only a change in what is offered may
+  // reset the player's quality choice, not a new copy of the same media.
+  const variantsKey = JSON.stringify(previewsFor(media, source));
+  const originalKey = JSON.stringify(evaluating ? originalSource(media) : null);
+  const variants = useMemo(() => JSON.parse(variantsKey) as PreviewVariant[], [variantsKey]);
+  const original = useMemo(
+    () => JSON.parse(originalKey) as VideoPlayerSource | null,
+    [originalKey],
+  );
+
+  if (failed || (variants.length === 0 && !original)) {
+    return <RenderedMediaPreview media={media} />;
+  }
+  return (
+    <VideoPlayer
+      assetId={media.assetId}
+      variants={variants}
+      original={original}
+      qualityStorageKey={
+        evaluating ? 'ag-go.media.videoQuality.evaluate' : 'ag-go.media.videoQuality.view'
+      }
+      defaultQuality={evaluating ? ORIGINAL_SOURCE_CODE : AUTO_QUALITY}
+      onError={() => setFailed(true)}
+    />
   );
 }
 
@@ -254,34 +328,22 @@ function OriginalMediaPreview({
   );
 }
 
+/**
+ * Watermarked previews of images (size picked for the frame), and the plain single preview of
+ * videos the player cannot handle (older responses, or no playable source).
+ */
 function RenderedMediaPreview({ media }: { media: ProjectMedia }) {
   const frameRef = useRef<HTMLDivElement>(null);
   const isReady = media.asset.processingStatus === 'ready';
   const isVideo = media.asset.assetType === 'video';
-  const [videoFailed, setVideoFailed] = useState(false);
-  const variants = useMemo(() => media.previewVariants ?? [], [media.previewVariants]);
-  // The video player picks its own quality (auto/manual); this selection is only for images.
+  const variants = useMemo(() => (isVideo ? [] : previewsFor(media, 'preview')), [isVideo, media]);
   const { quality, autoVariant, selected, setQuality } = useRenditionSelection(variants, frameRef);
   const selectedUrl = useAssetPreviewUrl(
-    !isVideo && isReady && selected ? media.assetId : null,
+    isReady && selected ? media.assetId : null,
     selected?.variantCode ?? 'preview',
   );
   // Older API responses without preview sizes still carry a single preview URL.
   const previewUrl = variants.length > 0 ? selectedUrl : (media.previewUrl ?? undefined);
-
-  useEffect(() => {
-    setVideoFailed(false);
-  }, [media.id]);
-
-  if (isVideo && variants.length > 0 && !videoFailed) {
-    return (
-      <VideoPlayer
-        assetId={media.assetId}
-        variants={variants}
-        onError={() => setVideoFailed(true)}
-      />
-    );
-  }
 
   const content = !previewUrl ? (
     <PreviewPlaceholder status={media.asset.processingStatus} loading={isReady} />
@@ -311,7 +373,7 @@ function RenderedMediaPreview({ media }: { media: ProjectMedia }) {
   return (
     <div ref={frameRef}>
       {content}
-      {!isVideo && variants.length > 1 ? (
+      {variants.length > 1 ? (
         <Flex justify="flex-end" style={{ marginTop: 8 }}>
           <RenditionPicker
             variants={variants}
