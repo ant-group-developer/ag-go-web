@@ -23,6 +23,7 @@ import { useFolders } from '../../folders/hooks/use-folders';
 import type { Folder as FolderType } from '../../folders/types/folder.type';
 import { analysisStatusColor, type AnalysisStatus, type BackfillMode } from '../api/analysis';
 import { useAnalysisStats, useBackfillAnalysis } from '../hooks/use-analysis';
+import { AnalysisLogCard } from './analysis-log-card';
 
 // ─── Folder tree helpers ─────────────────────────────────────────────────────
 
@@ -275,6 +276,8 @@ export function AnalysisPanel() {
           </Row>
         </Form>
       </Card>
+
+      <AnalysisLogCard />
     </Space>
   );
 }

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { apiClient } from '../../../shared/lib/api-client';
 import {
   analysisStatusColor,
+  getAnalysisLogs,
   getAnalysisStats,
   getAssetAnalysis,
   getAssetSegments,
@@ -66,6 +67,28 @@ describe('runBackfill', () => {
       method: 'POST',
       body: JSON.stringify({ mode: 'missing', folderIds: ['folder-1'], dryRun: true }),
     });
+  });
+});
+
+describe('getAnalysisLogs', () => {
+  beforeEach(() => {
+    vi.mocked(apiClient).mockResolvedValue({
+      items: [],
+      page: 1,
+      pageSize: 20,
+      total: 0,
+      totalPages: 0,
+    });
+  });
+
+  it('calls /analysis/logs without a query when no filter is set', async () => {
+    await getAnalysisLogs();
+    expect(apiClient).toHaveBeenCalledWith('/analysis/logs');
+  });
+
+  it('passes the filters that are set and drops empty ones', async () => {
+    await getAnalysisLogs({ page: 2, pageSize: 20, level: 'error', search: '' });
+    expect(apiClient).toHaveBeenCalledWith('/analysis/logs?page=2&pageSize=20&level=error');
   });
 });
 
