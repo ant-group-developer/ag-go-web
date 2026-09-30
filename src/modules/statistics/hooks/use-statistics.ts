@@ -1,14 +1,20 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import {
   getStatisticsActivity,
+  getStatisticsBreakdown,
   getStatisticsOperations,
   getStatisticsProgress,
+  getStatisticsProjectTrend,
   getStatisticsSummary,
   getStatisticsTeam,
   getStatisticsTrend,
 } from '../api/statistics';
 import { statisticsQueryKeys } from '../queries/statistics-query-keys';
-import type { StatisticsPeriodParams } from '../types/statistics.type';
+import type {
+  StatisticsBreakdownDimension,
+  StatisticsBreakdownRange,
+  StatisticsPeriodParams,
+} from '../types/statistics.type';
 
 /*
  * One query per widget so each card loads, fails and refreshes on its own. Period queries keep
@@ -28,6 +34,26 @@ export function useStatisticsTrend(period: StatisticsPeriodParams) {
   return useQuery({
     queryKey: statisticsQueryKeys.trend(period),
     queryFn: () => getStatisticsTrend(period),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useStatisticsProjectTrend(period: StatisticsPeriodParams) {
+  return useQuery({
+    queryKey: statisticsQueryKeys.projectTrend(period),
+    queryFn: () => getStatisticsProjectTrend(period),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useStatisticsBreakdown(
+  period: StatisticsPeriodParams,
+  dimension: StatisticsBreakdownDimension,
+  range: StatisticsBreakdownRange,
+) {
+  return useQuery({
+    queryKey: statisticsQueryKeys.breakdown(period, dimension, range),
+    queryFn: () => getStatisticsBreakdown(period, dimension, range),
     placeholderData: keepPreviousData,
   });
 }

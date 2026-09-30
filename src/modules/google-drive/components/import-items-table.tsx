@@ -1,6 +1,6 @@
 import { ReloadOutlined } from '@ant-design/icons';
 import { Button, Flex, Space, Table, Tag, Typography } from 'antd';
-import type { ColumnsType, TableProps } from 'antd/es/table';
+import type { ColumnsType, TablePaginationConfig, TableProps } from 'antd/es/table';
 import { useTranslation } from 'react-i18next';
 import { TableRefreshButton } from '../../../shared/components/table-refresh-button';
 import { formatDate } from '../../../shared/lib/format-date';
@@ -19,8 +19,8 @@ import {
 type ImportItemsTableProps = {
   items: ImportItem[];
   loading?: boolean;
-  /** Paginate long lists (history drawer); the live progress card shows every row. */
-  paginate?: boolean;
+  /** Paging of long lists (history drawer); the live progress card shows every row. */
+  pagination?: TablePaginationConfig | false;
   /** Fixed body height; rows scroll inside the table. */
   scrollY?: number;
   /** `sticky` config for the header; defaults to the page-level offset (56px ProLayout header). */
@@ -33,7 +33,7 @@ type ImportItemsTableProps = {
 export function ImportItemsTable({
   items,
   loading,
-  paginate,
+  pagination = false,
   scrollY,
   sticky,
   onRefresh,
@@ -147,9 +147,7 @@ export function ImportItemsTable({
       scroll={{ x: 1300, y: scrollY }}
       columns={columns}
       dataSource={items}
-      pagination={
-        paginate ? { pageSize: 20, hideOnSinglePage: true, showSizeChanger: false } : false
-      }
+      pagination={pagination}
     />
   );
 }

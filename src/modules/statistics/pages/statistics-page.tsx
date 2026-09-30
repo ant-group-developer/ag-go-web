@@ -5,10 +5,12 @@ import { GO_PERMISSIONS } from '../../../shared/auth/permissions';
 import { usePermissions } from '../../account/hooks/use-current-account';
 import { StatisticsActivityCard } from '../components/statistics-activity-card';
 import { StatisticsAttentionProjectsCard } from '../components/statistics-attention-projects-card';
+import { StatisticsBreakdownCard } from '../components/statistics-breakdown-card';
 import { StatisticsFolderProgressCard } from '../components/statistics-folder-progress-card';
 import { StatisticsKpiRow } from '../components/statistics-kpi-row';
 import { StatisticsOperationsCard } from '../components/statistics-operations-card';
 import { StatisticsPeriodFilter } from '../components/statistics-period-filter';
+import { StatisticsProjectTrendCard } from '../components/statistics-project-trend-card';
 import { StatisticsStatusDistributionCard } from '../components/statistics-status-distribution-card';
 import { StatisticsTeamCard } from '../components/statistics-team-card';
 import { StatisticsTrendChartCard } from '../components/statistics-trend-chart-card';
@@ -16,6 +18,7 @@ import {
   useStatisticsActivity,
   useStatisticsOperations,
   useStatisticsProgress,
+  useStatisticsProjectTrend,
   useStatisticsSummary,
   useStatisticsTeam,
   useStatisticsTrend,
@@ -36,6 +39,7 @@ export function StatisticsPage() {
 
   const summary = useStatisticsSummary(period.params);
   const trend = useStatisticsTrend(period.params);
+  const projectTrend = useStatisticsProjectTrend(period.params);
   const progress = useStatisticsProgress();
   const team = useStatisticsTeam(period.params);
   const operations = useStatisticsOperations(period.params);
@@ -66,6 +70,15 @@ export function StatisticsPage() {
         </Col>
         <Col xs={24} xl={8}>
           <StatisticsStatusDistributionCard query={summary} />
+        </Col>
+      </Row>
+
+      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+        <Col xs={24}>
+          <StatisticsProjectTrendCard query={projectTrend} />
+        </Col>
+        <Col xs={24}>
+          <StatisticsBreakdownCard period={period.params} />
         </Col>
       </Row>
 

@@ -19,6 +19,9 @@ export const EVALUATION_KEYS: EvaluationKey[] = ['approved', 'rejected', 'pendin
 /** Media added per bucket in the trend chart. */
 export const ADDED_MEDIA_COLOR = '#1677ff';
 
+/** Projects created per bucket (antd cyan6, apart from the media blue and evaluation colors). */
+export const NEW_PROJECTS_COLOR = '#13c2c2';
+
 /** Project statuses keep the colors of their status tags elsewhere in the app. */
 export function projectStatusColor(status: ProjectEvaluationStatus, token: GlobalToken): string {
   switch (status) {

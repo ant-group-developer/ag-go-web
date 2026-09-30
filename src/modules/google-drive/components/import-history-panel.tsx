@@ -1,100 +1,79 @@
-import { Alert, Card, Flex, Input, Segmented, Typography } from 'antd';
-import { useMemo, useState } from 'react';
+import { Alert, Card, Flex, Typography } from 'antd';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { ImportHistoryItem, ImportHistorySortField } from '../api/google-drive';
 import { useAllImports } from '../hooks/use-google-drive';
-import { IMPORT_FINISHED_STATUSES } from '../utils/import-format';
+import { useServerListState } from '../hooks/use-server-list-state';
+import {
+  DEFAULT_IMPORT_HISTORY_SORT,
+  IMPORT_HISTORY_SORT_FIELDS,
+} from '../utils/import-batch-sort';
 import { ImportBatchDrawer } from './import-batch-drawer';
 import { ImportBatchTable } from './import-batch-table';
+import { ImportListToolbar, type ImportListStatus } from './import-list-toolbar';
 
-type StatusFilter = 'all' | 'active' | 'completed' | 'failed';
+const EMPTY_COUNTS = { all: 0, active: 0, completed: 0, failed: 0 };
 
-/** Google Drive import jobs across all projects (the Import Drive tab of the Log page). */
+/**
+ * Google Drive import jobs across all projects (the Import Drive tab of the Log page), paged,
+ * filtered, sorted and searched on the server so every job can be browsed.
+ */
 export function ImportHistoryPanel() {
   const { t } = useTranslation();
-  const imports = useAllImports();
-  const [selectedBatchId, setSelectedBatchId] = useState<string>();
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [search, setSearch] = useState('');
-
-  const batches = useMemo(() => imports.data ?? [], [imports.data]);
-  const counts = useMemo(
-    () => ({
-      all: batches.length,
-      active: batches.filter((batch) => !IMPORT_FINISHED_STATUSES.includes(batch.status)).length,
-      completed: batches.filter((batch) => batch.status === 'completed').length,
-      failed: batches.filter((batch) => ['failed', 'partial'].includes(batch.status)).length,
-    }),
-    [batches],
+  const [selected, setSelected] = useState<ImportHistoryItem>();
+  const list = useServerListState<ImportListStatus, typeof DEFAULT_IMPORT_HISTORY_SORT>(
+    'all',
+    DEFAULT_IMPORT_HISTORY_SORT,
   );
-  const filteredBatches = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
-    return batches.filter((batch) => {
-      const matchesStatus =
-        statusFilter === 'all' ||
-        (statusFilter === 'active'
-          ? !IMPORT_FINISHED_STATUSES.includes(batch.status)
-          : statusFilter === 'failed'
-            ? ['failed', 'partial'].includes(batch.status)
-            : batch.status === statusFilter);
-      if (!matchesStatus) {
-        return false;
-      }
-      if (!keyword) {
-        return true;
-      }
-      return [
-        batch.projectName,
-        batch.createdByUser?.name,
-        batch.createdByUser?.email,
-        ...(batch.sourceFolders ?? []).map((folder) => folder.name),
-      ].some((value) => value?.toLowerCase().includes(keyword));
-    });
-  }, [batches, search, statusFilter]);
-  // Prefer the polled list entry so the drawer summary stays live.
-  const selectedBatch = batches.find((batch) => batch.id === selectedBatchId);
+  const imports = useAllImports(list.params);
+  const batches = imports.data?.items ?? [];
+  const sortLabels: Record<ImportHistorySortField, string> = {
+    createdAt: t('render.createdAt'),
+    finishedAt: t('googleDrive.finishedAt'),
+    project: t('render.project'),
+    fileCount: t('googleDrive.fileCountColumn'),
+    totalBytes: t('render.fileSize'),
+    progress: t('render.progress'),
+  };
+  // Prefer the polled page entry so the drawer summary stays live; keep the clicked one when
+  // the batch moves off this page.
+  const selectedBatch = batches.find((batch) => batch.id === selected?.id) ?? selected;
 
   return (
     <Card>
       <Flex vertical gap={16}>
         <Typography.Text type="secondary">{t('logs.importHint')}</Typography.Text>
         {imports.isError ? <Alert type="error" showIcon message={imports.error.message} /> : null}
-        <Flex gap={12} wrap justify="space-between">
-          <Segmented<StatusFilter>
-            value={statusFilter}
-            onChange={setStatusFilter}
-            options={[
-              { value: 'all', label: `${t('render.filterAll')} (${counts.all})` },
-              {
-                value: 'active',
-                label: `${t('googleDrive.status.importing')} (${counts.active})`,
-              },
-              {
-                value: 'completed',
-                label: `${t('googleDrive.status.completed')} (${counts.completed})`,
-              },
-              { value: 'failed', label: `${t('googleDrive.status.failed')} (${counts.failed})` },
-            ]}
-          />
-          <Input.Search
-            allowClear
-            placeholder={t('logs.searchImports')}
-            style={{ maxWidth: 320 }}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-        </Flex>
-        <ImportBatchTable
-          batches={filteredBatches}
-          loading={imports.isLoading}
-          onViewItems={(batch) => setSelectedBatchId(batch.id)}
-          showProject
+        <ImportListToolbar<ImportHistorySortField>
+          counts={imports.data?.counts ?? EMPTY_COUNTS}
+          status={list.status}
+          onStatusChange={list.setStatus}
+          searchPlaceholder={t('logs.searchImports')}
+          onSearchChange={list.setSearchInput}
+          sortFields={IMPORT_HISTORY_SORT_FIELDS.map((field) => ({
+            value: field,
+            label: sortLabels[field],
+          }))}
+          sort={list.sort}
+          onSortChange={list.setSort}
           onRefresh={() => void imports.refetch()}
           refreshing={imports.isFetching}
+        />
+        <ImportBatchTable
+          batches={batches}
+          loading={imports.isLoading || (imports.isPlaceholderData && imports.isFetching)}
+          onViewItems={setSelected}
+          showProject
+          pagination={list.pagination(
+            imports.data?.total ?? 0,
+            Boolean(imports.data) && !imports.isPlaceholderData,
+          )}
         />
       </Flex>
       <ImportBatchDrawer
         batch={selectedBatch}
-        open={Boolean(selectedBatchId)}
-        onClose={() => setSelectedBatchId(undefined)}
+        open={Boolean(selected)}
+        onClose={() => setSelected(undefined)}
       />
     </Card>
   );

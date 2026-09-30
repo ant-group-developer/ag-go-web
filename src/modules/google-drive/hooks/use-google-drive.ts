@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   cancelDriveImport,
   createDriveImport,
@@ -7,6 +7,7 @@ import {
   getDriveImport,
   getGoogleDriveConnection,
   getGoogleDrivePickerToken,
+  getImportItems,
   getProjectImports,
   pauseDriveImport,
   resumeDriveImport,
@@ -14,6 +15,8 @@ import {
   startGoogleDriveConnection,
   summarizeGoogleDriveSources,
   type ImportBatch,
+  type ImportHistoryParams,
+  type ImportItemsParams,
 } from '../api/google-drive';
 import { IMPORT_FINISHED_STATUSES } from '../utils/import-format';
 
@@ -21,8 +24,11 @@ const keys = {
   all: ['google-drive'] as const,
   connection: () => [...keys.all, 'connection'] as const,
   import: (id: string) => [...keys.all, 'import', id] as const,
+  importItems: (id: string, params: ImportItemsParams) =>
+    [...keys.import(id), 'items', params] as const,
   projectImports: (id: string) => [...keys.all, 'project-imports', id] as const,
   allImports: () => [...keys.all, 'all-imports'] as const,
+  allImportsPage: (params: ImportHistoryParams) => [...keys.allImports(), params] as const,
 };
 
 export function useGoogleDriveConnection() {
@@ -87,6 +93,21 @@ export function useDriveImport(id: string) {
   });
 }
 
+/**
+ * One page of the files of a batch. Polls while `live` (the batch is still running, so files
+ * change status and folder discovery may add more).
+ */
+export function useImportItems(batchId: string, params: ImportItemsParams, live: boolean) {
+  return useQuery({
+    queryKey: keys.importItems(batchId, params),
+    queryFn: () => getImportItems(batchId, params),
+    enabled: Boolean(batchId),
+    // Keep the current rows on screen while the next page or filter loads.
+    placeholderData: keepPreviousData,
+    refetchInterval: live ? 5_000 : false,
+  });
+}
+
 export function useProjectImports(projectId: string) {
   return useQuery({
     queryKey: keys.projectImports(projectId),
@@ -99,15 +120,16 @@ export function useProjectImports(projectId: string) {
   });
 }
 
-export function useAllImports(enabled = true) {
+/** One page of the Drive imports across projects. */
+export function useAllImports(params: ImportHistoryParams, enabled = true) {
   return useQuery({
-    queryKey: keys.allImports(),
-    queryFn: getAllImports,
+    queryKey: keys.allImportsPage(params),
+    queryFn: () => getAllImports(params),
     enabled,
-    refetchInterval: (query) =>
-      query.state.data?.some((batch) => !IMPORT_FINISHED_STATUSES.includes(batch.status))
-        ? 5_000
-        : false,
+    // Keep the current rows on screen while the next page or filter loads.
+    placeholderData: keepPreviousData,
+    // Poll while any batch in scope (not only on this page) is still running.
+    refetchInterval: (query) => ((query.state.data?.counts.active ?? 0) > 0 ? 5_000 : false),
   });
 }
 

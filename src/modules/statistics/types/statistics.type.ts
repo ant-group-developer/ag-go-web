@@ -137,3 +137,43 @@ export type StatisticsActivityItem = AuditLog & {
 };
 
 export type StatisticsActivity = { items: StatisticsActivityItem[] };
+
+export type StatisticsProjectTrendPoint = { bucketStart: string; projects: number };
+
+export type StatisticsProjectTrend = {
+  period: StatisticsPeriodInfo;
+  total: number;
+  points: StatisticsProjectTrendPoint[];
+};
+
+export const STATISTICS_BREAKDOWN_DIMENSIONS = [
+  'category',
+  'country',
+  'tag',
+  'resolution',
+  'extension',
+] as const;
+export type StatisticsBreakdownDimension = (typeof STATISTICS_BREAKDOWN_DIMENSIONS)[number];
+
+/** `all`: current state; `period`: projects created and media added in the period. */
+export type StatisticsBreakdownRange = 'all' | 'period';
+
+export type StatisticsBreakdownRow = {
+  /** Category/country/tag id, resolution class or extension; null for the unassigned group. */
+  key: string | null;
+  label: string | null;
+  code: string | null;
+  flagUrl: string | null;
+  projects: number;
+  media: number;
+  images: number;
+  videos: number;
+};
+
+export type StatisticsBreakdown = {
+  period: StatisticsPeriodInfo;
+  dimension: StatisticsBreakdownDimension;
+  range: StatisticsBreakdownRange;
+  totals: { projects: number; media: number; images: number; videos: number };
+  rows: StatisticsBreakdownRow[];
+};
