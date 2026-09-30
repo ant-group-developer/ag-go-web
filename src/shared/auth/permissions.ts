@@ -20,6 +20,8 @@ export const GO_PERMISSIONS = {
   SETTINGS_MANAGE: 'go.settings.manage',
   LOGS_READ: 'go.logs.read',
   ANALYSIS_MANAGE: 'go.analysis.manage',
+  FOOTAGE_SEARCH: 'go.footage.search',
+  FOOTAGE_PRODUCE: 'go.footage.produce',
 } as const;
 
 /** Any of these grants access to the Categories page; each action is checked separately. */

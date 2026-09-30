@@ -23,4 +23,12 @@ describe('GO_PERMISSIONS', () => {
   it('includes ANALYSIS_MANAGE', () => {
     expect(GO_PERMISSIONS.ANALYSIS_MANAGE).toBe('go.analysis.manage');
   });
+
+  it('includes FOOTAGE_SEARCH', () => {
+    expect(GO_PERMISSIONS.FOOTAGE_SEARCH).toBe('go.footage.search');
+  });
+
+  it('includes FOOTAGE_PRODUCE', () => {
+    expect(GO_PERMISSIONS.FOOTAGE_PRODUCE).toBe('go.footage.produce');
+  });
 });
