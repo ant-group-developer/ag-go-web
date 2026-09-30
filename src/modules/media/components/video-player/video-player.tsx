@@ -9,8 +9,8 @@ import {
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import { Dropdown, Flex, Slider, Tag } from 'antd';
-import type { CSSProperties, KeyboardEvent } from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import type { CSSProperties, KeyboardEvent, Ref } from 'react';
+import { useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAssetPreviewUrl } from '../../hooks/use-asset-preview-url';
 import {
@@ -30,7 +30,13 @@ export type VideoPlayerVariant = VideoQualityVariant & {
   height: number | null;
 };
 
+/** Lets a parent move playback, e.g. to the start of an analysed segment. */
+export type VideoPlayerHandle = {
+  seekTo: (seconds: number) => void;
+};
+
 type VideoPlayerProps = {
+  ref?: Ref<VideoPlayerHandle>;
   assetId: string;
   variants: VideoPlayerVariant[];
   poster?: string;
@@ -64,6 +70,7 @@ function formatTime(seconds: number): string {
  * m mute.
  */
 export function VideoPlayer({
+  ref,
   assetId,
   variants,
   poster,
@@ -159,6 +166,18 @@ export function VideoPlayer({
     video.currentTime = value;
     setCurrentTime(value);
   }, []);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      seekTo: (seconds: number) => {
+        // Kept for the next source too: the player restores this position when it (re)loads.
+        playbackRef.current.time = seconds;
+        seekTo(seconds);
+      },
+    }),
+    [seekTo],
+  );
 
   const toggleMute = useCallback(() => {
     const video = videoRef.current;
