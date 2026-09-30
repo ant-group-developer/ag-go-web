@@ -17,7 +17,7 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
-import type { ColumnsType, TableProps } from 'antd/es/table';
+import type { ColumnsType, TablePaginationConfig, TableProps } from 'antd/es/table';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { TableRefreshButton } from '../../../shared/components/table-refresh-button';
@@ -51,6 +51,8 @@ type ImportBatchTableProps = {
   refreshing?: boolean;
   /** Sticky header offset; defaults to below the page header, use 0 inside drawers. */
   sticky?: TableProps<ImportHistoryItem>['sticky'];
+  /** Overrides the default client paging (10 rows, no size changer). */
+  pagination?: TablePaginationConfig;
 };
 
 export function ImportBatchTable({
@@ -62,6 +64,7 @@ export function ImportBatchTable({
   onRefresh,
   refreshing,
   sticky = PAGE_TABLE_STICKY,
+  pagination = { pageSize: 10, hideOnSinglePage: true, showSizeChanger: false },
 }: ImportBatchTableProps) {
   const { t } = useTranslation();
   const { message } = App.useApp();
@@ -292,7 +295,7 @@ export function ImportBatchTable({
       columns={columns}
       dataSource={batches}
       scroll={{ x: showProject ? 1860 : 1640, y: scrollY }}
-      pagination={{ pageSize: 10, hideOnSinglePage: true, showSizeChanger: false }}
+      pagination={pagination}
       onRow={(batch) => ({ onDoubleClick: () => onViewItems(batch) })}
       locale={{ emptyText: t('render.noImportHistory') }}
     />

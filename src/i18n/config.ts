@@ -926,6 +926,7 @@ const resources = {
         sourceFolders: 'Thư mục nguồn',
         noSourceFolders: 'Chọn file lẻ',
         searchFiles: 'Tìm theo tên file',
+        importOrder: 'Thứ tự import',
         imagesSelected: '{{count}} ảnh đã chọn',
         videosSelected: '{{count}} video đã chọn',
         foldersPendingScan: '{{count}} folder đang chờ quét',
@@ -1192,8 +1193,8 @@ const resources = {
         tabImport: 'Import Drive',
         tabAnalysis: 'Phân tích nội dung',
         importHint:
-          'Các job import từ Google Drive của mọi dự án (admin thấy tất cả, người dùng khác thấy job do mình tạo). Hiển thị 500 job gần nhất.',
-        searchImports: 'Tìm theo dự án, thư mục nguồn hoặc người tạo',
+          'Các job import từ Google Drive của mọi dự án (admin thấy tất cả, người dùng khác thấy job do mình tạo).',
+        searchImports: 'Tìm theo dự án hoặc thư mục nguồn',
       },
       footage: {
         pageSubtitle: 'Tìm và lọc đoạn footage trong kho',
@@ -2181,6 +2182,7 @@ const resources = {
         sourceFolders: 'Source folders',
         noSourceFolders: 'Individual files',
         searchFiles: 'Search by file name',
+        importOrder: 'Import order',
         imagesSelected: '{{count}} image(s) selected',
         videosSelected: '{{count}} video(s) selected',
         foldersPendingScan: '{{count}} folder(s) pending scan',
@@ -2385,8 +2387,8 @@ const resources = {
         tabImport: 'Drive import',
         tabAnalysis: 'Content analysis',
         importHint:
-          'Google Drive import jobs across all projects (admins see every job, other users see the jobs they started). Shows the latest 500 jobs.',
-        searchImports: 'Search by project, source folder or creator',
+          'Google Drive import jobs across all projects (admins see every job, other users see the jobs they started).',
+        searchImports: 'Search by project or source folder',
       },
       appUpdate: {
         title: 'A new version is available',
