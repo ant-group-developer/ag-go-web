@@ -77,6 +77,47 @@ export function runBackfill(input: BackfillInput): Promise<BackfillResult> {
   });
 }
 
+// ─── /analysis/logs ──────────────────────────────────────────────────────────
+
+export type AnalysisLogLevel = 'info' | 'warn' | 'error';
+
+export type AnalysisLogEntry = {
+  id: string;
+  level: AnalysisLogLevel;
+  action: string;
+  message: string;
+  userId: string | null;
+  createdAt: string;
+  metadata: Record<string, unknown>;
+};
+
+export type AnalysisLogPage = {
+  items: AnalysisLogEntry[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+};
+
+export type AnalysisLogsQuery = {
+  level?: AnalysisLogLevel;
+  search?: string;
+  page?: number;
+  pageSize?: number;
+};
+
+/** Processing log of the analysis pipeline (backfill → farm → extract → AI → done), newest first. */
+export function getAnalysisLogs(query: AnalysisLogsQuery = {}): Promise<AnalysisLogPage> {
+  const params = new URLSearchParams();
+  Object.entries(query).forEach(([key, value]) => {
+    if (value !== undefined && value !== '') {
+      params.set(key, String(value));
+    }
+  });
+  const qs = params.toString();
+  return apiClient<AnalysisLogPage>(`/analysis/logs${qs ? `?${qs}` : ''}`);
+}
+
 // ─── /assets/:assetId/analysis (POST) ────────────────────────────────────────
 
 export type StartAnalysisInput = {
