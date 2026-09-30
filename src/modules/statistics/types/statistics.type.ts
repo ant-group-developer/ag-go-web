@@ -174,6 +174,10 @@ export type StatisticsBreakdown = {
   period: StatisticsPeriodInfo;
   dimension: StatisticsBreakdownDimension;
   range: StatisticsBreakdownRange;
-  totals: { projects: number; media: number; images: number; videos: number };
+  /**
+   * Sums of the rows: `projects` is null for resolution and extension (a project's media can
+   * span several rows); tags repeat projects and media, so they have no totals.
+   */
+  totals: { projects: number | null; media: number; images: number; videos: number } | null;
   rows: StatisticsBreakdownRow[];
 };
