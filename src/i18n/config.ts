@@ -673,6 +673,9 @@ const resources = {
       },
       media: {
         qualityAuto: 'Tự động',
+        qualityOriginal: 'Gốc',
+        originalUnplayable: 'Trình duyệt không phát được file gốc, đang phát bản render.',
+        exitFullscreen: 'Thoát toàn màn hình',
         videoPlayer: 'Trình phát video',
         play: 'Phát',
         pause: 'Tạm dừng',
@@ -1864,6 +1867,10 @@ const resources = {
       },
       media: {
         qualityAuto: 'Auto',
+        qualityOriginal: 'Original',
+        originalUnplayable:
+          'The browser cannot play the original file; playing a rendered preview instead.',
+        exitFullscreen: 'Exit fullscreen',
         videoPlayer: 'Video player',
         play: 'Play',
         pause: 'Pause',

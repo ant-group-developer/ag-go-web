@@ -16,24 +16,31 @@ import {
 import { sortVariantsAscByResolution } from '../utils/variant-labels';
 
 export const AUTO_QUALITY = 'auto';
-// Separate from the image rendition picker's key: that one stores widths, this one variant codes.
-const QUALITY_STORAGE_KEY = 'ag-go.media.videoQuality';
 
-function readStoredQuality(): string {
+function readStoredQuality(storageKey: string): string | null {
   try {
-    return window.localStorage.getItem(QUALITY_STORAGE_KEY) ?? AUTO_QUALITY;
+    return window.localStorage.getItem(storageKey);
   } catch {
-    return AUTO_QUALITY;
+    return null;
   }
 }
 
-function storeQuality(value: string) {
+function storeQuality(storageKey: string, value: string) {
   try {
-    window.localStorage.setItem(QUALITY_STORAGE_KEY, value);
+    window.localStorage.setItem(storageKey, value);
   } catch {
     // Storage can be unavailable (private mode); the choice then only lasts for this view.
   }
 }
+
+export type VideoQualityOptions<T> = {
+  /** Where the viewer's choice is remembered; each viewing context keeps its own. */
+  storageKey: string;
+  /** Choice used until the viewer picks one (a source code or AUTO_QUALITY). */
+  defaultQuality?: string;
+  /** Sources offered for manual choice only, never picked by auto (e.g. the original file). */
+  manualOnly?: T[];
+};
 
 type NavigatorWithConnection = Navigator & {
   connection?: ConnectionInfo;
@@ -78,9 +85,12 @@ export function useVideoQuality<T extends VideoQualityVariant>(
   variants: T[],
   videoRef: RefObject<HTMLVideoElement | null>,
   frameRef: RefObject<HTMLElement | null>,
+  { storageKey, defaultQuality = AUTO_QUALITY, manualOnly = [] }: VideoQualityOptions<T>,
 ) {
   const sortedAsc = useMemo(() => sortVariantsAscByResolution(variants), [variants]);
-  const [storedQuality, setStoredQuality] = useState(readStoredQuality);
+  const [storedQuality, setStoredQuality] = useState(
+    () => readStoredQuality(storageKey) ?? defaultQuality,
+  );
   const [bandwidthEstimate, setBandwidthEstimate] = useState<number | null>(() =>
     initialBandwidthEstimate(getConnectionInfo()),
   );
@@ -127,18 +137,24 @@ export function useVideoQuality<T extends VideoQualityVariant>(
     }
   }, [autoVariant, committedCode]);
 
-  // A stored choice this video does not offer (another asset's variant) means auto here.
+  // A stored choice this video does not offer (another asset's variant) means auto here; with
+  // nothing for auto to pick from, the first manual-only source plays.
   const manualVariant =
     storedQuality === AUTO_QUALITY
       ? undefined
-      : sortedAsc.find((variant) => variant.variantCode === storedQuality);
-  const quality = manualVariant ? storedQuality : AUTO_QUALITY;
-  const activeVariant = manualVariant ?? autoVariant ?? sortedAsc.at(-1);
+      : [...sortedAsc, ...manualOnly].find((variant) => variant.variantCode === storedQuality);
+  const fallbackVariant = sortedAsc.length === 0 ? manualOnly[0] : undefined;
+  const chosenVariant = manualVariant ?? fallbackVariant;
+  const quality = chosenVariant ? chosenVariant.variantCode : AUTO_QUALITY;
+  const activeVariant = chosenVariant ?? autoVariant ?? sortedAsc.at(-1);
 
+  /** `remember: false` switches without keeping the choice (e.g. falling back after an error). */
   const setQuality = useCallback(
-    (value: string) => {
+    (value: string, { remember = true }: { remember?: boolean } = {}) => {
       setStoredQuality(value);
-      storeQuality(value);
+      if (remember) {
+        storeQuality(storageKey, value);
+      }
       if (value === AUTO_QUALITY) {
         // Back to auto: start from what the connection is measured to carry now.
         setCommittedCode(
@@ -147,7 +163,7 @@ export function useVideoQuality<T extends VideoQualityVariant>(
         lastSwitchAtRef.current = Date.now();
       }
     },
-    [bandwidthEstimate, capResolution, sortedAsc],
+    [bandwidthEstimate, capResolution, sortedAsc, storageKey],
   );
 
   const switchTo = useCallback((next: T | undefined) => {

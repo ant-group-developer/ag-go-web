@@ -44,6 +44,7 @@ import {
   getProjectMedia,
   retryAssetProcessing,
   updateProjectMedia,
+  type PreviewVariant,
   type ProjectMedia,
 } from '../../media/api/media';
 import { ProjectMediaSortDropdown } from '../../media/components/project-media-sort-dropdown';
@@ -52,8 +53,13 @@ import {
   VideoPlayer,
   type VideoPlayerHandle,
 } from '../../media/components/video-player/video-player';
+import {
+  ORIGINAL_SOURCE_CODE,
+  type VideoPlayerSource,
+} from '../../media/components/video-player/video-source';
 import { useAssetPreviewUrl } from '../../media/hooks/use-asset-preview-url';
 import { useRenditionSelection } from '../../media/hooks/use-rendition-selection';
+import { AUTO_QUALITY } from '../../media/hooks/use-video-quality';
 import { mediaQueryKeys } from '../../media/queries/media-query-keys';
 import {
   DEFAULT_PROJECT_MEDIA_SORT,
@@ -178,6 +184,9 @@ const MediaPreview = forwardRef<
     setOriginalFailed(false);
   }, [media.id]);
 
+  if (media.asset.assetType === 'video') {
+    return <VideoMediaPreview key={media.id} ref={ref} media={media} source={source} />;
+  }
   if (source === 'original' && !originalFailed) {
     return <OriginalMediaPreview media={media} onUnavailable={() => setOriginalFailed(true)} />;
   }
@@ -193,6 +202,75 @@ const MediaPreview = forwardRef<
       ) : null}
       <RenderedMediaPreview ref={ref} media={media} />
     </>
+  );
+});
+
+/**
+ * Previews a viewer is shown: without watermark when evaluating, watermarked otherwise. With
+ * watermarking off (no watermarked preview exists) every preview is shown.
+ */
+function previewsFor(media: ProjectMedia, source: MediaSource): PreviewVariant[] {
+  const variants = media.previewVariants ?? [];
+  if (source === 'original') {
+    return variants.filter((variant) => !variant.hasWatermark);
+  }
+  const watermarked = variants.filter((variant) => variant.hasWatermark);
+  return watermarked.length > 0 ? watermarked : variants;
+}
+
+/** The original file as a player source, when it has been uploaded. */
+function originalSource(media: ProjectMedia): VideoPlayerSource | null {
+  if (['uploading', 'cancelled'].includes(media.asset.processingStatus)) {
+    return null;
+  }
+  const bytes = Number(media.asset.fileSizeBytes ?? 0);
+  return {
+    variantCode: ORIGINAL_SOURCE_CODE,
+    width: media.width,
+    height: media.height,
+    resolution: media.width && media.height ? Math.min(media.width, media.height) : null,
+    hasWatermark: false,
+    bitrateBps:
+      bytes > 0 && media.durationSeconds ? Math.round((bytes * 8) / media.durationSeconds) : null,
+  };
+}
+
+/**
+ * Videos play in the custom player. Evaluating offers the original file (chosen first) and the
+ * un-watermarked previews; viewing offers the watermarked previews. Each context remembers its
+ * own quality choice.
+ */
+const VideoMediaPreview = forwardRef<
+  RenderedMediaPreviewHandle,
+  { media: ProjectMedia; source: MediaSource }
+>(function VideoMediaPreview({ media, source }, ref) {
+  const evaluating = source === 'original';
+  const [failed, setFailed] = useState(false);
+  // The media list is refetched while files process; only a change in what is offered may
+  // reset the player's quality choice, not a new copy of the same media.
+  const variantsKey = JSON.stringify(previewsFor(media, source));
+  const originalKey = JSON.stringify(evaluating ? originalSource(media) : null);
+  const variants = useMemo(() => JSON.parse(variantsKey) as PreviewVariant[], [variantsKey]);
+  const original = useMemo(
+    () => JSON.parse(originalKey) as VideoPlayerSource | null,
+    [originalKey],
+  );
+
+  if (failed || (variants.length === 0 && !original)) {
+    return <RenderedMediaPreview ref={ref} media={media} />;
+  }
+  return (
+    <VideoPlayer
+      ref={ref}
+      assetId={media.assetId}
+      variants={variants}
+      original={original}
+      qualityStorageKey={
+        evaluating ? 'ag-go.media.videoQuality.evaluate' : 'ag-go.media.videoQuality.view'
+      }
+      defaultQuality={evaluating ? ORIGINAL_SOURCE_CODE : AUTO_QUALITY}
+      onError={() => setFailed(true)}
+    />
   );
 });
 
@@ -262,56 +340,41 @@ function OriginalMediaPreview({
   );
 }
 
-export type RenderedMediaPreviewHandle = {
-  seekTo: (seconds: number) => void;
-};
+export type RenderedMediaPreviewHandle = VideoPlayerHandle;
 
+/**
+ * Watermarked previews of images (size picked for the frame), and the plain single preview of
+ * videos the player cannot handle (older responses, or no playable source).
+ */
 const RenderedMediaPreview = forwardRef<RenderedMediaPreviewHandle, { media: ProjectMedia }>(
   function RenderedMediaPreview({ media }, ref) {
     const frameRef = useRef<HTMLDivElement>(null);
-    const playerRef = useRef<VideoPlayerHandle>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
     const isReady = media.asset.processingStatus === 'ready';
     const isVideo = media.asset.assetType === 'video';
-    const [videoFailed, setVideoFailed] = useState(false);
-    const variants = useMemo(() => media.previewVariants ?? [], [media.previewVariants]);
-    // The video player picks its own quality (auto/manual); this selection is only for images.
+    const variants = useMemo(
+      () => (isVideo ? [] : previewsFor(media, 'preview')),
+      [isVideo, media],
+    );
     const { quality, autoVariant, selected, setQuality } = useRenditionSelection(
       variants,
       frameRef,
     );
     const selectedUrl = useAssetPreviewUrl(
-      !isVideo && isReady && selected ? media.assetId : null,
+      isReady && selected ? media.assetId : null,
       selected?.variantCode ?? 'preview',
     );
     // Older API responses without preview sizes still carry a single preview URL.
     const previewUrl = variants.length > 0 ? selectedUrl : (media.previewUrl ?? undefined);
 
-    useEffect(() => {
-      setVideoFailed(false);
-    }, [media.id]);
-
-    // Clicking an analysed segment seeks whichever player is showing the video.
+    // Clicking an analysed segment seeks the plain video too.
     useImperativeHandle(ref, () => ({
       seekTo: (seconds: number) => {
-        if (playerRef.current) {
-          playerRef.current.seekTo(seconds);
-        } else if (videoRef.current) {
+        if (videoRef.current) {
           videoRef.current.currentTime = seconds;
         }
       },
     }));
-
-    if (isVideo && variants.length > 0 && !videoFailed) {
-      return (
-        <VideoPlayer
-          ref={playerRef}
-          assetId={media.assetId}
-          variants={variants}
-          onError={() => setVideoFailed(true)}
-        />
-      );
-    }
 
     const content = !previewUrl ? (
       <PreviewPlaceholder status={media.asset.processingStatus} loading={isReady} />
@@ -342,7 +405,7 @@ const RenderedMediaPreview = forwardRef<RenderedMediaPreviewHandle, { media: Pro
     return (
       <div ref={frameRef}>
         {content}
-        {!isVideo && variants.length > 1 ? (
+        {variants.length > 1 ? (
           <Flex justify="flex-end" style={{ marginTop: 8 }}>
             <RenditionPicker
               variants={variants}
