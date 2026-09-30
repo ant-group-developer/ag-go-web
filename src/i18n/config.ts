@@ -193,6 +193,8 @@ const resources = {
         namePlaceholder: 'Nhập tên thư mục',
         parent: 'Thư mục cha',
         parentPlaceholder: 'Chọn thư mục cha (không bắt buộc)',
+        parentRequiredPlaceholder: 'Chọn thư mục cha',
+        parentRequired: 'Bạn không có quyền tạo thư mục gốc, hãy chọn thư mục cha',
         moveToRootPlaceholder: 'Thư mục gốc',
         moveHint:
           'Đổi thư mục cha để di chuyển thư mục cùng toàn bộ thư mục con và project bên trong. Để trống để chuyển ra thư mục gốc.',
@@ -370,6 +372,53 @@ const resources = {
         },
         activity: {
           title: 'Hoạt động gần đây',
+        },
+        projectTrend: {
+          title: 'Dự án tạo mới',
+          projects: 'Dự án mới',
+          total: '{{value}} dự án mới trong kỳ',
+          empty: 'Không có dự án nào được tạo trong kỳ',
+        },
+        breakdown: {
+          title: 'Phân bổ dự án và media',
+          total: 'Tổng',
+          empty: 'Chưa có dữ liệu',
+          shareOfProjects: 'Tỉ lệ trên tổng số dự án',
+          shareOfMedia: 'Tỉ lệ trên tổng số media',
+          overlapTags:
+            'Một dự án có nhiều tag được tính ở mỗi tag, nên tổng các dòng có thể lớn hơn dòng Tổng.',
+          overlapMedia:
+            'Cột Dự án đếm các dự án có ít nhất một media thuộc nhóm; một dự án có thể nằm ở nhiều nhóm. Độ phân giải tính theo cạnh ngắn của file gốc.',
+          dimensions: {
+            category: 'Danh mục',
+            country: 'Quốc gia',
+            tag: 'Tag',
+            resolution: 'Độ phân giải',
+            extension: 'Định dạng',
+          },
+          columns: {
+            projects: 'Dự án',
+            media: 'Media',
+            images: 'Ảnh',
+            videos: 'Video',
+            share: 'Tỉ lệ',
+          },
+          none: {
+            category: 'Chưa có danh mục',
+            country: 'Chưa có quốc gia',
+            tag: 'Chưa gắn tag',
+            resolution: 'Chưa xác định (chưa xử lý xong)',
+            extension: 'Không rõ định dạng',
+          },
+          resolutions: {
+            '8k': '8K (≥ 4320px)',
+            '4k': '4K (≥ 2160px)',
+            '1440p': '1440p (2K)',
+            '1080p': '1080p (Full HD)',
+            '720p': '720p (HD)',
+            '480p': '480p (SD)',
+            sd: 'Dưới 480p',
+          },
         },
       },
       projects: {
@@ -1392,6 +1441,8 @@ const resources = {
         namePlaceholder: 'Enter folder name',
         parent: 'Parent Folder',
         parentPlaceholder: 'Select parent folder (optional)',
+        parentRequiredPlaceholder: 'Select parent folder',
+        parentRequired: 'You are not allowed to create root folders, please select a parent folder',
         moveToRootPlaceholder: 'Root folder',
         moveHint:
           'Change the parent to move this folder with all its subfolders and projects. Leave empty to move it to the root.',
@@ -1573,6 +1624,54 @@ const resources = {
         },
         activity: {
           title: 'Recent activity',
+        },
+        projectTrend: {
+          title: 'New projects',
+          projects: 'New projects',
+          total_one: '{{value}} new project in this period',
+          total_other: '{{value}} new projects in this period',
+          empty: 'No project was created in this period',
+        },
+        breakdown: {
+          title: 'Projects and media breakdown',
+          total: 'Total',
+          empty: 'No data yet',
+          shareOfProjects: 'Share of all projects',
+          shareOfMedia: 'Share of all media',
+          overlapTags:
+            'A project with several tags counts under each of them, so the rows can add up to more than the total.',
+          overlapMedia:
+            'Projects counts the projects with at least one media in the group; a project can appear in several groups. Resolution uses the short edge of the original file.',
+          dimensions: {
+            category: 'Category',
+            country: 'Country',
+            tag: 'Tag',
+            resolution: 'Resolution',
+            extension: 'Format',
+          },
+          columns: {
+            projects: 'Projects',
+            media: 'Media',
+            images: 'Images',
+            videos: 'Videos',
+            share: 'Share',
+          },
+          none: {
+            category: 'No category',
+            country: 'No country',
+            tag: 'No tag',
+            resolution: 'Unknown (not processed yet)',
+            extension: 'Unknown format',
+          },
+          resolutions: {
+            '8k': '8K (≥ 4320px)',
+            '4k': '4K (≥ 2160px)',
+            '1440p': '1440p (2K)',
+            '1080p': '1080p (Full HD)',
+            '720p': '720p (HD)',
+            '480p': '480p (SD)',
+            sd: 'Below 480p',
+          },
         },
       },
       projects: {
