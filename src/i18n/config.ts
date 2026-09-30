@@ -193,6 +193,8 @@ const resources = {
         namePlaceholder: 'Nhập tên thư mục',
         parent: 'Thư mục cha',
         parentPlaceholder: 'Chọn thư mục cha (không bắt buộc)',
+        parentRequiredPlaceholder: 'Chọn thư mục cha',
+        parentRequired: 'Bạn không có quyền tạo thư mục gốc, hãy chọn thư mục cha',
         moveToRootPlaceholder: 'Thư mục gốc',
         moveHint:
           'Đổi thư mục cha để di chuyển thư mục cùng toàn bộ thư mục con và project bên trong. Để trống để chuyển ra thư mục gốc.',
@@ -370,6 +372,51 @@ const resources = {
         },
         activity: {
           title: 'Hoạt động gần đây',
+        },
+        projectTrend: {
+          title: 'Dự án tạo mới',
+          projects: 'Dự án mới',
+          total: '{{value}} dự án mới trong kỳ',
+          empty: 'Không có dự án nào được tạo trong kỳ',
+        },
+        breakdown: {
+          title: 'Phân bổ dự án và media',
+          total: 'Tổng',
+          empty: 'Chưa có dữ liệu',
+          search: 'Tìm {{dimension}}',
+          noMatch: 'Không có kết quả phù hợp',
+          overlapTags: 'Một dự án có nhiều tag được tính ở mỗi tag, cùng với media của dự án đó.',
+          overlapMedia:
+            'Cột Dự án đếm các dự án có ít nhất một media thuộc nhóm; một dự án có thể nằm ở nhiều nhóm. Độ phân giải tính theo cạnh ngắn của file gốc.',
+          dimensions: {
+            category: 'Danh mục',
+            country: 'Quốc gia',
+            tag: 'Tag',
+            resolution: 'Độ phân giải',
+            extension: 'Định dạng',
+          },
+          columns: {
+            projects: 'Dự án',
+            media: 'Media',
+            images: 'Ảnh',
+            videos: 'Video',
+          },
+          none: {
+            category: 'Chưa có danh mục',
+            country: 'Chưa có quốc gia',
+            tag: 'Chưa gắn tag',
+            resolution: 'Chưa xác định (chưa xử lý xong)',
+            extension: 'Không rõ định dạng',
+          },
+          resolutions: {
+            '8k': '8K (≥ 4320px)',
+            '4k': '4K (≥ 2160px)',
+            '1440p': '1440p (2K)',
+            '1080p': '1080p (Full HD)',
+            '720p': '720p (HD)',
+            '480p': '480p (SD)',
+            sd: 'Dưới 480p',
+          },
         },
       },
       projects: {
@@ -877,6 +924,7 @@ const resources = {
         sourceFolders: 'Thư mục nguồn',
         noSourceFolders: 'Chọn file lẻ',
         searchFiles: 'Tìm theo tên file',
+        importOrder: 'Thứ tự import',
         imagesSelected: '{{count}} ảnh đã chọn',
         videosSelected: '{{count}} video đã chọn',
         foldersPendingScan: '{{count}} folder đang chờ quét',
@@ -1143,8 +1191,8 @@ const resources = {
         tabImport: 'Import Drive',
         tabAnalysis: 'Phân tích nội dung',
         importHint:
-          'Các job import từ Google Drive của mọi dự án (admin thấy tất cả, người dùng khác thấy job do mình tạo). Hiển thị 500 job gần nhất.',
-        searchImports: 'Tìm theo dự án, thư mục nguồn hoặc người tạo',
+          'Các job import từ Google Drive của mọi dự án (admin thấy tất cả, người dùng khác thấy job do mình tạo).',
+        searchImports: 'Tìm theo dự án hoặc thư mục nguồn',
       },
       footage: {
         pageSubtitle: 'Tìm và lọc đoạn footage trong kho',
@@ -1392,6 +1440,8 @@ const resources = {
         namePlaceholder: 'Enter folder name',
         parent: 'Parent Folder',
         parentPlaceholder: 'Select parent folder (optional)',
+        parentRequiredPlaceholder: 'Select parent folder',
+        parentRequired: 'You are not allowed to create root folders, please select a parent folder',
         moveToRootPlaceholder: 'Root folder',
         moveHint:
           'Change the parent to move this folder with all its subfolders and projects. Leave empty to move it to the root.',
@@ -1573,6 +1623,53 @@ const resources = {
         },
         activity: {
           title: 'Recent activity',
+        },
+        projectTrend: {
+          title: 'New projects',
+          projects: 'New projects',
+          total_one: '{{value}} new project in this period',
+          total_other: '{{value}} new projects in this period',
+          empty: 'No project was created in this period',
+        },
+        breakdown: {
+          title: 'Projects and media breakdown',
+          total: 'Total',
+          empty: 'No data yet',
+          search: 'Search {{dimension}}',
+          noMatch: 'No matching results',
+          overlapTags:
+            'A project with several tags counts under each of them, along with its media.',
+          overlapMedia:
+            'Projects counts the projects with at least one media in the group; a project can appear in several groups. Resolution uses the short edge of the original file.',
+          dimensions: {
+            category: 'Category',
+            country: 'Country',
+            tag: 'Tag',
+            resolution: 'Resolution',
+            extension: 'Format',
+          },
+          columns: {
+            projects: 'Projects',
+            media: 'Media',
+            images: 'Images',
+            videos: 'Videos',
+          },
+          none: {
+            category: 'No category',
+            country: 'No country',
+            tag: 'No tag',
+            resolution: 'Unknown (not processed yet)',
+            extension: 'Unknown format',
+          },
+          resolutions: {
+            '8k': '8K (≥ 4320px)',
+            '4k': '4K (≥ 2160px)',
+            '1440p': '1440p (2K)',
+            '1080p': '1080p (Full HD)',
+            '720p': '720p (HD)',
+            '480p': '480p (SD)',
+            sd: 'Below 480p',
+          },
         },
       },
       projects: {
@@ -2082,6 +2179,7 @@ const resources = {
         sourceFolders: 'Source folders',
         noSourceFolders: 'Individual files',
         searchFiles: 'Search by file name',
+        importOrder: 'Import order',
         imagesSelected: '{{count}} image(s) selected',
         videosSelected: '{{count}} video(s) selected',
         foldersPendingScan: '{{count}} folder(s) pending scan',
@@ -2286,8 +2384,8 @@ const resources = {
         tabImport: 'Drive import',
         tabAnalysis: 'Content analysis',
         importHint:
-          'Google Drive import jobs across all projects (admins see every job, other users see the jobs they started). Shows the latest 500 jobs.',
-        searchImports: 'Search by project, source folder or creator',
+          'Google Drive import jobs across all projects (admins see every job, other users see the jobs they started).',
+        searchImports: 'Search by project or source folder',
       },
       appUpdate: {
         title: 'A new version is available',

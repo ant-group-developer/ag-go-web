@@ -1,7 +1,9 @@
 import { Alert, Cascader, Form, Input, Modal } from 'antd';
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { GO_PERMISSIONS } from '../../../shared/auth/permissions';
 import { cascaderSearchFilter } from '../../../shared/lib/select-search';
+import { usePermissions } from '../../account/hooks/use-current-account';
 import { useFolders, useUpdateFolder } from '../hooks/use-folders';
 import type { EditFolderModalProps } from '../types/edit-folder-modal-props.type';
 import type { FolderFormValues } from '../types/folder-form-values.type';
@@ -15,6 +17,9 @@ export function EditFolderModal({ folder, onClose }: EditFolderModalProps) {
   const update = useUpdateFolder();
   // Moving re-parents the whole subtree and changes inherited access, so the API requires manager.
   const canMove = folder?.myAccessLevel === 'manager';
+  // Moving to the root creates a new root folder, which needs its own permission.
+  const { can } = usePermissions();
+  const canMoveToRoot = can(GO_PERMISSIONS.FOLDER_CREATE_ROOT);
 
   // A folder cannot move into itself or any of its subfolders.
   const options = useMemo(() => {
@@ -85,7 +90,7 @@ export function EditFolderModal({ folder, onClose }: EditFolderModalProps) {
           extra={canMove ? t('folders.moveHint') : t('folders.moveManagerOnly')}
         >
           <Cascader
-            allowClear
+            allowClear={canMoveToRoot}
             changeOnSelect
             disabled={!canMove}
             options={options}

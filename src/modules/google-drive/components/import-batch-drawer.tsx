@@ -1,23 +1,24 @@
-import { Alert, Descriptions, Drawer, Flex, Input, Progress, Segmented, Tag } from 'antd';
-import { useMemo, useState } from 'react';
+import { Alert, Descriptions, Drawer, Flex, Progress, Tag } from 'antd';
+import { useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatDate } from '../../../shared/lib/format-date';
 import { formatFileSize } from '../../../shared/lib/format-file-size';
 import { CONTAINER_TABLE_STICKY } from '../../../shared/lib/sticky-table-header';
-import type { ImportHistoryItem } from '../api/google-drive';
-import { useDriveImport } from '../hooks/use-google-drive';
+import type { ImportHistoryItem, ImportItemSortField } from '../api/google-drive';
+import { useDriveImport, useImportItems } from '../hooks/use-google-drive';
+import { useServerListState } from '../hooks/use-server-list-state';
+import { DEFAULT_IMPORT_ITEM_SORT, IMPORT_ITEM_SORT_FIELDS } from '../utils/import-batch-sort';
 import {
-  displayFilename,
+  IMPORT_FINISHED_STATUSES,
   importStatusColor,
   importStatusLabel,
   isFolderItem,
 } from '../utils/import-format';
 import { ImportItemsTable } from './import-items-table';
+import { ImportListToolbar, type ImportListStatus } from './import-list-toolbar';
 import { ImportSourceFolders } from './import-source-folders';
 
-type StatusFilter = 'all' | 'active' | 'completed' | 'failed';
-
-const ACTIVE_STATUSES = ['queued', 'importing'];
+const EMPTY_COUNTS = { all: 0, active: 0, completed: 0, failed: 0 };
 
 type ImportBatchDrawerProps = {
   batch?: ImportHistoryItem;
@@ -28,38 +29,6 @@ type ImportBatchDrawerProps = {
 export function ImportBatchDrawer({ batch, open, onClose }: ImportBatchDrawerProps) {
   const { t } = useTranslation();
   const detail = useDriveImport(open && batch ? batch.id : '');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [search, setSearch] = useState('');
-
-  const files = useMemo(
-    () => (detail.data?.items ?? []).filter((item) => !isFolderItem(item)),
-    [detail.data],
-  );
-  const counts = useMemo(
-    () => ({
-      all: files.length,
-      active: files.filter((item) => ACTIVE_STATUSES.includes(item.status)).length,
-      completed: files.filter((item) => item.status === 'completed').length,
-      failed: files.filter((item) => item.status === 'failed').length,
-    }),
-    [files],
-  );
-  const filteredFiles = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
-    return files.filter((item) => {
-      const matchesStatus =
-        statusFilter === 'all' ||
-        (statusFilter === 'active'
-          ? ACTIVE_STATUSES.includes(item.status)
-          : item.status === statusFilter);
-      return (
-        matchesStatus &&
-        (!keyword ||
-          displayFilename(item.sourceName, item.sourceMimeType).toLowerCase().includes(keyword))
-      );
-    });
-  }, [files, search, statusFilter]);
-
   // Prefer the live detail (polled while importing) over the list snapshot.
   const current = detail.data ?? batch;
   const sourceFolders = useMemo(
@@ -130,40 +99,73 @@ export function ImportBatchDrawer({ batch, open, onClose }: ImportBatchDrawerPro
             format={() => `${current.completedItems}/${current.totalItems}`}
           />
           {detail.isError ? <Alert type="error" showIcon message={detail.error.message} /> : null}
-          <Flex gap={12} wrap justify="space-between">
-            <Segmented<StatusFilter>
-              value={statusFilter}
-              onChange={setStatusFilter}
-              options={[
-                { value: 'all', label: `${t('render.filterAll')} (${counts.all})` },
-                {
-                  value: 'active',
-                  label: `${t('googleDrive.status.importing')} (${counts.active})`,
-                },
-                {
-                  value: 'completed',
-                  label: `${t('googleDrive.status.completed')} (${counts.completed})`,
-                },
-                { value: 'failed', label: `${t('googleDrive.status.failed')} (${counts.failed})` },
-              ]}
-            />
-            <Input.Search
-              allowClear
-              placeholder={t('googleDrive.searchFiles')}
-              style={{ maxWidth: 280 }}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-          </Flex>
-          <ImportItemsTable
-            items={filteredFiles}
-            loading={detail.isLoading}
-            paginate
-            sticky={CONTAINER_TABLE_STICKY}
-            onRefresh={() => void detail.refetch()}
-            refreshing={detail.isFetching}
+          <ImportBatchFiles
+            key={batch.id}
+            batchId={batch.id}
+            live={!IMPORT_FINISHED_STATUSES.includes(current.status)}
           />
         </Flex>
       ) : null}
     </Drawer>
+  );
+}
+
+/**
+ * Files of the batch, paged, filtered, sorted and searched on the server. Lives inside the
+ * drawer body, so its filters start over each time the drawer opens.
+ */
+function ImportBatchFiles({ batchId, live }: { batchId: string; live: boolean }) {
+  const { t } = useTranslation();
+  const list = useServerListState<ImportListStatus, typeof DEFAULT_IMPORT_ITEM_SORT>(
+    'all',
+    DEFAULT_IMPORT_ITEM_SORT,
+  );
+  const files = useImportItems(batchId, list.params, live);
+  // Polling stops once the batch finishes: fetch once more so the last files show their result.
+  const { refetch } = files;
+  const wasLive = useRef(live);
+  useEffect(() => {
+    if (wasLive.current && !live) {
+      void refetch();
+    }
+    wasLive.current = live;
+  }, [live, refetch]);
+  const sortLabels: Record<ImportItemSortField, string> = {
+    createdAt: t('googleDrive.importOrder'),
+    name: t('common.file'),
+    size: t('media.size'),
+    resolution: t('media.resolution'),
+    duration: t('media.duration'),
+    modifiedAt: t('projects.updatedAt'),
+  };
+
+  return (
+    <>
+      {files.isError ? <Alert type="error" showIcon message={files.error.message} /> : null}
+      <ImportListToolbar<ImportItemSortField>
+        counts={files.data?.counts ?? EMPTY_COUNTS}
+        status={list.status}
+        onStatusChange={list.setStatus}
+        searchPlaceholder={t('googleDrive.searchFiles')}
+        onSearchChange={list.setSearchInput}
+        sortFields={IMPORT_ITEM_SORT_FIELDS.map((field) => ({
+          value: field,
+          label: sortLabels[field],
+        }))}
+        sort={list.sort}
+        onSortChange={list.setSort}
+        onRefresh={() => void files.refetch()}
+        refreshing={files.isFetching}
+      />
+      <ImportItemsTable
+        items={files.data?.items ?? []}
+        loading={files.isLoading || (files.isPlaceholderData && files.isFetching)}
+        sticky={CONTAINER_TABLE_STICKY}
+        pagination={list.pagination(
+          files.data?.total ?? 0,
+          Boolean(files.data) && !files.isPlaceholderData,
+        )}
+      />
+    </>
   );
 }
