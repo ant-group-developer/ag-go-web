@@ -21,6 +21,7 @@ import {
   Image,
   Input,
   List,
+  Popconfirm,
   Radio,
   Row,
   Space,
@@ -30,6 +31,7 @@ import {
   Typography,
   theme,
 } from 'antd';
+import { Pause, Play, RotateCcw, X } from 'lucide-react';
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GO_PERMISSIONS } from '../../../shared/auth/permissions';
@@ -746,10 +748,13 @@ function VideoAnalysisCard({ assetId, isVideo, previewRef, canManage }: VideoAna
         {inFlight ? <Spin size="small" /> : null}
         {canManage ? (
           <Space size={4}>
-            {status === 'queued' || status === 'extracting' || status === 'describing' ? (
+            {status && ['queued', 'extracting', 'extracted', 'describing'].includes(status) ? (
               <Tooltip title={t('analysis.batchPause')}>
                 <Button
                   size="small"
+                  type="text"
+                  aria-label={t('analysis.batchPause')}
+                  icon={<Pause size={16} />}
                   loading={pauseAsset.isPending}
                   onClick={() =>
                     void handleAction(
@@ -757,15 +762,16 @@ function VideoAnalysisCard({ assetId, isVideo, previewRef, canManage }: VideoAna
                       t('analysis.batchPauseSuccess'),
                     )
                   }
-                >
-                  ⏸
-                </Button>
+                />
               </Tooltip>
             ) : null}
-            {status === 'cancelled' ? (
+            {status === 'paused' ? (
               <Tooltip title={t('analysis.batchResume')}>
                 <Button
                   size="small"
+                  type="text"
+                  aria-label={t('analysis.batchResume')}
+                  icon={<Play size={16} />}
                   loading={resumeAsset.isPending}
                   onClick={() =>
                     void handleAction(
@@ -773,42 +779,50 @@ function VideoAnalysisCard({ assetId, isVideo, previewRef, canManage }: VideoAna
                       t('analysis.batchResumeSuccess'),
                     )
                   }
-                >
-                  ▶
-                </Button>
+                />
               </Tooltip>
             ) : null}
-            {status && !['completed', 'cancelled'].includes(status) ? (
-              <Tooltip title={t('analysis.batchCancel')}>
-                <Button
-                  size="small"
-                  danger
-                  loading={cancelAsset.isPending}
-                  onClick={() =>
-                    void handleAction(
-                      () => cancelAsset.mutateAsync(assetId),
-                      t('analysis.batchCancelSuccess'),
-                    )
-                  }
-                >
-                  ✕
-                </Button>
-              </Tooltip>
-            ) : null}
-            <Tooltip title={t('analysis.reanalyse')}>
-              <Button
-                size="small"
-                loading={startAsset.isPending}
-                onClick={() =>
+            {inFlight ? (
+              <Popconfirm
+                title={t('analysis.batchCancel')}
+                okText={t('analysis.batchCancel')}
+                cancelText={t('common.cancel')}
+                onConfirm={() =>
                   void handleAction(
-                    () => startAsset.mutateAsync({ assetId }),
-                    t('analysis.reanalyseSuccess'),
+                    () => cancelAsset.mutateAsync(assetId),
+                    t('analysis.batchCancelSuccess'),
                   )
                 }
               >
-                ↺
-              </Button>
-            </Tooltip>
+                <Tooltip title={t('analysis.batchCancel')}>
+                  <Button
+                    size="small"
+                    type="text"
+                    danger
+                    aria-label={t('analysis.batchCancel')}
+                    icon={<X size={16} />}
+                    loading={cancelAsset.isPending}
+                  />
+                </Tooltip>
+              </Popconfirm>
+            ) : (
+              // A new run is refused (409) while one is in flight
+              <Tooltip title={t('analysis.reanalyse')}>
+                <Button
+                  size="small"
+                  type="text"
+                  aria-label={t('analysis.reanalyse')}
+                  icon={<RotateCcw size={16} />}
+                  loading={startAsset.isPending}
+                  onClick={() =>
+                    void handleAction(
+                      () => startAsset.mutateAsync({ assetId }),
+                      t('analysis.reanalyseSuccess'),
+                    )
+                  }
+                />
+              </Tooltip>
+            )}
           </Space>
         ) : null}
       </Space>
