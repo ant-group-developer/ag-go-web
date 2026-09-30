@@ -20,7 +20,7 @@ import {
   Typography,
 } from 'antd';
 import type { DataNode } from 'antd/es/tree';
-import { Folder as FolderIcon } from 'lucide-react';
+import { Folder as FolderIcon, Pause, Play, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SortDropdown } from '../../../shared/components/sort-dropdown';
@@ -162,10 +162,10 @@ function AnalysisStatsCard({ folderIds }: { folderIds?: string[] }) {
 
 // ─── Batch management table ────────────────────────────────────────────────────
 
-const BATCH_SORT_FIELDS: { value: BatchSortBy; label: string }[] = [
-  { value: 'createdAt', label: 'Ngày tạo' },
-  { value: 'name', label: 'Tên' },
-  { value: 'status', label: 'Trạng thái' },
+const BATCH_SORT_FIELDS: { value: BatchSortBy; labelKey: string }[] = [
+  { value: 'createdAt', labelKey: 'analysis.batchCreatedAt' },
+  { value: 'name', labelKey: 'analysis.batchName' },
+  { value: 'status', labelKey: 'analysis.batchStatus' },
 ];
 
 function AnalysisBatchesCard() {
@@ -265,6 +265,9 @@ function AnalysisBatchesCard() {
             <Tooltip title={t('analysis.batchPause')}>
               <Button
                 size="small"
+                type="text"
+                aria-label={t('analysis.batchPause')}
+                icon={<Pause size={16} />}
                 loading={pauseBatch.isPending && pauseBatch.variables === row.id}
                 onClick={() =>
                   void handleAction(
@@ -273,14 +276,15 @@ function AnalysisBatchesCard() {
                     'analysis.batchPauseSuccess',
                   )
                 }
-              >
-                ⏸
-              </Button>
+              />
             </Tooltip>
           ) : row.status === 'paused' ? (
             <Tooltip title={t('analysis.batchResume')}>
               <Button
                 size="small"
+                type="text"
+                aria-label={t('analysis.batchResume')}
+                icon={<Play size={16} />}
                 loading={resumeBatch.isPending && resumeBatch.variables === row.id}
                 onClick={() =>
                   void handleAction(
@@ -289,9 +293,7 @@ function AnalysisBatchesCard() {
                     'analysis.batchResumeSuccess',
                   )
                 }
-              >
-                ▶
-              </Button>
+              />
             </Tooltip>
           ) : null}
           {row.status !== 'completed' && row.status !== 'cancelled' ? (
@@ -307,13 +309,16 @@ function AnalysisBatchesCard() {
                 )
               }
             >
-              <Button
-                size="small"
-                danger
-                loading={cancelBatch.isPending && cancelBatch.variables === row.id}
-              >
-                ✕
-              </Button>
+              <Tooltip title={t('analysis.batchCancel')}>
+                <Button
+                  size="small"
+                  type="text"
+                  danger
+                  aria-label={t('analysis.batchCancel')}
+                  icon={<X size={16} />}
+                  loading={cancelBatch.isPending && cancelBatch.variables === row.id}
+                />
+              </Tooltip>
             </Popconfirm>
           ) : null}
         </Space>
@@ -326,7 +331,7 @@ function AnalysisBatchesCard() {
       title={t('analysis.batchesTitle')}
       extra={
         <SortDropdown
-          fields={BATCH_SORT_FIELDS}
+          fields={BATCH_SORT_FIELDS.map((f) => ({ value: f.value, label: t(f.labelKey) }))}
           sortBy={sortBy}
           sortOrder={sortOrder}
           size="small"
