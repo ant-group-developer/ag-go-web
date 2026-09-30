@@ -24,7 +24,7 @@ export const CAMERA_MOTIONS = [
 ] as const;
 export type CameraMotion = (typeof CAMERA_MOTIONS)[number];
 
-export const TIMES_OF_DAY = ['day', 'night', 'golden_hour', 'indoor', 'unknown'] as const;
+export const TIMES_OF_DAY = ['day', 'night', 'golden_hour', 'indoor', 'mixed', 'unknown'] as const;
 export type TimeOfDay = (typeof TIMES_OF_DAY)[number];
 
 export const SETTINGS = ['indoor', 'outdoor', 'mixed', 'unknown'] as const;
@@ -61,6 +61,7 @@ export const TIME_OF_DAY_LABELS_VI: Record<TimeOfDay, string> = {
   night: 'Ban đêm',
   golden_hour: 'Giờ vàng',
   indoor: 'Trong nhà',
+  mixed: 'Hỗn hợp',
   unknown: 'Không xác định',
 };
 
@@ -69,6 +70,7 @@ export const TIME_OF_DAY_LABELS_EN: Record<TimeOfDay, string> = {
   night: 'Night',
   golden_hour: 'Golden Hour',
   indoor: 'Indoor',
+  mixed: 'Mixed',
   unknown: 'Unknown',
 };
 
@@ -117,8 +119,8 @@ export type FootageFolder = {
   parentId: string | null;
   name: string;
   path: string;
-  analyzedSegments: number;
-  usableSegments: number;
+  analyzedVideos: number;
+  usableVideos: number;
 };
 
 export type FootageFoldersResult = {
@@ -152,37 +154,51 @@ export function buildFootageFolderTree(folders: FootageFolder[]): FootageFolderN
   return roots;
 }
 
-// ─── /footage/search ─────────────────────────────────────────────────────────
+// ─── FootageVideo (one whole-video description) ───────────────────────────────
 
-export type FootageItem = {
-  segmentId: string;
+/** One analysed video (asset) as footage. */
+export type FootageVideo = {
   assetId: string;
-  startMs: number;
-  endMs: number;
-  durationMs: number;
-  captionVi: string | null;
-  captionEn: string | null;
-  tags: string[];
-  keywordsVi: string[];
-  subjects: string[];
-  actions: string[];
-  shotSize: ShotSize | null;
-  cameraMotion: CameraMotion | null;
-  timeOfDay: TimeOfDay | null;
-  setting: Setting | null;
-  peopleCount: PeopleCount | null;
-  orientation: Orientation | null;
-  quality: number | null;
-  usable: boolean;
-  approved: boolean;
-  score: number;
-  keyframeUrl: string | null;
-  assetName: string;
+  name: string;
+  projectIds: string[];
   projectNames: string[];
+  folderIds: string[];
+  durationMs: number;
+  width: number;
+  height: number;
+  orientation: Orientation;
+  hasAudio: boolean;
+  hasSpeech: boolean | null;
+  titleVi: string;
+  summaryVi: string;
+  summaryEn: string;
+  genre: string;
+  topics: string[];
+  subjects: string[];
+  places: string[];
+  actions: string[];
+  keywordsVi: string[];
+  tags: string[];
+  mood: string;
+  setting: Setting;
+  timeOfDay: TimeOfDay;
+  peopleCount: PeopleCount;
+  shotVariety: ShotSize[];
+  cameraMotions: CameraMotion[];
+  visibleText: string;
+  hasWatermark: boolean;
+  usable: boolean;
+  usableReason: string;
+  quality: number;
+  approved: boolean;
+  analyzedAt: string;
+  thumbnailUrl: string | null;
+  /** score is present on search results */
+  score?: number;
 };
 
 export type FootageSearchResult = {
-  items: FootageItem[];
+  items: FootageVideo[];
   nextCursor: string | null;
 };
 
@@ -192,7 +208,7 @@ export type FootageSearchParams = {
   categoryIds?: string[];
   tags?: string[];
   provinceIds?: string[];
-  shotSizes?: ShotSize[];
+  genres?: string[];
   timesOfDay?: TimeOfDay[];
   orientations?: Orientation[];
   minDurationMs?: number;
@@ -210,7 +226,7 @@ export function buildSearchQueryString(params: FootageSearchParams): string {
   if (params.categoryIds?.length) query.set('categoryIds', params.categoryIds.join(','));
   if (params.tags?.length) query.set('tags', params.tags.join(','));
   if (params.provinceIds?.length) query.set('provinceIds', params.provinceIds.join(','));
-  if (params.shotSizes?.length) query.set('shotSizes', params.shotSizes.join(','));
+  if (params.genres?.length) query.set('genres', params.genres.join(','));
   if (params.timesOfDay?.length) query.set('timesOfDay', params.timesOfDay.join(','));
   if (params.orientations?.length) query.set('orientations', params.orientations.join(','));
   if (params.minDurationMs !== undefined) query.set('minDurationMs', String(params.minDurationMs));
@@ -233,7 +249,7 @@ export type FacetItemNamed = { id: string; name: string; count: number };
 
 export type FootageFacetsResult = {
   tags: FacetItem[];
-  shotSizes: FacetItem[];
+  genres: FacetItem[];
   timesOfDay: FacetItem[];
   orientations: FacetItem[];
   categories: FacetItemNamed[];
@@ -254,36 +270,37 @@ export function getFootageFacets(
   return apiClient<FootageFacetsResult>(`/footage/facets${qs ? `?${qs}` : ''}`);
 }
 
-// ─── /footage/segments/:segmentId/media ──────────────────────────────────────
+// ─── /footage/assets/:assetId/media ──────────────────────────────────────────
 
-export type FootageSegmentMedia = {
-  segmentId: string;
+export type FootageVideoMedia = {
   assetId: string;
-  startMs: number;
-  endMs: number;
-  durationMs: number;
-  keyframeUrls: string[];
   previewUrl: string | null;
   previewWidth: number | null;
+  previewHeight: number | null;
+  watermarked: boolean;
+  posterUrl: string | null;
+  keyframes: { url: string; tMs: number }[];
+  contactSheetUrl: string | null;
+  durationMs: number;
+  expiresAt: string;
 };
 
-export function getFootageSegmentMedia(segmentId: string): Promise<FootageSegmentMedia> {
-  return apiClient<FootageSegmentMedia>(`/footage/segments/${segmentId}/media`);
+export function getFootageVideoMedia(assetId: string): Promise<FootageVideoMedia> {
+  return apiClient<FootageVideoMedia>(`/footage/assets/${assetId}/media`);
 }
 
 // ─── Duration helpers (pure) ─────────────────────────────────────────────────
 
-/** Format milliseconds as mm:ss (e.g. 75000 → "1:15"). */
+/** Format milliseconds as mm:ss or h:mm:ss. */
 export function formatMs(ms: number): string {
   const totalSec = Math.floor(ms / 1000);
-  const minutes = Math.floor(totalSec / 60);
+  const hours = Math.floor(totalSec / 3600);
+  const minutes = Math.floor((totalSec % 3600) / 60);
   const seconds = totalSec % 60;
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  }
   return `${minutes}:${String(seconds).padStart(2, '0')}`;
-}
-
-/** Format a range as "mm:ss–mm:ss". */
-export function formatRange(startMs: number, endMs: number): string {
-  return `${formatMs(startMs)}–${formatMs(endMs)}`;
 }
 
 /** Render quality (0–5) as a star count string. */

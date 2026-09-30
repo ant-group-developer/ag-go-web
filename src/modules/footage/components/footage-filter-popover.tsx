@@ -13,7 +13,7 @@ import {
 import type { DataNode } from 'antd/es/tree';
 import { t } from 'i18next';
 import {
-  Film,
+  Clapperboard,
   Filter as FilterIcon,
   Folder as FolderIcon,
   Layout,
@@ -26,8 +26,6 @@ import { useTranslation } from 'react-i18next';
 import {
   ORIENTATIONS,
   ORIENTATION_LABELS_VI,
-  SHOT_SIZES,
-  SHOT_SIZE_LABELS_VI,
   TIMES_OF_DAY,
   TIME_OF_DAY_LABELS_VI,
   type FacetItem,
@@ -35,7 +33,6 @@ import {
   type FootageFolder,
   type FootageSearchParams,
   type Orientation,
-  type ShotSize,
   type TimeOfDay,
 } from '../api/footage';
 
@@ -47,7 +44,7 @@ export type FootageFilterValues = Pick<
   | 'categoryIds'
   | 'tags'
   | 'provinceIds'
-  | 'shotSizes'
+  | 'genres'
   | 'timesOfDay'
   | 'orientations'
   | 'minDurationMs'
@@ -55,7 +52,7 @@ export type FootageFilterValues = Pick<
   | 'usableOnly'
 >;
 
-type FilterCategory = 'folder' | 'shotSize' | 'timeOfDay' | 'orientation' | 'duration';
+type FilterCategory = 'folder' | 'genre' | 'timeOfDay' | 'orientation' | 'duration';
 
 interface FootageFilterPopoverProps {
   value: FootageFilterValues;
@@ -65,7 +62,7 @@ interface FootageFilterPopoverProps {
   folders: FootageFolder[];
   foldersLoading: boolean;
   facets?: {
-    shotSizes: FacetItem[];
+    genres: FacetItem[];
     timesOfDay: FacetItem[];
     orientations: FacetItem[];
     categories: FacetItemNamed[];
@@ -137,8 +134,8 @@ function buildAntdFolderTree(
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13.5 }}>
           <FolderIcon size={15} style={{ color: '#1677ff', flexShrink: 0 }} />
           <span>{highlightText(f.name, searchText)}</span>
-          {f.usableSegments > 0 && (
-            <span style={{ color: '#9ca3af', fontSize: 12 }}>({f.usableSegments})</span>
+          {f.usableVideos > 0 && (
+            <span style={{ color: '#9ca3af', fontSize: 12 }}>({f.usableVideos})</span>
           )}
         </span>
       ),
@@ -298,8 +295,8 @@ function FilterContent({
     }
   }, [folders, folderSearch, matchingKeySet]);
 
-  const shotSizeFacets = useMemo(
-    () => new Map(facets?.shotSizes.map((f) => [f.value, f.count]) ?? []),
+  const genreFacets = useMemo(
+    () => new Map(facets?.genres.map((f) => [f.value, f.count]) ?? []),
     [facets],
   );
   const timeOfDayFacets = useMemo(
@@ -313,7 +310,7 @@ function FilterContent({
 
   const filterCategories: Array<{ key: FilterCategory; icon: React.ReactNode; label: string }> = [
     { key: 'folder', icon: <FolderIcon size={16} />, label: t('footage.filterFolder') },
-    { key: 'shotSize', icon: <Film size={16} />, label: t('footage.filterShotSize') },
+    { key: 'genre', icon: <Clapperboard size={16} />, label: t('footage.filterGenre') },
     { key: 'timeOfDay', icon: <Sun size={16} />, label: t('footage.filterTimeOfDay') },
     { key: 'orientation', icon: <Layout size={16} />, label: t('footage.filterOrientation') },
     { key: 'duration', icon: <Maximize2 size={16} />, label: t('footage.filterDuration') },
@@ -323,8 +320,8 @@ function FilterContent({
     switch (key) {
       case 'folder':
         return value.folderIds?.length ?? 0;
-      case 'shotSize':
-        return value.shotSizes?.length ?? 0;
+      case 'genre':
+        return value.genres?.length ?? 0;
       case 'timeOfDay':
         return value.timesOfDay?.length ?? 0;
       case 'orientation':
@@ -449,21 +446,21 @@ function FilterContent({
           </div>
         );
 
-      case 'shotSize':
+      case 'genre':
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Film size={18} style={{ color: '#1677ff' }} />
+              <Clapperboard size={18} style={{ color: '#1677ff' }} />
               <Typography.Text strong style={{ fontSize: 16 }}>
-                {t('footage.filterShotSize')}
+                {t('footage.filterGenre')}
               </Typography.Text>
             </div>
             <CheckboxFacetFilter
-              options={SHOT_SIZES.map((v) => ({ value: v, label: SHOT_SIZE_LABELS_VI[v] }))}
-              facetCounts={shotSizeFacets}
+              options={(facets?.genres ?? []).map((g) => ({ value: g.value, label: g.value }))}
+              facetCounts={genreFacets}
               loading={facetsLoading}
-              value={value.shotSizes}
-              onChange={(ids) => onChange({ ...value, shotSizes: ids as ShotSize[] | undefined })}
+              value={value.genres}
+              onChange={(ids) => onChange({ ...value, genres: ids ?? undefined })}
               searchPlaceholder={t('footage.searchPlaceholder')}
               emptyText={t('footage.emptyOptions')}
             />
@@ -514,7 +511,16 @@ function FilterContent({
           </div>
         );
 
-      case 'duration':
+      case 'duration': {
+        // Duration slider: 0–30 min (0–1800 s), steps of 30 s
+        const MAX_DURATION_S = 1800;
+        const minS = Math.round((value.minDurationMs ?? 0) / 1000);
+        const maxS = Math.round((value.maxDurationMs ?? MAX_DURATION_S * 1000) / 1000);
+        const fmtMin = (s: number) => {
+          const m = Math.floor(s / 60);
+          const sec = s % 60;
+          return sec === 0 ? `${m}p` : `${m}p${sec}s`;
+        };
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -530,19 +536,16 @@ function FilterContent({
               <Slider
                 range
                 min={0}
-                max={120}
-                step={1}
-                value={[
-                  Math.round((value.minDurationMs ?? 0) / 1000),
-                  Math.round((value.maxDurationMs ?? 120_000) / 1000),
-                ]}
-                marks={{ 0: '0s', 30: '30s', 60: '60s', 120: '120s' }}
-                tooltip={{ formatter: (v) => `${v}s` }}
+                max={MAX_DURATION_S}
+                step={30}
+                value={[minS, maxS]}
+                marks={{ 0: '0', 300: '5p', 600: '10p', 900: '15p', 1800: '30p' }}
+                tooltip={{ formatter: (v) => fmtMin(v ?? 0) }}
                 onChange={([min, max]) => {
                   onChange({
                     ...value,
                     minDurationMs: min > 0 ? min * 1000 : undefined,
-                    maxDurationMs: max < 120 ? max * 1000 : undefined,
+                    maxDurationMs: max < MAX_DURATION_S ? max * 1000 : undefined,
                   });
                 }}
               />
@@ -561,6 +564,7 @@ function FilterContent({
             )}
           </div>
         );
+      }
 
       default:
         return null;

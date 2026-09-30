@@ -2,22 +2,15 @@ import { Tag, Tooltip } from 'antd';
 import { Monitor, Smartphone, Square } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  formatRange,
-  ORIENTATION_LABELS_VI,
-  qualityStars,
-  SHOT_SIZE_LABELS_VI,
-  type FootageItem,
-} from '../api/footage';
-import { useFootageSegmentMedia } from '../hooks/use-footage';
-import { RangePlayer } from './range-player';
+import { formatMs, ORIENTATION_LABELS_VI, qualityStars, type FootageVideo } from '../api/footage';
+import { useFootageVideoMedia } from '../hooks/use-footage';
 
 interface FootageCardProps {
-  item: FootageItem;
+  item: FootageVideo;
   onClick: () => void;
 }
 
-function OrientationIcon({ orientation }: { orientation: FootageItem['orientation'] }) {
+function OrientationIcon({ orientation }: { orientation: FootageVideo['orientation'] }) {
   if (orientation === 'portrait') return <Smartphone size={13} style={{ color: '#6b7280' }} />;
   if (orientation === 'square') return <Square size={13} style={{ color: '#6b7280' }} />;
   return <Monitor size={13} style={{ color: '#6b7280' }} />;
@@ -28,9 +21,9 @@ export function FootageCard({ item, onClick }: FootageCardProps) {
   const [hovered, setHovered] = useState(false);
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Lazily fetch segment media only once user hovers.
-  const segmentMedia = useFootageSegmentMedia(hovered ? item.segmentId : null);
-  const previewUrl = segmentMedia.data?.previewUrl ?? null;
+  // Lazily fetch video media only once user hovers.
+  const videoMedia = useFootageVideoMedia(hovered ? item.assetId : null);
+  const previewUrl = videoMedia.data?.previewUrl ?? null;
 
   const handleMouseEnter = useCallback(() => {
     hoverTimerRef.current = setTimeout(() => setHovered(true), 150);
@@ -64,7 +57,7 @@ export function FootageCard({ item, onClick }: FootageCardProps) {
         flexDirection: 'column',
       }}
     >
-      {/* Keyframe / preview area */}
+      {/* Thumbnail / preview area */}
       <div
         style={{
           position: 'relative',
@@ -74,12 +67,12 @@ export function FootageCard({ item, onClick }: FootageCardProps) {
         }}
       >
         {hovered && previewUrl ? (
-          <RangePlayer
+          <video
             src={previewUrl}
-            startMs={item.startMs}
-            endMs={item.endMs}
-            controls={false}
-            maxHeight="100%"
+            autoPlay
+            muted
+            loop
+            playsInline
             style={{
               position: 'absolute',
               inset: 0,
@@ -88,10 +81,10 @@ export function FootageCard({ item, onClick }: FootageCardProps) {
               objectFit: 'contain',
             }}
           />
-        ) : item.keyframeUrl ? (
+        ) : item.thumbnailUrl ? (
           <img
-            src={item.keyframeUrl}
-            alt={item.captionVi ?? item.assetName}
+            src={item.thumbnailUrl}
+            alt={item.titleVi || item.name}
             style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
             loading="lazy"
           />
@@ -110,7 +103,7 @@ export function FootageCard({ item, onClick }: FootageCardProps) {
           </div>
         )}
 
-        {/* Duration overlay */}
+        {/* Duration badge */}
         <div
           style={{
             position: 'absolute',
@@ -124,7 +117,7 @@ export function FootageCard({ item, onClick }: FootageCardProps) {
             fontVariantNumeric: 'tabular-nums',
           }}
         >
-          {formatRange(item.startMs, item.endMs)}
+          {formatMs(item.durationMs)}
         </div>
 
         {/* Approved badge */}
@@ -141,11 +134,26 @@ export function FootageCard({ item, onClick }: FootageCardProps) {
       <div
         style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}
       >
-        {/* Caption */}
+        {/* Title */}
         <div
           style={{
             fontSize: 12.5,
-            color: '#374151',
+            fontWeight: 600,
+            color: '#111827',
+            overflow: 'hidden',
+            display: '-webkit-box',
+            WebkitLineClamp: 1,
+            WebkitBoxOrient: 'vertical',
+          }}
+        >
+          {item.titleVi || item.name}
+        </div>
+
+        {/* Summary */}
+        <div
+          style={{
+            fontSize: 12,
+            color: '#6b7280',
             lineHeight: 1.4,
             overflow: 'hidden',
             display: '-webkit-box',
@@ -153,31 +161,23 @@ export function FootageCard({ item, onClick }: FootageCardProps) {
             WebkitBoxOrient: 'vertical',
           }}
         >
-          {item.captionVi ?? item.captionEn ?? item.assetName}
+          {item.summaryVi || item.summaryEn}
         </div>
 
         {/* Meta row */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
           {/* Orientation */}
-          <Tooltip title={item.orientation ? ORIENTATION_LABELS_VI[item.orientation] : undefined}>
+          <Tooltip title={ORIENTATION_LABELS_VI[item.orientation]}>
             <span style={{ display: 'flex', alignItems: 'center' }}>
               <OrientationIcon orientation={item.orientation} />
             </span>
           </Tooltip>
 
-          {/* Shot size */}
-          {item.shotSize && item.shotSize !== 'unknown' && (
-            <span
-              style={{
-                fontSize: 11,
-                color: '#6b7280',
-                background: '#f3f4f6',
-                padding: '1px 5px',
-                borderRadius: 4,
-              }}
-            >
-              {SHOT_SIZE_LABELS_VI[item.shotSize]}
-            </span>
+          {/* Genre */}
+          {item.genre && (
+            <Tag style={{ fontSize: 11, margin: 0, padding: '0 5px' }} color="blue">
+              {item.genre}
+            </Tag>
           )}
 
           {/* Quality */}

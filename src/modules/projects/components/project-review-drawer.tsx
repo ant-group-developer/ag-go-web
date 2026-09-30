@@ -36,7 +36,18 @@ import { GO_PERMISSIONS } from '../../../shared/auth/permissions';
 import { formatDate } from '../../../shared/lib/format-date';
 import { CONTAINER_TABLE_STICKY } from '../../../shared/lib/sticky-table-header';
 import { usePermissions } from '../../account/hooks/use-current-account';
-import { useAssetAnalysis, useAssetSegments } from '../../analysis/hooks/use-analysis';
+import {
+  analysisStatusColor,
+  type AnalysisStatus,
+  type AssetAnalysis,
+} from '../../analysis/api/analysis';
+import {
+  useAssetAnalysis,
+  useCancelAssetAnalysis,
+  usePauseAssetAnalysis,
+  useResumeAssetAnalysis,
+  useStartAssetAnalysis,
+} from '../../analysis/hooks/use-analysis';
 import { createDownload, getDownload, type DownloadResult } from '../../downloads/api/downloads';
 import { useRefreshProjectMediaOnImportProgress } from '../../google-drive/hooks/use-refresh-project-media-on-import-progress';
 import {
@@ -367,7 +378,7 @@ const RenderedMediaPreview = forwardRef<RenderedMediaPreviewHandle, { media: Pro
     // Older API responses without preview sizes still carry a single preview URL.
     const previewUrl = variants.length > 0 ? selectedUrl : (media.previewUrl ?? undefined);
 
-    // Clicking an analysed segment seeks the plain video too.
+    // Clicking an analysed keyframe seeks the plain video too.
     useImperativeHandle(ref, () => ({
       seekTo: (seconds: number) => {
         if (videoRef.current) {
@@ -629,36 +640,57 @@ function MediaDetails({
   );
 }
 
-// ─── Segment list ─────────────────────────────────────────────────────────────
+// ─── Video analysis card ──────────────────────────────────────────────────────
 
 function formatMs(ms: number): string {
   const total = Math.floor(ms / 1000);
-  const minutes = Math.floor(total / 60);
-  const seconds = total % 60;
-  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  if (h > 0) {
+    return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-function SegmentList({
-  assetId,
-  isVideo,
-  previewRef,
-}: {
+function qualityStars(q: number | null | undefined): string {
+  if (q === null || q === undefined) return '';
+  return '★'.repeat(Math.max(0, Math.min(5, q))) + '☆'.repeat(5 - Math.max(0, Math.min(5, q)));
+}
+
+type VideoAnalysisCardProps = {
   assetId: string;
   isVideo: boolean;
   previewRef: React.RefObject<RenderedMediaPreviewHandle | null>;
-}) {
+  canManage: boolean;
+};
+
+function VideoAnalysisCard({ assetId, isVideo, previewRef, canManage }: VideoAnalysisCardProps) {
   const { t } = useTranslation();
   const { token } = theme.useToken();
-  const analysis = useAssetAnalysis(assetId, isVideo);
-  const segments = useAssetSegments(assetId, isVideo);
+  const analysisQuery = useAssetAnalysis(assetId, isVideo);
+  const { message } = AntApp.useApp();
+  const pauseAsset = usePauseAssetAnalysis();
+  const resumeAsset = useResumeAssetAnalysis();
+  const cancelAsset = useCancelAssetAnalysis();
+  const startAsset = useStartAssetAnalysis();
 
   if (!isVideo) return null;
 
-  const analysisStatus = analysis.data?.current?.status ?? analysis.data?.latest?.status ?? null;
-  const isAnalysing =
-    analysisStatus && !['completed', 'failed', 'cancelled'].includes(analysisStatus);
+  const data: AssetAnalysis | null | undefined = analysisQuery.data;
+  const status: AnalysisStatus | null = data?.status ?? null;
+  const inFlight = status && !['completed', 'failed', 'cancelled'].includes(status);
 
-  if (analysis.isPending || segments.isPending) {
+  const handleAction = async (fn: () => Promise<unknown>, successMsg: string) => {
+    try {
+      await fn();
+      void message.success(successMsg);
+    } catch (err) {
+      void message.error(err instanceof Error ? err.message : t('analysis.reanalyseFailed'));
+    }
+  };
+
+  if (analysisQuery.isPending) {
     return (
       <div style={{ textAlign: 'center', padding: '12px 0' }}>
         <Spin size="small" />
@@ -666,120 +698,173 @@ function SegmentList({
     );
   }
 
-  if (!analysisStatus && !analysis.isError) {
+  if (!status && !analysisQuery.isError) {
     return (
       <div style={{ color: token.colorTextSecondary, fontSize: 12, padding: '8px 0' }}>
-        {t('analysis.segmentsNoAnalysis')}
-      </div>
-    );
-  }
-
-  if (isAnalysing) {
-    return (
-      <div style={{ color: token.colorTextSecondary, fontSize: 12, padding: '8px 0' }}>
-        <Space size={6}>
-          <Spin size="small" />
-          <span>{t(`analysis.status.${analysisStatus}`)}</span>
-        </Space>
-      </div>
-    );
-  }
-
-  if (analysisStatus === 'failed') {
-    return (
-      <div style={{ color: token.colorError, fontSize: 12, padding: '8px 0' }}>
-        {t('analysis.segmentsAnalysisFailed')}
-        {analysis.data?.current?.reason ? `: ${analysis.data.current.reason}` : ''}
-      </div>
-    );
-  }
-
-  if (!segments.data || segments.data.segments.length === 0) {
-    return (
-      <div style={{ color: token.colorTextSecondary, fontSize: 12, padding: '8px 0' }}>
-        {t('analysis.segmentsEmpty')}
+        {t('analysis.videoNoAnalysis')}
+        {canManage ? (
+          <Button
+            size="small"
+            type="link"
+            loading={startAsset.isPending}
+            style={{ padding: '0 4px' }}
+            onClick={() =>
+              void handleAction(
+                () => startAsset.mutateAsync({ assetId }),
+                t('analysis.reanalyseSuccess'),
+              )
+            }
+          >
+            {t('analysis.reanalyse')}
+          </Button>
+        ) : null}
       </div>
     );
   }
 
   return (
-    <div
-      style={{
-        maxHeight: 280,
-        overflowY: 'auto',
-        border: `1px solid ${token.colorBorderSecondary}`,
-        borderRadius: token.borderRadius,
-        marginTop: 8,
-      }}
-    >
-      {segments.data.segments.map((seg) => {
-        const caption = seg.captionVi || seg.captionEn || '';
-        return (
-          <div
-            key={seg.id}
-            role="button"
-            tabIndex={0}
-            style={{
-              display: 'flex',
-              gap: 8,
-              padding: '6px 8px',
-              cursor: 'pointer',
-              borderBottom: `1px solid ${token.colorBorderSecondary}`,
-              alignItems: 'flex-start',
-            }}
-            onClick={() => previewRef.current?.seekTo(seg.startMs / 1000)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                previewRef.current?.seekTo(seg.startMs / 1000);
-              }
-            }}
-          >
-            {seg.keyframeUrls.length > 0 ? (
+    <div style={{ marginTop: 8 }}>
+      {/* Status row */}
+      <Space size={6} wrap style={{ marginBottom: 8 }}>
+        <Tag color={analysisStatusColor(status)}>
+          {status ? t(`analysis.status.${status}`) : t('analysis.statusNone')}
+        </Tag>
+        {data?.description?.quality !== null && data?.description?.quality !== undefined ? (
+          <Tooltip title={`${data.description.quality}/5`}>
+            <span style={{ color: '#f59e0b', fontSize: 13 }}>
+              {qualityStars(data.description.quality)}
+            </span>
+          </Tooltip>
+        ) : null}
+        {data?.description?.usable === false ? (
+          <Tooltip title={data.description.usableReason ?? undefined}>
+            <Tag color="error" style={{ cursor: 'help' }}>
+              {t('analysis.videoUnusable')}
+            </Tag>
+          </Tooltip>
+        ) : null}
+        {inFlight ? <Spin size="small" /> : null}
+        {canManage ? (
+          <Space size={4}>
+            {status === 'queued' || status === 'extracting' || status === 'describing' ? (
+              <Tooltip title={t('analysis.batchPause')}>
+                <Button
+                  size="small"
+                  loading={pauseAsset.isPending}
+                  onClick={() =>
+                    void handleAction(
+                      () => pauseAsset.mutateAsync(assetId),
+                      t('analysis.batchPauseSuccess'),
+                    )
+                  }
+                >
+                  ⏸
+                </Button>
+              </Tooltip>
+            ) : null}
+            {status === 'cancelled' ? (
+              <Tooltip title={t('analysis.batchResume')}>
+                <Button
+                  size="small"
+                  loading={resumeAsset.isPending}
+                  onClick={() =>
+                    void handleAction(
+                      () => resumeAsset.mutateAsync(assetId),
+                      t('analysis.batchResumeSuccess'),
+                    )
+                  }
+                >
+                  ▶
+                </Button>
+              </Tooltip>
+            ) : null}
+            {status && !['completed', 'cancelled'].includes(status) ? (
+              <Tooltip title={t('analysis.batchCancel')}>
+                <Button
+                  size="small"
+                  danger
+                  loading={cancelAsset.isPending}
+                  onClick={() =>
+                    void handleAction(
+                      () => cancelAsset.mutateAsync(assetId),
+                      t('analysis.batchCancelSuccess'),
+                    )
+                  }
+                >
+                  ✕
+                </Button>
+              </Tooltip>
+            ) : null}
+            <Tooltip title={t('analysis.reanalyse')}>
+              <Button
+                size="small"
+                loading={startAsset.isPending}
+                onClick={() =>
+                  void handleAction(
+                    () => startAsset.mutateAsync({ assetId }),
+                    t('analysis.reanalyseSuccess'),
+                  )
+                }
+              >
+                ↺
+              </Button>
+            </Tooltip>
+          </Space>
+        ) : null}
+      </Space>
+
+      {/* Title + summary */}
+      {data?.description?.titleVi ? (
+        <Typography.Text strong style={{ fontSize: 13, display: 'block', marginBottom: 4 }}>
+          {data.description.titleVi}
+        </Typography.Text>
+      ) : null}
+      {data?.description?.summaryVi ? (
+        <Typography.Text
+          type="secondary"
+          style={{ fontSize: 12, display: 'block', marginBottom: 8 }}
+          ellipsis={{ tooltip: data.description.summaryVi }}
+        >
+          {data.description.summaryVi}
+        </Typography.Text>
+      ) : null}
+
+      {/* Keyframe strip */}
+      {data?.keyframes && data.keyframes.length > 0 ? (
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 8 }}>
+          {data.keyframes.map((kf) => (
+            <Tooltip key={kf.tMs} title={formatMs(kf.tMs)}>
               <img
-                alt=""
-                src={seg.keyframeUrls[0]}
+                src={kf.url}
+                alt={formatMs(kf.tMs)}
+                role="button"
+                tabIndex={0}
+                onClick={() => previewRef.current?.seekTo(kf.tMs / 1000)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    previewRef.current?.seekTo(kf.tMs / 1000);
+                  }
+                }}
                 style={{
-                  width: 56,
-                  height: 32,
+                  width: 72,
+                  aspectRatio: '16/9',
                   objectFit: 'cover',
-                  borderRadius: 2,
-                  flexShrink: 0,
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  border: '2px solid transparent',
                 }}
               />
-            ) : null}
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
-                <Typography.Text
-                  type="secondary"
-                  style={{ fontSize: 11, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}
-                >
-                  {formatMs(seg.startMs)}–{formatMs(seg.endMs)}
-                </Typography.Text>
-                {seg.quality !== null ? (
-                  <Tag style={{ margin: 0, fontSize: 11 }}>Q{seg.quality}</Tag>
-                ) : null}
-                {!seg.usable ? (
-                  <Tooltip title={seg.usableReason ?? seg.deadReason ?? undefined}>
-                    <Tag color="error" style={{ margin: 0, fontSize: 11, cursor: 'help' }}>
-                      {t('analysis.segmentUnusable')}
-                    </Tag>
-                  </Tooltip>
-                ) : null}
-                {seg.tags.slice(0, 3).map((tag) => (
-                  <Tag key={tag} style={{ margin: 0, fontSize: 11 }}>
-                    {tag}
-                  </Tag>
-                ))}
-              </div>
-              {caption ? (
-                <Typography.Text ellipsis style={{ fontSize: 12, display: 'block' }}>
-                  {caption}
-                </Typography.Text>
-              ) : null}
-            </div>
-          </div>
-        );
-      })}
+            </Tooltip>
+          ))}
+        </div>
+      ) : null}
+
+      {/* Error reason */}
+      {data?.error ? (
+        <Typography.Text type="danger" style={{ fontSize: 12, display: 'block', marginTop: 4 }}>
+          {data.error}
+        </Typography.Text>
+      ) : null}
     </div>
   );
 }
@@ -1135,12 +1220,13 @@ export function ProjectDetailDrawer({
                     {selectedMedia.asset.assetType === 'video' ? (
                       <div style={{ marginTop: 12 }}>
                         <Typography.Text strong style={{ fontSize: 13 }}>
-                          {t('analysis.segmentsTitle')}
+                          {t('analysis.videoAnalysisTitle')}
                         </Typography.Text>
-                        <SegmentList
+                        <VideoAnalysisCard
                           assetId={selectedMedia.assetId}
                           isVideo
                           previewRef={renderedPreviewRef}
+                          canManage={can(GO_PERMISSIONS.ANALYSIS_MANAGE)}
                         />
                       </div>
                     ) : null}

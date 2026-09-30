@@ -2,7 +2,7 @@ import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import {
   getFootageFacets,
   getFootageFolders,
-  getFootageSegmentMedia,
+  getFootageVideoMedia,
   searchFootage,
   type FootageSearchParams,
 } from '../api/footage';
@@ -13,7 +13,7 @@ const keys = {
   facets: (params: Omit<FootageSearchParams, 'limit' | 'cursor'>) =>
     [...keys.all, 'facets', params] as const,
   folders: () => [...keys.all, 'folders'] as const,
-  segmentMedia: (segmentId: string) => [...keys.all, 'segment-media', segmentId] as const,
+  videoMedia: (assetId: string) => [...keys.all, 'video-media', assetId] as const,
 };
 
 export function useFootageSearch(params: Omit<FootageSearchParams, 'cursor'>, enabled = true) {
@@ -47,11 +47,11 @@ export function useFootageFolders() {
   });
 }
 
-export function useFootageSegmentMedia(segmentId: string | null) {
+export function useFootageVideoMedia(assetId: string | null) {
   return useQuery({
-    queryKey: keys.segmentMedia(segmentId ?? ''),
-    queryFn: () => getFootageSegmentMedia(segmentId!),
-    enabled: Boolean(segmentId),
+    queryKey: keys.videoMedia(assetId ?? ''),
+    queryFn: () => getFootageVideoMedia(assetId!),
+    enabled: Boolean(assetId),
     staleTime: 60_000,
   });
 }

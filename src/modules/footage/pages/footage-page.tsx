@@ -10,17 +10,11 @@ import {
 } from 'nuqs';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type {
-  FootageItem,
-  FootageSearchParams,
-  Orientation,
-  ShotSize,
-  TimeOfDay,
-} from '../api/footage';
+import type { FootageSearchParams, FootageVideo, Orientation, TimeOfDay } from '../api/footage';
 import { FootageCard } from '../components/footage-card';
 import type { FootageFilterValues } from '../components/footage-filter-popover';
 import { FootageFilterPopover, UsableOnlySwitch } from '../components/footage-filter-popover';
-import { FootageSegmentDrawer } from '../components/footage-segment-drawer';
+import { FootageVideoDrawer } from '../components/footage-video-drawer';
 import { useFootageFacets, useFootageFolders, useFootageSearch } from '../hooks/use-footage';
 
 // ─── URL params ───────────────────────────────────────────────────────────────
@@ -28,7 +22,7 @@ import { useFootageFacets, useFootageFolders, useFootageSearch } from '../hooks/
 const footageUrlParams = {
   q: parseAsString,
   folderIds: parseAsArrayOf(parseAsString).withDefault([]),
-  shotSizes: parseAsArrayOf(parseAsString).withDefault([]),
+  genres: parseAsArrayOf(parseAsString).withDefault([]),
   timesOfDay: parseAsArrayOf(parseAsString).withDefault([]),
   orientations: parseAsArrayOf(parseAsString).withDefault([]),
   minDurationMs: parseAsInteger,
@@ -68,7 +62,7 @@ export function FootagePage() {
   const filterValues: FootageFilterValues = useMemo(
     () => ({
       folderIds: urlState.folderIds.length ? urlState.folderIds : undefined,
-      shotSizes: urlState.shotSizes.length ? (urlState.shotSizes as ShotSize[]) : undefined,
+      genres: urlState.genres.length ? urlState.genres : undefined,
       timesOfDay: urlState.timesOfDay.length ? (urlState.timesOfDay as TimeOfDay[]) : undefined,
       orientations: urlState.orientations.length
         ? (urlState.orientations as Orientation[])
@@ -93,14 +87,14 @@ export function FootagePage() {
   const facetsQuery = useFootageFacets({ q: urlState.q ?? undefined, ...filterValues });
 
   // Flatten all pages
-  const items = useMemo<FootageItem[]>(() => data?.pages.flatMap((p) => p.items) ?? [], [data]);
+  const items = useMemo<FootageVideo[]>(() => data?.pages.flatMap((p) => p.items) ?? [], [data]);
 
   // Active filter count (excludes usableOnly which has its own switch)
   const activeFilterCount = useMemo(
     () =>
       [
         filterValues.folderIds?.length,
-        filterValues.shotSizes?.length,
+        filterValues.genres?.length,
         filterValues.timesOfDay?.length,
         filterValues.orientations?.length,
         filterValues.minDurationMs !== undefined || filterValues.maxDurationMs !== undefined
@@ -114,7 +108,7 @@ export function FootagePage() {
     (values: FootageFilterValues) => {
       void setUrlState({
         folderIds: values.folderIds?.length ? values.folderIds : null,
-        shotSizes: values.shotSizes?.length ? values.shotSizes : null,
+        genres: values.genres?.length ? values.genres : null,
         timesOfDay: values.timesOfDay?.length ? values.timesOfDay : null,
         orientations: values.orientations?.length ? values.orientations : null,
         minDurationMs: values.minDurationMs ?? null,
@@ -130,7 +124,7 @@ export function FootagePage() {
     void setUrlState({
       q: null,
       folderIds: null,
-      shotSizes: null,
+      genres: null,
       timesOfDay: null,
       orientations: null,
       minDurationMs: null,
@@ -140,7 +134,7 @@ export function FootagePage() {
   }, [setUrlState]);
 
   // Drawer state
-  const [drawerItem, setDrawerItem] = useState<FootageItem | null>(null);
+  const [drawerItem, setDrawerItem] = useState<FootageVideo | null>(null);
 
   // Infinite scroll sentinel
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -282,7 +276,7 @@ export function FootagePage() {
             {/* Responsive grid */}
             <Row gutter={[16, 16]}>
               {items.map((item) => (
-                <Col key={item.segmentId} xs={24} sm={12} md={8} lg={6} xl={6} xxl={4}>
+                <Col key={item.assetId} xs={24} sm={12} md={8} lg={6} xl={6} xxl={4}>
                   <FootageCard item={item} onClick={() => setDrawerItem(item)} />
                 </Col>
               ))}
@@ -311,7 +305,7 @@ export function FootagePage() {
       </PageContainer>
 
       {/* Detail drawer */}
-      <FootageSegmentDrawer
+      <FootageVideoDrawer
         open={Boolean(drawerItem)}
         item={drawerItem}
         onClose={() => setDrawerItem(null)}
