@@ -5,10 +5,9 @@ import {
   buildFootageFolderTree,
   buildSearchQueryString,
   formatMs,
-  formatRange,
   getFootageFacets,
   getFootageFolders,
-  getFootageSegmentMedia,
+  getFootageVideoMedia,
   qualityStars,
   searchFootage,
   type FootageFolder,
@@ -36,9 +35,9 @@ describe('buildSearchQueryString', () => {
     expect(new URLSearchParams(qs).get('folderIds')).toBe('f1,f2,f3');
   });
 
-  it('joins shotSizes with commas', () => {
-    const qs = buildSearchQueryString({ shotSizes: ['wide', 'medium'] });
-    expect(new URLSearchParams(qs).get('shotSizes')).toBe('wide,medium');
+  it('joins genres with commas', () => {
+    const qs = buildSearchQueryString({ genres: ['documentary', 'news'] });
+    expect(new URLSearchParams(qs).get('genres')).toBe('documentary,news');
   });
 
   it('joins timesOfDay with commas', () => {
@@ -66,7 +65,7 @@ describe('buildSearchQueryString', () => {
   });
 
   it('omits empty arrays', () => {
-    const qs = buildSearchQueryString({ folderIds: [], tags: [], shotSizes: [] });
+    const qs = buildSearchQueryString({ folderIds: [], tags: [], genres: [] });
     expect(qs).toBe('');
   });
 });
@@ -109,7 +108,7 @@ describe('getFootageFacets', () => {
     vi.clearAllMocks();
     vi.mocked(apiClient).mockResolvedValue({
       tags: [],
-      shotSizes: [],
+      genres: [],
       timesOfDay: [],
       orientations: [],
       categories: [],
@@ -140,22 +139,24 @@ describe('getFootageFolders', () => {
   });
 });
 
-// ─── getFootageSegmentMedia ───────────────────────────────────────────────────
+// ─── getFootageVideoMedia ─────────────────────────────────────────────────────
 
-describe('getFootageSegmentMedia', () => {
-  it('calls /footage/segments/:segmentId/media', async () => {
+describe('getFootageVideoMedia', () => {
+  it('calls /footage/assets/:assetId/media', async () => {
     vi.mocked(apiClient).mockResolvedValue({
-      segmentId: 'seg-1',
       assetId: 'asset-1',
-      startMs: 0,
-      endMs: 5000,
-      durationMs: 5000,
-      keyframeUrls: [],
       previewUrl: null,
       previewWidth: null,
+      previewHeight: null,
+      watermarked: false,
+      posterUrl: null,
+      keyframes: [],
+      contactSheetUrl: null,
+      durationMs: 5000,
+      expiresAt: '2026-01-01T00:00:00Z',
     });
-    await getFootageSegmentMedia('seg-1');
-    expect(apiClient).toHaveBeenCalledWith('/footage/segments/seg-1/media');
+    await getFootageVideoMedia('asset-1');
+    expect(apiClient).toHaveBeenCalledWith('/footage/assets/asset-1/media');
   });
 });
 
@@ -167,8 +168,8 @@ describe('buildFootageFolderTree', () => {
     parentId,
     name,
     path: name,
-    analyzedSegments: 0,
-    usableSegments: 0,
+    analyzedVideos: 0,
+    usableVideos: 0,
   });
 
   it('returns empty array for empty input', () => {
@@ -205,17 +206,17 @@ describe('buildFootageFolderTree', () => {
     expect(result[0].id).toBe('orphan');
   });
 
-  it('preserves usableSegments count', () => {
+  it('preserves usableVideos count', () => {
     const folder: FootageFolder = {
       id: 'f1',
       parentId: null,
       name: 'F1',
       path: 'F1',
-      analyzedSegments: 10,
-      usableSegments: 7,
+      analyzedVideos: 10,
+      usableVideos: 7,
     };
     const result = buildFootageFolderTree([folder]);
-    expect(result[0].usableSegments).toBe(7);
+    expect(result[0].usableVideos).toBe(7);
   });
 });
 
@@ -226,16 +227,9 @@ describe('formatMs', () => {
   it('formats 1000 ms as "0:01"', () => expect(formatMs(1000)).toBe('0:01'));
   it('formats 60000 ms as "1:00"', () => expect(formatMs(60000)).toBe('1:00'));
   it('formats 75000 ms as "1:15"', () => expect(formatMs(75000)).toBe('1:15'));
-  it('formats 3600000 ms (1h) as "60:00"', () => expect(formatMs(3_600_000)).toBe('60:00'));
   it('pads seconds below 10', () => expect(formatMs(5000)).toBe('0:05'));
-});
-
-// ─── formatRange ──────────────────────────────────────────────────────────────
-
-describe('formatRange', () => {
-  it('formats a range as "mm:ss–mm:ss"', () => {
-    expect(formatRange(10_000, 25_000)).toBe('0:10–0:25');
-  });
+  it('formats 3600000 ms (1h) as "1:00:00"', () => expect(formatMs(3_600_000)).toBe('1:00:00'));
+  it('formats 3661000 ms as "1:01:01"', () => expect(formatMs(3_661_000)).toBe('1:01:01'));
 });
 
 // ─── qualityStars ─────────────────────────────────────────────────────────────

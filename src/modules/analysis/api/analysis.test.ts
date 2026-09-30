@@ -2,12 +2,18 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { apiClient } from '../../../shared/lib/api-client';
 import {
   analysisStatusColor,
+  cancelAssetAnalysis,
+  cancelBatch,
   getAnalysisLogs,
   getAnalysisStats,
   getAssetAnalysis,
-  getAssetSegments,
   getProjectAnalysisStatus,
   isTerminalStatus,
+  listAnalysisBatches,
+  pauseAssetAnalysis,
+  pauseBatch,
+  resumeAssetAnalysis,
+  resumeBatch,
   runBackfill,
   startAssetAnalysis,
   type AnalysisStatus,
@@ -17,6 +23,10 @@ vi.mock('../../../shared/lib/api-client', () => ({
   apiClient: vi.fn(),
   apiUrl: (path: string) => path,
 }));
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 describe('getAnalysisStats', () => {
   beforeEach(() => {
@@ -31,7 +41,7 @@ describe('getAnalysisStats', () => {
         failed: 1,
         cancelled: 0,
       },
-      segments: { total: 45, usable: 38 },
+      videos: { analyzed: 45, usable: 38 },
     });
   });
 
@@ -54,6 +64,7 @@ describe('getAnalysisStats', () => {
 describe('runBackfill', () => {
   beforeEach(() => {
     vi.mocked(apiClient).mockResolvedValue({
+      batchId: 'batch-1',
       matched: 10,
       enqueued: 8,
       skipped: 2,
@@ -66,6 +77,14 @@ describe('runBackfill', () => {
     expect(apiClient).toHaveBeenCalledWith('/analysis/backfill', {
       method: 'POST',
       body: JSON.stringify({ mode: 'missing', folderIds: ['folder-1'], dryRun: true }),
+    });
+  });
+
+  it('includes name when provided', async () => {
+    await runBackfill({ mode: 'all', name: 'Đợt backfill Q3' });
+    expect(apiClient).toHaveBeenCalledWith('/analysis/backfill', {
+      method: 'POST',
+      body: JSON.stringify({ mode: 'all', name: 'Đợt backfill Q3' }),
     });
   });
 });
@@ -116,17 +135,9 @@ describe('startAssetAnalysis', () => {
 
 describe('getAssetAnalysis', () => {
   it('calls GET /assets/:assetId/analysis', async () => {
-    vi.mocked(apiClient).mockResolvedValue({ current: null, latest: null });
+    vi.mocked(apiClient).mockResolvedValue(null);
     await getAssetAnalysis('asset-3');
     expect(apiClient).toHaveBeenCalledWith('/assets/asset-3/analysis');
-  });
-});
-
-describe('getAssetSegments', () => {
-  it('calls GET /assets/:assetId/segments', async () => {
-    vi.mocked(apiClient).mockResolvedValue({ analysisId: 'a-1', segments: [] });
-    await getAssetSegments('asset-4');
-    expect(apiClient).toHaveBeenCalledWith('/assets/asset-4/segments');
   });
 });
 
@@ -135,6 +146,69 @@ describe('getProjectAnalysisStatus', () => {
     vi.mocked(apiClient).mockResolvedValue({ items: [] });
     await getProjectAnalysisStatus('project-1');
     expect(apiClient).toHaveBeenCalledWith('/projects/project-1/analysis-status');
+  });
+});
+
+describe('listAnalysisBatches', () => {
+  beforeEach(() => {
+    vi.mocked(apiClient).mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 });
+  });
+
+  it('calls /analysis/batches without qs when no params', async () => {
+    await listAnalysisBatches();
+    expect(apiClient).toHaveBeenCalledWith('/analysis/batches');
+  });
+
+  it('appends pagination and sort params', async () => {
+    await listAnalysisBatches({ page: 2, pageSize: 10, sortBy: 'createdAt', sortOrder: 'desc' });
+    const call = vi.mocked(apiClient).mock.calls.at(-1)![0] as string;
+    expect(call).toMatch(/^\/analysis\/batches\?/);
+    expect(call).toContain('page=2');
+    expect(call).toContain('pageSize=10');
+    expect(call).toContain('sortBy=createdAt');
+    expect(call).toContain('sortOrder=desc');
+  });
+});
+
+describe('batch actions', () => {
+  beforeEach(() => {
+    vi.mocked(apiClient).mockResolvedValue({ id: 'b1', status: 'paused' });
+  });
+
+  it('pauseBatch calls POST /analysis/batches/:id/pause', async () => {
+    await pauseBatch('b1');
+    expect(apiClient).toHaveBeenCalledWith('/analysis/batches/b1/pause', { method: 'POST' });
+  });
+
+  it('resumeBatch calls POST /analysis/batches/:id/resume', async () => {
+    await resumeBatch('b1');
+    expect(apiClient).toHaveBeenCalledWith('/analysis/batches/b1/resume', { method: 'POST' });
+  });
+
+  it('cancelBatch calls POST /analysis/batches/:id/cancel', async () => {
+    await cancelBatch('b1');
+    expect(apiClient).toHaveBeenCalledWith('/analysis/batches/b1/cancel', { method: 'POST' });
+  });
+});
+
+describe('per-asset analysis actions', () => {
+  beforeEach(() => {
+    vi.mocked(apiClient).mockResolvedValue({ affected: 1 });
+  });
+
+  it('pauseAssetAnalysis calls POST /assets/:id/analysis/pause', async () => {
+    await pauseAssetAnalysis('asset-1');
+    expect(apiClient).toHaveBeenCalledWith('/assets/asset-1/analysis/pause', { method: 'POST' });
+  });
+
+  it('resumeAssetAnalysis calls POST /assets/:id/analysis/resume', async () => {
+    await resumeAssetAnalysis('asset-1');
+    expect(apiClient).toHaveBeenCalledWith('/assets/asset-1/analysis/resume', { method: 'POST' });
+  });
+
+  it('cancelAssetAnalysis calls POST /assets/:id/analysis/cancel', async () => {
+    await cancelAssetAnalysis('asset-1');
+    expect(apiClient).toHaveBeenCalledWith('/assets/asset-1/analysis/cancel', { method: 'POST' });
   });
 });
 
