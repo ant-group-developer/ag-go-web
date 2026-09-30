@@ -26,15 +26,17 @@ import {
   Space,
   Spin,
   Tag,
+  Tooltip,
   Typography,
   theme,
 } from 'antd';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GO_PERMISSIONS } from '../../../shared/auth/permissions';
 import { formatDate } from '../../../shared/lib/format-date';
 import { CONTAINER_TABLE_STICKY } from '../../../shared/lib/sticky-table-header';
 import { usePermissions } from '../../account/hooks/use-current-account';
+import { useAssetAnalysis, useAssetSegments } from '../../analysis/hooks/use-analysis';
 import { createDownload, getDownload, type DownloadResult } from '../../downloads/api/downloads';
 import { useRefreshProjectMediaOnImportProgress } from '../../google-drive/hooks/use-refresh-project-media-on-import-progress';
 import {
@@ -47,7 +49,10 @@ import {
 } from '../../media/api/media';
 import { ProjectMediaSortDropdown } from '../../media/components/project-media-sort-dropdown';
 import { RenditionPicker } from '../../media/components/rendition-picker';
-import { VideoPlayer } from '../../media/components/video-player/video-player';
+import {
+  VideoPlayer,
+  type VideoPlayerHandle,
+} from '../../media/components/video-player/video-player';
 import {
   ORIGINAL_SOURCE_CODE,
   type VideoPlayerSource,
@@ -168,7 +173,10 @@ function PreviewPlaceholder({ status, loading }: { status: string; loading?: boo
  * Evaluation shows the original file at full quality. Formats the browser cannot display
  * (e.g. HEIC, TIFF, some video codecs) fall back to the watermarked preview.
  */
-function MediaPreview({ media, source }: { media: ProjectMedia; source: MediaSource }) {
+const MediaPreview = forwardRef<
+  RenderedMediaPreviewHandle,
+  { media: ProjectMedia; source: MediaSource }
+>(function MediaPreview({ media, source }, ref) {
   const { t } = useTranslation();
   const [originalFailed, setOriginalFailed] = useState(false);
 
@@ -177,7 +185,7 @@ function MediaPreview({ media, source }: { media: ProjectMedia; source: MediaSou
   }, [media.id]);
 
   if (media.asset.assetType === 'video') {
-    return <VideoMediaPreview key={media.id} media={media} source={source} />;
+    return <VideoMediaPreview key={media.id} ref={ref} media={media} source={source} />;
   }
   if (source === 'original' && !originalFailed) {
     return <OriginalMediaPreview media={media} onUnavailable={() => setOriginalFailed(true)} />;
@@ -192,10 +200,10 @@ function MediaPreview({ media, source }: { media: ProjectMedia; source: MediaSou
           style={{ marginBottom: 8 }}
         />
       ) : null}
-      <RenderedMediaPreview media={media} />
+      <RenderedMediaPreview ref={ref} media={media} />
     </>
   );
-}
+});
 
 /**
  * Previews a viewer is shown: without watermark when evaluating, watermarked otherwise. With
@@ -232,7 +240,10 @@ function originalSource(media: ProjectMedia): VideoPlayerSource | null {
  * un-watermarked previews; viewing offers the watermarked previews. Each context remembers its
  * own quality choice.
  */
-function VideoMediaPreview({ media, source }: { media: ProjectMedia; source: MediaSource }) {
+const VideoMediaPreview = forwardRef<
+  RenderedMediaPreviewHandle,
+  { media: ProjectMedia; source: MediaSource }
+>(function VideoMediaPreview({ media, source }, ref) {
   const evaluating = source === 'original';
   const [failed, setFailed] = useState(false);
   // The media list is refetched while files process; only a change in what is offered may
@@ -246,10 +257,11 @@ function VideoMediaPreview({ media, source }: { media: ProjectMedia; source: Med
   );
 
   if (failed || (variants.length === 0 && !original)) {
-    return <RenderedMediaPreview media={media} />;
+    return <RenderedMediaPreview ref={ref} media={media} />;
   }
   return (
     <VideoPlayer
+      ref={ref}
       assetId={media.assetId}
       variants={variants}
       original={original}
@@ -260,7 +272,7 @@ function VideoMediaPreview({ media, source }: { media: ProjectMedia; source: Med
       onError={() => setFailed(true)}
     />
   );
-}
+});
 
 function OriginalMediaPreview({
   media,
@@ -328,65 +340,86 @@ function OriginalMediaPreview({
   );
 }
 
+export type RenderedMediaPreviewHandle = VideoPlayerHandle;
+
 /**
  * Watermarked previews of images (size picked for the frame), and the plain single preview of
  * videos the player cannot handle (older responses, or no playable source).
  */
-function RenderedMediaPreview({ media }: { media: ProjectMedia }) {
-  const frameRef = useRef<HTMLDivElement>(null);
-  const isReady = media.asset.processingStatus === 'ready';
-  const isVideo = media.asset.assetType === 'video';
-  const variants = useMemo(() => (isVideo ? [] : previewsFor(media, 'preview')), [isVideo, media]);
-  const { quality, autoVariant, selected, setQuality } = useRenditionSelection(variants, frameRef);
-  const selectedUrl = useAssetPreviewUrl(
-    isReady && selected ? media.assetId : null,
-    selected?.variantCode ?? 'preview',
-  );
-  // Older API responses without preview sizes still carry a single preview URL.
-  const previewUrl = variants.length > 0 ? selectedUrl : (media.previewUrl ?? undefined);
+const RenderedMediaPreview = forwardRef<RenderedMediaPreviewHandle, { media: ProjectMedia }>(
+  function RenderedMediaPreview({ media }, ref) {
+    const frameRef = useRef<HTMLDivElement>(null);
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const isReady = media.asset.processingStatus === 'ready';
+    const isVideo = media.asset.assetType === 'video';
+    const variants = useMemo(
+      () => (isVideo ? [] : previewsFor(media, 'preview')),
+      [isVideo, media],
+    );
+    const { quality, autoVariant, selected, setQuality } = useRenditionSelection(
+      variants,
+      frameRef,
+    );
+    const selectedUrl = useAssetPreviewUrl(
+      isReady && selected ? media.assetId : null,
+      selected?.variantCode ?? 'preview',
+    );
+    // Older API responses without preview sizes still carry a single preview URL.
+    const previewUrl = variants.length > 0 ? selectedUrl : (media.previewUrl ?? undefined);
 
-  const content = !previewUrl ? (
-    <PreviewPlaceholder status={media.asset.processingStatus} loading={isReady} />
-  ) : isVideo ? (
-    <video
-      controls
-      preload="metadata"
-      src={previewUrl}
-      style={{
-        background: '#000',
-        display: 'block',
-        maxHeight: 560,
-        objectFit: 'contain',
-        width: '100%',
-      }}
-    />
-  ) : (
-    <Image
-      alt={media.asset.originalFilename}
-      preview
-      src={previewUrl}
-      style={{ maxHeight: 560, objectFit: 'contain', width: '100%' }}
-      wrapperStyle={{ display: 'block', textAlign: 'center' }}
-    />
-  );
+    // Clicking an analysed segment seeks the plain video too.
+    useImperativeHandle(ref, () => ({
+      seekTo: (seconds: number) => {
+        if (videoRef.current) {
+          videoRef.current.currentTime = seconds;
+        }
+      },
+    }));
 
-  return (
-    <div ref={frameRef}>
-      {content}
-      {variants.length > 1 ? (
-        <Flex justify="flex-end" style={{ marginTop: 8 }}>
-          <RenditionPicker
-            variants={variants}
-            value={quality}
-            autoVariant={autoVariant}
-            isVideo={isVideo}
-            onChange={setQuality}
-          />
-        </Flex>
-      ) : null}
-    </div>
-  );
-}
+    const content = !previewUrl ? (
+      <PreviewPlaceholder status={media.asset.processingStatus} loading={isReady} />
+    ) : isVideo ? (
+      <video
+        ref={videoRef}
+        controls
+        preload="metadata"
+        src={previewUrl}
+        style={{
+          background: '#000',
+          display: 'block',
+          maxHeight: 560,
+          objectFit: 'contain',
+          width: '100%',
+        }}
+      />
+    ) : (
+      <Image
+        alt={media.asset.originalFilename}
+        preview
+        src={previewUrl}
+        style={{ maxHeight: 560, objectFit: 'contain', width: '100%' }}
+        wrapperStyle={{ display: 'block', textAlign: 'center' }}
+      />
+    );
+
+    return (
+      <div ref={frameRef}>
+        {content}
+        {variants.length > 1 ? (
+          <Flex justify="flex-end" style={{ marginTop: 8 }}>
+            <RenditionPicker
+              variants={variants}
+              value={quality}
+              autoVariant={autoVariant}
+              isVideo={isVideo}
+              onChange={setQuality}
+            />
+          </Flex>
+        ) : null}
+      </div>
+    );
+  },
+);
 
 function MediaThumbnail({ media }: { media: ProjectMedia }) {
   // The list response carries the un-watermarked thumbnail; fetch it only for older responses.
@@ -596,6 +629,161 @@ function MediaDetails({
   );
 }
 
+// ─── Segment list ─────────────────────────────────────────────────────────────
+
+function formatMs(ms: number): string {
+  const total = Math.floor(ms / 1000);
+  const minutes = Math.floor(total / 60);
+  const seconds = total % 60;
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
+function SegmentList({
+  assetId,
+  isVideo,
+  previewRef,
+}: {
+  assetId: string;
+  isVideo: boolean;
+  previewRef: React.RefObject<RenderedMediaPreviewHandle | null>;
+}) {
+  const { t } = useTranslation();
+  const { token } = theme.useToken();
+  const analysis = useAssetAnalysis(assetId, isVideo);
+  const segments = useAssetSegments(assetId, isVideo);
+
+  if (!isVideo) return null;
+
+  const analysisStatus = analysis.data?.current?.status ?? analysis.data?.latest?.status ?? null;
+  const isAnalysing =
+    analysisStatus && !['completed', 'failed', 'cancelled'].includes(analysisStatus);
+
+  if (analysis.isPending || segments.isPending) {
+    return (
+      <div style={{ textAlign: 'center', padding: '12px 0' }}>
+        <Spin size="small" />
+      </div>
+    );
+  }
+
+  if (!analysisStatus && !analysis.isError) {
+    return (
+      <div style={{ color: token.colorTextSecondary, fontSize: 12, padding: '8px 0' }}>
+        {t('analysis.segmentsNoAnalysis')}
+      </div>
+    );
+  }
+
+  if (isAnalysing) {
+    return (
+      <div style={{ color: token.colorTextSecondary, fontSize: 12, padding: '8px 0' }}>
+        <Space size={6}>
+          <Spin size="small" />
+          <span>{t(`analysis.status.${analysisStatus}`)}</span>
+        </Space>
+      </div>
+    );
+  }
+
+  if (analysisStatus === 'failed') {
+    return (
+      <div style={{ color: token.colorError, fontSize: 12, padding: '8px 0' }}>
+        {t('analysis.segmentsAnalysisFailed')}
+        {analysis.data?.current?.reason ? `: ${analysis.data.current.reason}` : ''}
+      </div>
+    );
+  }
+
+  if (!segments.data || segments.data.segments.length === 0) {
+    return (
+      <div style={{ color: token.colorTextSecondary, fontSize: 12, padding: '8px 0' }}>
+        {t('analysis.segmentsEmpty')}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        maxHeight: 280,
+        overflowY: 'auto',
+        border: `1px solid ${token.colorBorderSecondary}`,
+        borderRadius: token.borderRadius,
+        marginTop: 8,
+      }}
+    >
+      {segments.data.segments.map((seg) => {
+        const caption = seg.captionVi || seg.captionEn || '';
+        return (
+          <div
+            key={seg.id}
+            role="button"
+            tabIndex={0}
+            style={{
+              display: 'flex',
+              gap: 8,
+              padding: '6px 8px',
+              cursor: 'pointer',
+              borderBottom: `1px solid ${token.colorBorderSecondary}`,
+              alignItems: 'flex-start',
+            }}
+            onClick={() => previewRef.current?.seekTo(seg.startMs / 1000)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                previewRef.current?.seekTo(seg.startMs / 1000);
+              }
+            }}
+          >
+            {seg.keyframeUrls.length > 0 ? (
+              <img
+                alt=""
+                src={seg.keyframeUrls[0]}
+                style={{
+                  width: 56,
+                  height: 32,
+                  objectFit: 'cover',
+                  borderRadius: 2,
+                  flexShrink: 0,
+                }}
+              />
+            ) : null}
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
+                <Typography.Text
+                  type="secondary"
+                  style={{ fontSize: 11, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}
+                >
+                  {formatMs(seg.startMs)}–{formatMs(seg.endMs)}
+                </Typography.Text>
+                {seg.quality !== null ? (
+                  <Tag style={{ margin: 0, fontSize: 11 }}>Q{seg.quality}</Tag>
+                ) : null}
+                {!seg.usable ? (
+                  <Tooltip title={seg.usableReason ?? seg.deadReason ?? undefined}>
+                    <Tag color="error" style={{ margin: 0, fontSize: 11, cursor: 'help' }}>
+                      {t('analysis.segmentUnusable')}
+                    </Tag>
+                  </Tooltip>
+                ) : null}
+                {seg.tags.slice(0, 3).map((tag) => (
+                  <Tag key={tag} style={{ margin: 0, fontSize: 11 }}>
+                    {tag}
+                  </Tag>
+                ))}
+              </div>
+              {caption ? (
+                <Typography.Text ellipsis style={{ fontSize: 12, display: 'block' }}>
+                  {caption}
+                </Typography.Text>
+              ) : null}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export function ProjectDetailDrawer({
   open,
   projectId,
@@ -614,6 +802,7 @@ export function ProjectDetailDrawer({
   const [approveTarget, setApproveTarget] = useState<BulkApproveTarget>();
   const [downloadJobId, setDownloadJobId] = useState<string>();
   const [mediaSort, setMediaSort] = useState<ProjectMediaSort>(DEFAULT_PROJECT_MEDIA_SORT);
+  const renderedPreviewRef = useRef<RenderedMediaPreviewHandle>(null);
   const project = useQuery({
     queryKey: projectQueryKeys.detail(projectId ?? ''),
     queryFn: () => getProject(projectId ?? ''),
@@ -937,7 +1126,25 @@ export function ProjectDetailDrawer({
                 styles={{ body: { background: '#fafafa', padding: 12 } }}
               >
                 {selectedMedia ? (
-                  <MediaPreview media={selectedMedia} source={mediaSource} />
+                  <>
+                    <MediaPreview
+                      ref={renderedPreviewRef}
+                      media={selectedMedia}
+                      source={mediaSource}
+                    />
+                    {selectedMedia.asset.assetType === 'video' ? (
+                      <div style={{ marginTop: 12 }}>
+                        <Typography.Text strong style={{ fontSize: 13 }}>
+                          {t('analysis.segmentsTitle')}
+                        </Typography.Text>
+                        <SegmentList
+                          assetId={selectedMedia.assetId}
+                          isVideo
+                          previewRef={renderedPreviewRef}
+                        />
+                      </div>
+                    ) : null}
+                  </>
                 ) : (
                   <Empty description={t('projects.selectFileToPreview')} />
                 )}

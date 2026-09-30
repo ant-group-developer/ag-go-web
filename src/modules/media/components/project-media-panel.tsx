@@ -9,7 +9,7 @@ import {
   ReloadOutlined,
   VideoCameraOutlined,
 } from '@ant-design/icons';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { UploadFile, UploadProps } from 'antd';
 import {
   Alert,
@@ -18,6 +18,7 @@ import {
   Button,
   Card,
   Image,
+  Modal,
   Progress,
   Space,
   Table,
@@ -29,9 +30,18 @@ import {
 import type { ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { GO_PERMISSIONS } from '../../../shared/auth/permissions';
+import { ApiError } from '../../../shared/lib/api-client';
 import { sortRows } from '../../../shared/lib/compare-sort-values';
 import { formatDate } from '../../../shared/lib/format-date';
 import { formatFileSize } from '../../../shared/lib/format-file-size';
+import { usePermissions } from '../../account/hooks/use-current-account';
+import {
+  analysisStatusColor,
+  startAssetAnalysis,
+  type AnalysisStatus,
+} from '../../analysis/api/analysis';
+import { useProjectAnalysisStatus } from '../../analysis/hooks/use-analysis';
 import { projectQueryKeys } from '../../projects/queries/project-query-keys';
 import {
   abortUpload,
@@ -99,6 +109,37 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
   const { t } = useTranslation();
   const { message } = AntApp.useApp();
   const queryClient = useQueryClient();
+  const { can } = usePermissions();
+  const canManageAnalysis = can(GO_PERMISSIONS.ANALYSIS_MANAGE);
+
+  const analysisStatus = useProjectAnalysisStatus(projectId, Boolean(projectId));
+
+  const analysisByAssetId = useMemo(() => {
+    const map = new Map<
+      string,
+      { status: AnalysisStatus | null; segmentCount: number; usableCount: number }
+    >();
+    for (const item of analysisStatus.data?.items ?? []) {
+      map.set(item.assetId, item);
+    }
+    return map;
+  }, [analysisStatus.data]);
+
+  const reanalyse = useMutation({
+    mutationFn: (assetId: string) => startAssetAnalysis(assetId),
+    onSuccess: () => {
+      void analysisStatus.refetch();
+      void message.success(t('analysis.reanalyseSuccess'));
+    },
+    onError: (error) => {
+      if (error instanceof ApiError && error.status === 409) {
+        void message.warning(t('analysis.reanalyseAlreadyRunning'));
+      } else {
+        void message.error(error instanceof Error ? error.message : t('analysis.reanalyseFailed'));
+      }
+      void analysisStatus.refetch();
+    },
+  });
   const uploadQueueRef = useRef<UploadTask[]>([]);
   const activeUploadsRef = useRef(0);
   const uploadBatchIdRef = useRef<string | undefined>(undefined);
@@ -383,7 +424,7 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
         style={{ marginTop: 24 }}
         size="small"
         rowKey="uid"
-        scroll={{ x: 1290, y: 400 }}
+        scroll={{ x: 1470, y: 400 }}
         pagination={false}
         locale={{ emptyText: t('media.empty') }}
         dataSource={sortedFileList}
@@ -539,6 +580,57 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
                 {formatDate(file.response ? projectMediaModifiedAt(file.response) : null)}
               </Typography.Text>
             ),
+          },
+          {
+            key: 'analysis',
+            title: t('analysis.columnTitle'),
+            width: canManageAnalysis ? 180 : 130,
+            render: (_, file) => {
+              const assetId = file.response?.assetId;
+              if (!assetId) return null;
+              const info = analysisByAssetId.get(assetId);
+              const status = info?.status ?? null;
+              const tooltipContent =
+                info && (info.segmentCount > 0 || info.usableCount > 0)
+                  ? t('analysis.segmentTooltip', {
+                      total: info.segmentCount,
+                      usable: info.usableCount,
+                    })
+                  : undefined;
+              return (
+                <Space size={4}>
+                  <Tooltip title={tooltipContent}>
+                    <Tag
+                      color={analysisStatusColor(status)}
+                      style={{ margin: 0, cursor: tooltipContent ? 'help' : undefined }}
+                    >
+                      {status ? t(`analysis.status.${status}`) : t('analysis.statusNone')}
+                    </Tag>
+                  </Tooltip>
+                  {canManageAnalysis ? (
+                    <Tooltip title={t('analysis.reanalyse')}>
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<ReloadOutlined />}
+                        loading={reanalyse.isPending && reanalyse.variables === assetId}
+                        onClick={() => {
+                          Modal.confirm({
+                            title: t('analysis.reanalyseConfirmTitle'),
+                            content: t('analysis.reanalyseConfirmContent'),
+                            okText: t('analysis.reanalyse'),
+                            cancelText: t('common.cancel'),
+                            onOk: () => {
+                              reanalyse.mutate(assetId);
+                            },
+                          });
+                        }}
+                      />
+                    </Tooltip>
+                  ) : null}
+                </Space>
+              );
+            },
           },
           {
             key: 'actions',

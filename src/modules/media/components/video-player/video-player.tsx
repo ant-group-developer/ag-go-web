@@ -11,8 +11,16 @@ import {
 import { useQueries, useQueryClient } from '@tanstack/react-query';
 import type { MenuProps } from 'antd';
 import { App, Dropdown, Flex, Slider, Tag, Typography } from 'antd';
-import type { CSSProperties, KeyboardEvent } from 'react';
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import type { CSSProperties, KeyboardEvent, Ref } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { AUTO_QUALITY, useVideoQuality } from '../../hooks/use-video-quality';
 import {
@@ -23,7 +31,13 @@ import {
 import styles from './video-player.module.css';
 import { ORIGINAL_SOURCE_CODE, sourceUrlQuery, type VideoPlayerSource } from './video-source';
 
+/** Lets a parent move playback, e.g. to the start of an analysed segment. */
+export type VideoPlayerHandle = {
+  seekTo: (seconds: number) => void;
+};
+
 type VideoPlayerProps = {
+  ref?: Ref<VideoPlayerHandle>;
   assetId: string;
   /** Rendered previews on offer; auto quality picks among them. */
   variants: VideoPlayerSource[];
@@ -84,6 +98,7 @@ function formatTime(seconds: number): string {
  * URL) is retried once with a fresh URL.
  */
 export function VideoPlayer({
+  ref,
   assetId,
   variants,
   original,
@@ -287,6 +302,18 @@ export function VideoPlayer({
     video.currentTime = value;
     setCurrentTime(value);
   }, []);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      seekTo: (seconds: number) => {
+        // Kept for the next source too: the player restores this position when it (re)loads.
+        playbackRef.current.time = seconds;
+        seekTo(seconds);
+      },
+    }),
+    [seekTo],
+  );
 
   const toggleMute = useCallback(() => {
     const video = videoRef.current;
