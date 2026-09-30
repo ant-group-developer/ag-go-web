@@ -7,6 +7,7 @@ export const ANALYSIS_STATUSES = [
   'extracting',
   'extracted',
   'describing',
+  'paused',
   'completed',
   'failed',
   'cancelled',
@@ -29,6 +30,7 @@ export type AnalysisStatusCounts = {
   extracting: number;
   extracted: number;
   describing: number;
+  paused: number;
   completed: number;
   failed: number;
   cancelled: number;
@@ -329,6 +331,7 @@ export function analysisStatusColor(status: AnalysisStatus | null | undefined): 
       return 'success';
     case 'failed':
       return 'error';
+    case 'paused':
     case 'cancelled':
       return 'warning';
     default:

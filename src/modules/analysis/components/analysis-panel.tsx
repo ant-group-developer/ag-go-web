@@ -92,6 +92,7 @@ const STATUS_ORDER: AnalysisStatus[] = [
   'extracting',
   'extracted',
   'describing',
+  'paused',
   'completed',
   'failed',
   'cancelled',
