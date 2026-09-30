@@ -383,10 +383,9 @@ const resources = {
           title: 'Phân bổ dự án và media',
           total: 'Tổng',
           empty: 'Chưa có dữ liệu',
-          shareOfProjects: 'Tỉ lệ trên tổng số dự án',
-          shareOfMedia: 'Tỉ lệ trên tổng số media',
-          overlapTags:
-            'Một dự án có nhiều tag được tính ở mỗi tag, nên tổng các dòng có thể lớn hơn dòng Tổng.',
+          search: 'Tìm {{dimension}}',
+          noMatch: 'Không có kết quả phù hợp',
+          overlapTags: 'Một dự án có nhiều tag được tính ở mỗi tag, cùng với media của dự án đó.',
           overlapMedia:
             'Cột Dự án đếm các dự án có ít nhất một media thuộc nhóm; một dự án có thể nằm ở nhiều nhóm. Độ phân giải tính theo cạnh ngắn của file gốc.',
           dimensions: {
@@ -401,7 +400,6 @@ const resources = {
             media: 'Media',
             images: 'Ảnh',
             videos: 'Video',
-            share: 'Tỉ lệ',
           },
           none: {
             category: 'Chưa có danh mục',
@@ -1637,10 +1635,10 @@ const resources = {
           title: 'Projects and media breakdown',
           total: 'Total',
           empty: 'No data yet',
-          shareOfProjects: 'Share of all projects',
-          shareOfMedia: 'Share of all media',
+          search: 'Search {{dimension}}',
+          noMatch: 'No matching results',
           overlapTags:
-            'A project with several tags counts under each of them, so the rows can add up to more than the total.',
+            'A project with several tags counts under each of them, along with its media.',
           overlapMedia:
             'Projects counts the projects with at least one media in the group; a project can appear in several groups. Resolution uses the short edge of the original file.',
           dimensions: {
@@ -1655,7 +1653,6 @@ const resources = {
             media: 'Media',
             images: 'Images',
             videos: 'Videos',
-            share: 'Share',
           },
           none: {
             category: 'No category',

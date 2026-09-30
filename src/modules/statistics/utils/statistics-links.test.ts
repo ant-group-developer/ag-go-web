@@ -4,6 +4,7 @@ import {
   folderProjectsLink,
   logsTabLink,
   projectDetailLink,
+  projectFilterLink,
   projectStatusLink,
   type StatisticsLinkAccess,
 } from './statistics-links';
@@ -58,5 +59,17 @@ describe('projectDetailLink and logsTabLink', () => {
       '/system/logs?tab=render',
     );
     expect(logsTabLink('import', access([GO_PERMISSIONS.RENDER_READ]))).toBeNull();
+  });
+});
+
+describe('projectFilterLink', () => {
+  it('filters the project list on the category, country or tag', () => {
+    expect(projectFilterLink('category', 'c-1', admin)).toBe('/all-projects?categoryIds=c-1');
+    expect(projectFilterLink('country', 'vn', reader)).toBe('/projects?countryId=vn');
+    expect(projectFilterLink('tag', 't-1', reader)).toBe('/projects?tagIds=t-1');
+  });
+
+  it('has no link for viewers without a project list', () => {
+    expect(projectFilterLink('tag', 't-1', nobody)).toBeNull();
   });
 });

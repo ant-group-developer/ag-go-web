@@ -1,9 +1,13 @@
 import { apiClient } from '../../../shared/lib/api-client';
 import type {
   StatisticsActivity,
+  StatisticsBreakdown,
+  StatisticsBreakdownDimension,
+  StatisticsBreakdownRange,
   StatisticsOperations,
   StatisticsPeriodParams,
   StatisticsProgress,
+  StatisticsProjectTrend,
   StatisticsSummary,
   StatisticsTeam,
   StatisticsTrend,
@@ -24,6 +28,20 @@ export function getStatisticsSummary(period: StatisticsPeriodParams) {
 
 export function getStatisticsTrend(period: StatisticsPeriodParams) {
   return apiClient<StatisticsTrend>(withQuery('/statistics/trend', period));
+}
+
+export function getStatisticsProjectTrend(period: StatisticsPeriodParams) {
+  return apiClient<StatisticsProjectTrend>(withQuery('/statistics/project-trend', period));
+}
+
+export function getStatisticsBreakdown(
+  period: StatisticsPeriodParams,
+  dimension: StatisticsBreakdownDimension,
+  range: StatisticsBreakdownRange,
+) {
+  return apiClient<StatisticsBreakdown>(
+    withQuery('/statistics/breakdown', { ...period, dimension, range }),
+  );
 }
 
 export function getStatisticsProgress(limit?: number) {

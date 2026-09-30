@@ -41,6 +41,18 @@ export function folderProjectsLink(
   return access.can(GO_PERMISSIONS.PROJECT_READ) ? `/projects${query}` : null;
 }
 
+/** Project list filtered on one category, country or tag, when the viewer has a list for it. */
+export function projectFilterLink(
+  filter: 'category' | 'country' | 'tag',
+  id: string,
+  access: StatisticsLinkAccess,
+): string | null {
+  const param = { category: 'categoryIds', country: 'countryId', tag: 'tagIds' }[filter];
+  const query = `?${param}=${encodeURIComponent(id)}`;
+  if (access.isAdmin) return `/all-projects${query}`;
+  return access.can(GO_PERMISSIONS.PROJECT_READ) ? `/projects${query}` : null;
+}
+
 export function projectDetailLink(projectId: string, access: StatisticsLinkAccess): string | null {
   return access.can(GO_PERMISSIONS.PROJECT_READ)
     ? `/projects/${encodeURIComponent(projectId)}`
