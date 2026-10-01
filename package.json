@@ -14,7 +14,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc -b",
     "prepare": "node -e \"import('husky').then((h) => { const m = h.default(); if (m) console.log(m); }, () => {})\""
   },
   "dependencies": {

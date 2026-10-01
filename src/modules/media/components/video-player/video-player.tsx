@@ -31,7 +31,7 @@ import {
 import styles from './video-player.module.css';
 import { ORIGINAL_SOURCE_CODE, sourceUrlQuery, type VideoPlayerSource } from './video-source';
 
-/** Lets a parent move playback, e.g. to the start of an analysed segment. */
+/** Lets a parent move playback, e.g. to the timestamp of an analysed keyframe. */
 export type VideoPlayerHandle = {
   seekTo: (seconds: number) => void;
 };

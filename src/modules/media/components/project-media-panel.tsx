@@ -117,7 +117,12 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
   const analysisByAssetId = useMemo(() => {
     const map = new Map<
       string,
-      { status: AnalysisStatus | null; segmentCount: number; usableCount: number }
+      {
+        status: AnalysisStatus | null;
+        usable: boolean | null;
+        quality: number | null;
+        titleVi: string | null;
+      }
     >();
     for (const item of analysisStatus.data?.items ?? []) {
       map.set(item.assetId, item);
@@ -590,23 +595,40 @@ export function ProjectMediaPanel({ projectId }: ProjectMediaPanelProps) {
               if (!assetId) return null;
               const info = analysisByAssetId.get(assetId);
               const status = info?.status ?? null;
-              const tooltipContent =
-                info && (info.segmentCount > 0 || info.usableCount > 0)
-                  ? t('analysis.segmentTooltip', {
-                      total: info.segmentCount,
-                      usable: info.usableCount,
-                    })
-                  : undefined;
+              const titleVi = info?.titleVi ?? null;
+              const quality = info?.quality ?? null;
+              const usable = info?.usable ?? null;
+              const qualityStars =
+                quality !== null
+                  ? '★'.repeat(Math.max(0, Math.min(5, quality))) +
+                    '☆'.repeat(5 - Math.max(0, Math.min(5, quality)))
+                  : null;
               return (
-                <Space size={4}>
-                  <Tooltip title={tooltipContent}>
+                <Space size={4} wrap>
+                  <Tooltip title={titleVi ?? undefined}>
                     <Tag
                       color={analysisStatusColor(status)}
-                      style={{ margin: 0, cursor: tooltipContent ? 'help' : undefined }}
+                      style={{ margin: 0, cursor: titleVi ? 'help' : undefined }}
                     >
                       {status ? t(`analysis.status.${status}`) : t('analysis.statusNone')}
                     </Tag>
                   </Tooltip>
+                  {qualityStars ? (
+                    <Tooltip title={`${String(quality)}/5`}>
+                      <span style={{ color: '#f59e0b', fontSize: 12, cursor: 'help' }}>
+                        {qualityStars}
+                      </span>
+                    </Tooltip>
+                  ) : null}
+                  {usable === false ? (
+                    <Tag color="error" style={{ margin: 0, fontSize: 11 }}>
+                      {t('analysis.videoUnusable')}
+                    </Tag>
+                  ) : usable === true && status === 'completed' ? (
+                    <Tag color="success" style={{ margin: 0, fontSize: 11 }}>
+                      {t('footage.usableYes')}
+                    </Tag>
+                  ) : null}
                   {canManageAnalysis ? (
                     <Tooltip title={t('analysis.reanalyse')}>
                       <Button

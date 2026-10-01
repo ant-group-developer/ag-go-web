@@ -4,25 +4,45 @@ import {
   Card,
   Col,
   Form,
+  Input,
   InputNumber,
+  Popconfirm,
+  Progress,
   Radio,
   Row,
   Space,
   Spin,
   Statistic,
+  Table,
   Tag,
   Tooltip,
   Tree,
   Typography,
 } from 'antd';
 import type { DataNode } from 'antd/es/tree';
-import { Folder as FolderIcon } from 'lucide-react';
+import { Folder as FolderIcon, Pause, Play, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { SortDropdown } from '../../../shared/components/sort-dropdown';
+import { formatDate } from '../../../shared/lib/format-date';
 import { useFolders } from '../../folders/hooks/use-folders';
 import type { Folder as FolderType } from '../../folders/types/folder.type';
-import { analysisStatusColor, type AnalysisStatus, type BackfillMode } from '../api/analysis';
-import { useAnalysisStats, useBackfillAnalysis } from '../hooks/use-analysis';
+import {
+  analysisStatusColor,
+  batchStatusColor,
+  type AnalysisBatch,
+  type AnalysisStatus,
+  type BackfillMode,
+  type BatchSortBy,
+} from '../api/analysis';
+import {
+  useAnalysisBatches,
+  useAnalysisStats,
+  useBackfillAnalysis,
+  useCancelBatch,
+  usePauseBatch,
+  useResumeBatch,
+} from '../hooks/use-analysis';
 import { AnalysisLogCard } from './analysis-log-card';
 
 // ─── Folder tree helpers ─────────────────────────────────────────────────────
@@ -72,6 +92,7 @@ const STATUS_ORDER: AnalysisStatus[] = [
   'extracting',
   'extracted',
   'describing',
+  'paused',
   'completed',
   'failed',
   'cancelled',
@@ -100,7 +121,7 @@ function AnalysisStatsCard({ folderIds }: { folderIds?: string[] }) {
   }
 
   const counts = stats.data?.counts;
-  const segments = stats.data?.segments;
+  const videos = stats.data?.videos;
 
   return (
     <Card title={t('analysis.statsTitle')}>
@@ -117,19 +138,19 @@ function AnalysisStatsCard({ folderIds }: { folderIds?: string[] }) {
             ))}
           </Space>
         </Col>
-        {segments ? (
+        {videos ? (
           <>
             <Col xs={12} sm={8}>
               <Statistic
-                title={t('analysis.segmentsTotal')}
-                value={segments.total}
+                title={t('analysis.videosAnalyzed')}
+                value={videos.analyzed}
                 valueStyle={{ fontSize: 20 }}
               />
             </Col>
             <Col xs={12} sm={8}>
               <Statistic
-                title={t('analysis.segmentsUsable')}
-                value={segments.usable}
+                title={t('analysis.videosUsable')}
+                value={videos.usable}
                 valueStyle={{ fontSize: 20, color: '#52c41a' }}
               />
             </Col>
@@ -140,9 +161,212 @@ function AnalysisStatsCard({ folderIds }: { folderIds?: string[] }) {
   );
 }
 
+// ─── Batch management table ────────────────────────────────────────────────────
+
+const BATCH_SORT_FIELDS: { value: BatchSortBy; labelKey: string }[] = [
+  { value: 'createdAt', labelKey: 'analysis.batchCreatedAt' },
+  { value: 'name', labelKey: 'analysis.batchName' },
+  { value: 'status', labelKey: 'analysis.batchStatus' },
+];
+
+function AnalysisBatchesCard() {
+  const { t } = useTranslation();
+  const { message } = AntApp.useApp();
+  const [page, setPage] = useState(1);
+  const [sortBy, setSortBy] = useState<BatchSortBy>('createdAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  const batchesQuery = useAnalysisBatches({ page, pageSize: 20, sortBy, sortOrder });
+  const pauseBatch = usePauseBatch();
+  const resumeBatch = useResumeBatch();
+  const cancelBatch = useCancelBatch();
+
+  const handleAction = async (
+    fn: (id: string) => Promise<unknown>,
+    id: string,
+    successKey: string,
+  ) => {
+    try {
+      await fn(id);
+      void message.success(t(successKey));
+    } catch (err) {
+      void message.error(err instanceof Error ? err.message : t('analysis.batchActionFailed'));
+    }
+  };
+
+  const columns = [
+    {
+      key: 'name',
+      title: t('analysis.batchName'),
+      dataIndex: 'name',
+      width: 200,
+      ellipsis: true,
+    },
+    {
+      key: 'kind',
+      title: t('analysis.batchKind'),
+      dataIndex: 'kind',
+      width: 100,
+      render: (v: AnalysisBatch['kind']) => <Tag>{v}</Tag>,
+    },
+    {
+      key: 'mode',
+      title: t('analysis.batchMode'),
+      dataIndex: 'mode',
+      width: 120,
+      render: (v: AnalysisBatch['mode']) => (v ? <Tag>{v}</Tag> : '-'),
+    },
+    {
+      key: 'progress',
+      title: t('analysis.batchProgress'),
+      width: 160,
+      render: (_: unknown, row: AnalysisBatch) => {
+        const total = row.counts.total;
+        const done = row.counts.completed + row.counts.failed + row.counts.cancelled;
+        const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+        return (
+          <div style={{ minWidth: 120 }}>
+            <Progress percent={pct} size="small" style={{ margin: 0 }} />
+            <Typography.Text type="secondary" style={{ fontSize: 11 }}>
+              {done}/{total}
+            </Typography.Text>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'status',
+      title: t('analysis.batchStatus'),
+      dataIndex: 'status',
+      width: 120,
+      render: (v: AnalysisBatch['status']) => <Tag color={batchStatusColor(v)}>{v}</Tag>,
+    },
+    {
+      key: 'createdBy',
+      title: t('analysis.batchCreatedBy'),
+      dataIndex: 'createdBy',
+      width: 140,
+      ellipsis: true,
+      render: (v: string | null) => v ?? '-',
+    },
+    {
+      key: 'createdAt',
+      title: t('analysis.batchCreatedAt'),
+      dataIndex: 'createdAt',
+      width: 160,
+      render: (v: string) => formatDate(v),
+    },
+    {
+      key: 'actions',
+      title: t('common.actions'),
+      width: 120,
+      render: (_: unknown, row: AnalysisBatch) => (
+        <Space size={4}>
+          {row.status === 'running' ? (
+            <Tooltip title={t('analysis.batchPause')}>
+              <Button
+                size="small"
+                type="text"
+                aria-label={t('analysis.batchPause')}
+                icon={<Pause size={16} />}
+                loading={pauseBatch.isPending && pauseBatch.variables === row.id}
+                onClick={() =>
+                  void handleAction(
+                    (id) => pauseBatch.mutateAsync(id),
+                    row.id,
+                    'analysis.batchPauseSuccess',
+                  )
+                }
+              />
+            </Tooltip>
+          ) : row.status === 'paused' ? (
+            <Tooltip title={t('analysis.batchResume')}>
+              <Button
+                size="small"
+                type="text"
+                aria-label={t('analysis.batchResume')}
+                icon={<Play size={16} />}
+                loading={resumeBatch.isPending && resumeBatch.variables === row.id}
+                onClick={() =>
+                  void handleAction(
+                    (id) => resumeBatch.mutateAsync(id),
+                    row.id,
+                    'analysis.batchResumeSuccess',
+                  )
+                }
+              />
+            </Tooltip>
+          ) : null}
+          {row.status !== 'completed' && row.status !== 'cancelled' ? (
+            <Popconfirm
+              title={t('analysis.batchCancelConfirm')}
+              okText={t('analysis.batchCancel')}
+              cancelText={t('common.cancel')}
+              onConfirm={() =>
+                void handleAction(
+                  (id) => cancelBatch.mutateAsync(id),
+                  row.id,
+                  'analysis.batchCancelSuccess',
+                )
+              }
+            >
+              <Tooltip title={t('analysis.batchCancel')}>
+                <Button
+                  size="small"
+                  type="text"
+                  danger
+                  aria-label={t('analysis.batchCancel')}
+                  icon={<X size={16} />}
+                  loading={cancelBatch.isPending && cancelBatch.variables === row.id}
+                />
+              </Tooltip>
+            </Popconfirm>
+          ) : null}
+        </Space>
+      ),
+    },
+  ];
+
+  return (
+    <Card
+      title={t('analysis.batchesTitle')}
+      extra={
+        <SortDropdown
+          fields={BATCH_SORT_FIELDS.map((f) => ({ value: f.value, label: t(f.labelKey) }))}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          size="small"
+          onChange={(change) => {
+            if (change.sortBy !== undefined) setSortBy(change.sortBy);
+            if (change.sortOrder !== undefined) setSortOrder(change.sortOrder);
+            setPage(1);
+          }}
+        />
+      }
+    >
+      <Table<AnalysisBatch>
+        size="small"
+        rowKey="id"
+        loading={batchesQuery.isPending}
+        dataSource={batchesQuery.data?.items ?? []}
+        columns={columns}
+        scroll={{ x: 1100 }}
+        pagination={{
+          current: page,
+          pageSize: 20,
+          total: batchesQuery.data?.total ?? 0,
+          showSizeChanger: false,
+          onChange: setPage,
+        }}
+      />
+    </Card>
+  );
+}
+
 // ─── Backfill form ────────────────────────────────────────────────────────────
 
 type BackfillFormValues = {
+  name?: string;
   mode: BackfillMode;
   priority: number;
 };
@@ -161,6 +385,7 @@ export function AnalysisPanel() {
     const values = await form.validateFields();
     const result = await backfill.mutateAsync({
       folderIds: selectedFolderIds.length > 0 ? selectedFolderIds : undefined,
+      name: values.name?.trim() || undefined,
       mode: values.mode,
       priority: values.priority || undefined,
       dryRun,
@@ -228,6 +453,10 @@ export function AnalysisPanel() {
             </Col>
 
             <Col xs={24} lg={14}>
+              <Form.Item name="name" label={t('analysis.backfillName')}>
+                <Input placeholder={t('analysis.backfillNamePlaceholder')} maxLength={200} />
+              </Form.Item>
+
               <Form.Item
                 name="mode"
                 label={t('analysis.backfillMode')}
@@ -276,6 +505,8 @@ export function AnalysisPanel() {
           </Row>
         </Form>
       </Card>
+
+      <AnalysisBatchesCard />
 
       <AnalysisLogCard />
     </Space>
