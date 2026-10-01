@@ -30,6 +30,7 @@ export function StatisticsPeriodFilter({
   const options: Array<{ label: string; value: StatisticsPeriodPreset }> = [
     { label: t('statistics.today'), value: 'today' },
     { label: t('statistics.thisWeek'), value: 'week' },
+    { label: t('statistics.last30Days'), value: 'last30' },
     { label: t('statistics.thisMonth'), value: 'month' },
     { label: t('statistics.thisYear'), value: 'year' },
     { label: t('statistics.customRange'), value: 'custom' },

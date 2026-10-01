@@ -14,6 +14,7 @@ describe('resolveStatisticsRange', () => {
   it('covers whole local days, weeks from Monday, months and years', () => {
     expect(days(resolveStatisticsRange('today', {}, now))).toEqual(['2026-09-27', '2026-09-28']);
     expect(days(resolveStatisticsRange('week', {}, now))).toEqual(['2026-09-21', '2026-09-28']);
+    expect(days(resolveStatisticsRange('last30', {}, now))).toEqual(['2026-08-29', '2026-09-28']);
     expect(days(resolveStatisticsRange('month', {}, now))).toEqual(['2026-09-01', '2026-10-01']);
     expect(days(resolveStatisticsRange('year', {}, now))).toEqual(['2026-01-01', '2027-01-01']);
   });
