@@ -1153,6 +1153,8 @@ const resources = {
         batchCancelSuccess: 'Đã huỷ đợt quét.',
         batchActionFailed: 'Không thực hiện được thao tác với đợt quét.',
         backfillName: 'Tên đợt quét',
+        backfillNamePlaceholder:
+          'Ví dụ: Quét lại folder Ẩm thực tháng 10 (bỏ trống thì tự đặt tên)',
         backfillTitle: 'Backfill phân tích',
         backfillFolders: 'Chọn thư mục (để trống = toàn hệ thống)',
         backfillFoldersSelected: 'Đã chọn {{count}} thư mục',
@@ -2458,6 +2460,8 @@ const resources = {
         batchCancelSuccess: 'Batch cancelled.',
         batchActionFailed: 'Could not perform batch action.',
         backfillName: 'Backfill name',
+        backfillNamePlaceholder:
+          'e.g. Re-scan the Food folder in October (left empty: named automatically)',
         backfillTitle: 'Backfill analysis',
         backfillFolders: 'Select folders (empty = all)',
         backfillFoldersSelected: '{{count}} folder(s) selected',
