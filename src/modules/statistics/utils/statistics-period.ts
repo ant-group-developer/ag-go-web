@@ -1,9 +1,16 @@
 import dayjs, { type Dayjs } from 'dayjs';
 import type { StatisticsPeriodParams } from '../types/statistics.type';
 
-export const STATISTICS_PERIOD_PRESETS = ['today', 'week', 'month', 'year', 'custom'] as const;
+export const STATISTICS_PERIOD_PRESETS = [
+  'today',
+  'week',
+  'last30',
+  'month',
+  'year',
+  'custom',
+] as const;
 export type StatisticsPeriodPreset = (typeof STATISTICS_PERIOD_PRESETS)[number];
-export const DEFAULT_STATISTICS_PRESET: StatisticsPeriodPreset = 'month';
+export const DEFAULT_STATISTICS_PRESET: StatisticsPeriodPreset = 'last30';
 
 /** Format of the custom `from`/`to` days kept in the URL. */
 export const STATISTICS_DATE_PARAM_FORMAT = 'YYYY-MM-DD';
@@ -42,6 +49,9 @@ export function resolveStatisticsRange(
       const monday = today.subtract((today.day() + 6) % 7, 'day');
       return { from: monday, to: monday.add(1, 'week') };
     }
+    case 'last30':
+      // The last 30 days, today included.
+      return { from: today.subtract(29, 'day'), to: today.add(1, 'day') };
     case 'month':
       return { from: today.startOf('month'), to: today.startOf('month').add(1, 'month') };
     case 'year':
