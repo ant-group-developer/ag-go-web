@@ -48,6 +48,12 @@
   cursor: pointer;
 }
 
+/* The original buffering behind the preview that stands in for it. */
+.videoStandby {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 /* The last frame of the previous source, shown while the next one loads. */
 .freezeFrame {
   opacity: 0;
@@ -131,23 +137,43 @@
   cursor: pointer;
 }
 
+/*
+ * The native thumb is invisible and zero-width so the input maps clicks linearly over the full
+ * width, exactly like the played bar; the visible knob is `.seekThumb`, centred on the bar.
+ */
+.seekInput::-webkit-slider-runnable-track {
+  height: 100%;
+  background: transparent;
+}
+
 .seekInput::-webkit-slider-thumb {
   appearance: none;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 0 2px rgba(0, 0, 0, 0.6);
-  margin-top: -4px;
+  width: 0;
+  height: 100%;
+}
+
+.seekInput::-moz-range-track {
+  height: 100%;
+  background: transparent;
 }
 
 .seekInput::-moz-range-thumb {
+  width: 0;
+  height: 100%;
+  border: none;
+  background: transparent;
+}
+
+.seekThumb {
+  position: absolute;
+  top: 50%;
   width: 12px;
   height: 12px;
-  border: none;
   border-radius: 50%;
   background: #fff;
   box-shadow: 0 0 2px rgba(0, 0, 0, 0.6);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
 }
 
 .buttonsRow {
@@ -233,6 +259,10 @@
 .qualityLabel {
   font-size: 12px;
   font-variant-numeric: tabular-nums;
+}
+
+.qualityWarming {
+  font-size: 12px;
 }
 
 .qualityBadge {
