@@ -67,6 +67,8 @@ export const FOOTAGE_SORT_FIELDS = [
   'duration',
   'resolution',
   'name',
+  'folder',
+  'project',
 ] as const;
 export type FootageSortField = (typeof FOOTAGE_SORT_FIELDS)[number];
 export type FootageSortOrder = 'asc' | 'desc';
