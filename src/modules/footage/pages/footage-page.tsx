@@ -1,6 +1,6 @@
 import { PageContainer } from '@ant-design/pro-components';
-import { Alert, Col, Empty, Pagination, Row, Spin, theme, Typography } from 'antd';
-import { Search, VideoIcon } from 'lucide-react';
+import { Alert, Col, Empty, Pagination, Radio, Row, Spin, theme, Tooltip, Typography } from 'antd';
+import { LayoutGrid, List, Search, VideoIcon } from 'lucide-react';
 import {
   parseAsArrayOf,
   parseAsBoolean,
@@ -24,11 +24,16 @@ import {
 import { FootageCard } from '../components/footage-card';
 import type { FootageFilterValues } from '../components/footage-filter-popover';
 import { FootageFilterPopover, UsableOnlySwitch } from '../components/footage-filter-popover';
+import { FootageTable } from '../components/footage-table';
 import { FootageVideoDrawer } from '../components/footage-video-drawer';
 import { useFootageFacets, useFootageFolders, useFootageSearch } from '../hooks/use-footage';
 
-const PAGE_SIZES = [12, 24, 48, 96];
-const DEFAULT_PAGE_SIZE = 24;
+/** Multiples of 20 so full rows fill a page at 4 or 5 cards per row (60 also at 3). */
+const PAGE_SIZES = [20, 40, 60, 100];
+const DEFAULT_PAGE_SIZE = 20;
+
+type ViewMode = 'grid' | 'table';
+const VIEW_MODE_STORAGE_KEY = 'ag-go.footage.viewMode';
 
 /** Label keys of the sort fields, in menu order (as on the project list). */
 const SORT_FIELD_LABELS: Record<FootageSortField, string> = {
@@ -94,6 +99,27 @@ function useDebounce<T>(value: T, delay: number): T {
   return debounced;
 }
 
+/** Grid or table, remembered per browser (as on the project list). */
+function useViewMode(): [ViewMode, (mode: ViewMode) => void] {
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    try {
+      const saved = localStorage.getItem(VIEW_MODE_STORAGE_KEY);
+      if (saved === 'grid' || saved === 'table') return saved;
+    } catch {
+      // ignore storage access errors
+    }
+    return 'grid';
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem(VIEW_MODE_STORAGE_KEY, viewMode);
+    } catch {
+      // ignore storage access errors
+    }
+  }, [viewMode]);
+  return [viewMode, setViewMode];
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export function FootagePage() {
@@ -101,6 +127,7 @@ export function FootagePage() {
   const { token } = theme.useToken();
 
   const [urlState, setUrlState] = useQueryStates(footageUrlParams, { history: 'replace' });
+  const [viewMode, setViewMode] = useViewMode();
 
   // Local keyword state with debounce
   const [keywordInput, setKeywordInput] = useState(urlState.q ?? '');
@@ -144,6 +171,10 @@ export function FootagePage() {
   const { data, isPending, isFetching, error } = useFootageSearch(searchParams, true);
 
   const foldersQuery = useFootageFolders();
+  const folderPaths = useMemo(
+    () => new Map((foldersQuery.data?.folders ?? []).map((folder) => [folder.id, folder.path])),
+    [foldersQuery.data],
+  );
   const facetsQuery = useFootageFacets({ q: urlState.q ?? undefined, ...filterValues });
 
   const items = useMemo<FootageVideo[]>(() => data?.items ?? [], [data]);
@@ -292,6 +323,33 @@ export function FootagePage() {
             value={urlState.usableOnly}
             onChange={(v) => void setUrlState({ usableOnly: v, page: null })}
           />
+
+          {/* View mode */}
+          <Radio.Group
+            value={viewMode}
+            onChange={(e) => setViewMode(e.target.value as ViewMode)}
+            buttonStyle="solid"
+            style={{ marginLeft: 'auto' }}
+          >
+            <Tooltip title={t('footage.viewTable')}>
+              <Radio.Button
+                value="table"
+                className="icon-radio-button"
+                aria-label={t('footage.viewTable')}
+              >
+                <List size={16} />
+              </Radio.Button>
+            </Tooltip>
+            <Tooltip title={t('footage.viewGrid')}>
+              <Radio.Button
+                value="grid"
+                className="icon-radio-button"
+                aria-label={t('footage.viewGrid')}
+              >
+                <LayoutGrid size={16} />
+              </Radio.Button>
+            </Tooltip>
+          </Radio.Group>
         </div>
 
         {/* Error state */}
@@ -318,26 +376,26 @@ export function FootagePage() {
           </div>
         ) : (
           <Spin spinning={isFetching} delay={200}>
-            {/* Result count */}
-            <Typography.Text
-              type="secondary"
-              style={{ fontSize: 12, display: 'block', marginBottom: 12 }}
-            >
-              {t('footage.resultRange', {
-                from: (urlState.page - 1) * pageSize + 1,
-                to: (urlState.page - 1) * pageSize + items.length,
-                total,
-              })}
-            </Typography.Text>
-
-            {/* Responsive grid */}
-            <Row gutter={[16, 16]}>
-              {items.map((item) => (
-                <Col key={item.assetId} xs={24} sm={12} md={8} lg={6} xl={6} xxl={4}>
-                  <FootageCard item={item} onClick={() => setDrawerItem(item)} />
-                </Col>
-              ))}
-            </Row>
+            {viewMode === 'table' ? (
+              <FootageTable items={items} folderPaths={folderPaths} onOpen={setDrawerItem} />
+            ) : (
+              // 5 per row from 1600px (Full HD); 24 grid columns do not split by 5, hence flex.
+              <Row gutter={[16, 16]}>
+                {items.map((item) => (
+                  <Col
+                    key={item.assetId}
+                    xs={24}
+                    sm={12}
+                    md={8}
+                    lg={6}
+                    xl={6}
+                    xxl={{ flex: '20%' }}
+                  >
+                    <FootageCard item={item} onClick={() => setDrawerItem(item)} />
+                  </Col>
+                ))}
+              </Row>
+            )}
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 24 }}>
               <Pagination
@@ -346,7 +404,9 @@ export function FootagePage() {
                 total={total}
                 pageSizeOptions={PAGE_SIZES}
                 showSizeChanger
-                showTotal={(count) => t('footage.resultCount', { count })}
+                showTotal={(count, range) =>
+                  t('common.paginationTotal', { start: range[0], end: range[1], total: count })
+                }
                 onChange={(page, size) => {
                   void setUrlState({
                     page: size !== pageSize || page === 1 ? null : page,
