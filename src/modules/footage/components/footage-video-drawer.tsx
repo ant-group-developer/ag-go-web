@@ -480,7 +480,8 @@ export function FootageVideoDrawer({ open, item, onClose }: FootageVideoDrawerPr
                 <FootagePlayer media={media} playerRef={playerRef} />
               )}
 
-              {media?.keyframes.length ? (
+              {/* A lone keyframe adds nothing over the player itself. */}
+              {media && media.keyframes.length > 1 ? (
                 <div>
                   <Typography.Text
                     strong
