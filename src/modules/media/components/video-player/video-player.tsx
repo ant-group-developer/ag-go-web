@@ -11,7 +11,7 @@ import {
 import { useQueries, useQueryClient } from '@tanstack/react-query';
 import type { MenuProps } from 'antd';
 import { App, Dropdown, Flex, Slider, Tag, Typography } from 'antd';
-import type { CSSProperties, KeyboardEvent, Ref } from 'react';
+import type { CSSProperties, KeyboardEvent, Ref, SyntheticEvent } from 'react';
 import {
   useCallback,
   useEffect,
@@ -67,6 +67,18 @@ const CONTROLS_IDLE_MS = 2_500;
 const SOURCE_URL_STALE_MS = 5 * 60 * 1000;
 /** The frozen frame never outlives a switch that fails to report back. */
 const FREEZE_TIMEOUT_MS = 8_000;
+/** The original takes over from its stand-in preview once this much is buffered ahead. */
+const WARM_MIN_AHEAD_SECONDS = 2;
+/** While playing, the original warms up this far ahead of the playhead (doubling on misses). */
+const WARM_LEAD_SECONDS = 3;
+const WARM_MAX_LEAD_SECONDS = 12;
+/** A warmed original this close to the playhead takes over without seeking again. */
+const WARM_SYNC_TOLERANCE_SECONDS = 0.25;
+/** The warming original keeps within this of the playhead, since buffering follows it. */
+const WARM_FOLLOW_SECONDS = 1;
+/** An original that has not even loaded its metadata by then is switched to directly. */
+const WARM_GIVE_UP_MS = 15_000;
+const WARM_POLL_MS = 500;
 
 type FullscreenDocument = Document & {
   webkitFullscreenElement?: Element | null;
@@ -79,6 +91,39 @@ function currentFullscreenElement(): Element | null {
   const doc = document as FullscreenDocument;
   return doc.fullscreenElement ?? doc.webkitFullscreenElement ?? null;
 }
+
+/** Seconds buffered from `time` on, or -1 when `time` itself is not buffered. */
+function bufferedAhead(video: HTMLVideoElement, time: number): number {
+  const { buffered } = video;
+  for (let i = 0; i < buffered.length; i += 1) {
+    if (buffered.start(i) <= time + 0.05 && time <= buffered.end(i)) {
+      return buffered.end(i) - time;
+    }
+  }
+  return -1;
+}
+
+const VIDEO_EVENT_NAMES = [
+  'onClick',
+  'onDoubleClick',
+  'onError',
+  'onLoadedMetadata',
+  'onLoadedData',
+  'onSeeked',
+  'onTimeUpdate',
+  'onProgress',
+  'onCanPlay',
+  'onCanPlayThrough',
+  'onPlay',
+  'onPause',
+  'onLoadStart',
+  'onSeeking',
+  'onWaiting',
+  'onPlaying',
+] as const;
+type VideoEventHandlers = Partial<
+  Record<(typeof VIDEO_EVENT_NAMES)[number], (event: SyntheticEvent<HTMLVideoElement>) => void>
+>;
 
 function formatTime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) {
@@ -103,6 +148,10 @@ function formatTime(seconds: number): string {
  * source has reached that position, so the picture never blanks. URLs of every source are
  * fetched up front and kept for the player's lifetime; a source that errors (e.g. an expired
  * URL) is retried once with a fresh URL.
+ *
+ * The original is often a camera file of 100+ Mbps with its index at the end, slow to start.
+ * Choosing it keeps a preview playing (the stand-in) while the original buffers at the playhead
+ * in a second, hidden `<video>`; once enough is buffered the two elements swap in place.
  */
 export function VideoPlayer({
   ref,
@@ -120,7 +169,22 @@ export function VideoPlayer({
   const { message } = App.useApp();
   const queryClient = useQueryClient();
   const rootRef = useRef<HTMLDivElement>(null);
+  // Two elements: the active one plays, the standby one warms up the original (see above).
+  // `videoRef` always points at the active one.
   const videoRef = useRef<HTMLVideoElement>(null);
+  const slotElementsRef = useRef<(HTMLVideoElement | null)[]>([null, null]);
+  const activeSlotRef = useRef(0);
+  const [activeSlot, setActiveSlot] = useState(0);
+  const slotRefCallbacks = useMemo(
+    () =>
+      [0, 1].map((slot) => (element: HTMLVideoElement | null) => {
+        slotElementsRef.current[slot] = element;
+        if (activeSlotRef.current === slot) {
+          videoRef.current = element;
+        }
+      }),
+    [],
+  );
   const canvasRef = useRef<HTMLCanvasElement>(null);
   // Playback position/state survives switching the source (manual or automatic quality change).
   const playbackRef = useRef({ time: 0, playing: false });
@@ -149,16 +213,76 @@ export function VideoPlayer({
   // A refetched (newer) URL of the source already playing would restart it; keep the one in use.
   const pinnedUrlsRef = useRef(new Map<string, string>());
   const retriedCodesRef = useRef(new Set<string>());
-  const activeIndex = activeVariant
-    ? sources.findIndex((source) => source.variantCode === activeVariant.variantCode)
-    : -1;
-  const activeResult = activeIndex >= 0 ? urlResults[activeIndex] : undefined;
+  const resultFor = (code: string | undefined) => {
+    const index = code ? sources.findIndex((source) => source.variantCode === code) : -1;
+    return index >= 0 ? urlResults[index] : undefined;
+  };
+  const urlFor = (code: string | undefined): string | undefined => {
+    if (!code) {
+      return undefined;
+    }
+    const url = pinnedUrlsRef.current.get(code) ?? resultFor(code)?.data;
+    if (url) {
+      pinnedUrlsRef.current.set(code, url);
+    }
+    return url;
+  };
   const activeCode = activeVariant?.variantCode;
-  const desiredUrl =
-    (activeCode ? pinnedUrlsRef.current.get(activeCode) : undefined) ?? activeResult?.data;
-  if (activeCode && desiredUrl) {
-    pinnedUrlsRef.current.set(activeCode, desiredUrl);
-  }
+
+  // --- Original warm-up: a preview stands in until the original has buffered at the playhead.
+  const [promoted, setPromoted] = useState(false);
+  const [, setUrlRetries] = useState(0);
+  const displayedCodeRef = useRef<string | undefined>(undefined);
+  const warmLeadRef = useRef(WARM_LEAD_SECONDS);
+  const standInCode =
+    activeCode === ORIGINAL_SOURCE_CODE && !promoted
+      ? displayedCodeRef.current && displayedCodeRef.current !== ORIGINAL_SOURCE_CODE
+        ? displayedCodeRef.current
+        : autoVariant?.variantCode
+      : undefined;
+  // The source the active element shows: the stand-in while the original warms up.
+  const mainCode = standInCode ?? activeCode;
+  const mainResult = resultFor(mainCode);
+  const desiredUrl = urlFor(mainCode);
+  const warmResult = standInCode ? resultFor(ORIGINAL_SOURCE_CODE) : undefined;
+  const warmUrl = standInCode ? urlFor(ORIGINAL_SOURCE_CODE) : undefined;
+
+  useEffect(() => {
+    if (activeCode !== ORIGINAL_SOURCE_CODE) {
+      // Choosing the original again warms it up again behind the preview playing then.
+      setPromoted(false);
+    }
+  }, [activeCode]);
+
+  useEffect(() => {
+    warmLeadRef.current = WARM_LEAD_SECONDS;
+    const standby = slotElementsRef.current[1 - activeSlot];
+    if (!warmUrl && standby && !standby.hasAttribute('src')) {
+      // Stops whatever the standby element was still fetching.
+      standby.load();
+    }
+  }, [activeSlot, warmUrl]);
+
+  // Latest `advanceWarmUp` (defined with the player state below) for the timer here.
+  const advanceWarmUpRef = useRef<() => void>(() => undefined);
+  useEffect(() => {
+    if (!warmUrl) {
+      return undefined;
+    }
+    // A hidden element that already can play may stop firing `progress`; poll as well.
+    const poll = setInterval(() => advanceWarmUpRef.current(), WARM_POLL_MS);
+    // Browsers that only load on play (iOS ignores preload) never warm up: switch directly.
+    const giveUp = setTimeout(() => {
+      const standby = slotElementsRef.current[1 - activeSlotRef.current];
+      if (!standby || standby.readyState < HTMLMediaElement.HAVE_METADATA) {
+        setPromoted(true);
+      }
+    }, WARM_GIVE_UP_MS);
+    return () => {
+      clearInterval(poll);
+      clearTimeout(giveUp);
+    };
+  }, [warmUrl]);
 
   // --- Seamless switching: freeze the last frame over the video while the next source loads.
   const [displayedUrl, setDisplayedUrl] = useState<string>();
@@ -174,6 +298,7 @@ export function VideoPlayer({
     if (!desiredUrl || desiredUrl === displayedUrl) {
       return;
     }
+    displayedCodeRef.current = mainCode;
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (displayedUrl && video && canvas && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
@@ -189,58 +314,76 @@ export function VideoPlayer({
       }
     }
     setDisplayedUrl(desiredUrl);
-  }, [desiredUrl, displayedUrl]);
+  }, [desiredUrl, displayedUrl, mainCode]);
 
   useEffect(() => () => clearTimeout(freezeTimerRef.current), []);
 
-  const handleSourceError = useCallback(() => {
-    const code = activeCode;
-    unfreeze();
-    if (!code) {
+  const fallBackFromOriginal = useCallback(() => {
+    // Formats the browser cannot play (HEVC, ProRes...) fall back to the rendered previews.
+    setOriginalFailed(true);
+    setQuality(AUTO_QUALITY, { remember: false });
+    void message.warning(t('media.originalUnplayable'));
+  }, [message, setQuality, t]);
+
+  /** `onMain`: the failing source is the one shown, not the original warming up behind it. */
+  const handleSourceError = useCallback(
+    (code: string | undefined, onMain: boolean) => {
+      if (onMain) {
+        unfreeze();
+      }
+      if (!code) {
+        onError?.();
+        return;
+      }
+      if (!retriedCodesRef.current.has(code)) {
+        // Most often an expired presigned URL: try once more with a fresh one.
+        retriedCodesRef.current.add(code);
+        pinnedUrlsRef.current.delete(code);
+        void queryClient
+          .fetchQuery({ ...sourceUrlQuery(assetId, code), staleTime: 0 })
+          .then((url) => {
+            pinnedUrlsRef.current.set(code, url);
+            if (onMain) {
+              setDisplayedUrl(url);
+            } else {
+              setUrlRetries((count) => count + 1);
+            }
+          })
+          .catch(() => (onMain ? onError?.() : fallBackFromOriginal()));
+        return;
+      }
+      if (code === ORIGINAL_SOURCE_CODE && variants.length > 0) {
+        fallBackFromOriginal();
+        return;
+      }
       onError?.();
-      return;
-    }
-    if (!retriedCodesRef.current.has(code)) {
-      // Most often an expired presigned URL: try once more with a fresh one.
-      retriedCodesRef.current.add(code);
-      pinnedUrlsRef.current.delete(code);
-      void queryClient
-        .fetchQuery({ ...sourceUrlQuery(assetId, code), staleTime: 0 })
-        .then((url) => {
-          pinnedUrlsRef.current.set(code, url);
-          setDisplayedUrl(url);
-        })
-        .catch(() => onError?.());
-      return;
-    }
-    if (code === ORIGINAL_SOURCE_CODE && variants.length > 0) {
-      // Formats the browser cannot play (HEVC, ProRes...) fall back to the rendered previews.
-      setOriginalFailed(true);
-      setQuality(AUTO_QUALITY, { remember: false });
-      void message.warning(t('media.originalUnplayable'));
-      return;
-    }
-    onError?.();
-  }, [
-    activeCode,
-    assetId,
-    message,
-    onError,
-    queryClient,
-    setQuality,
-    sourceUrlQuery,
-    t,
-    unfreeze,
-    variants.length,
-  ]);
+    },
+    [
+      assetId,
+      fallBackFromOriginal,
+      onError,
+      queryClient,
+      sourceUrlQuery,
+      unfreeze,
+      variants.length,
+    ],
+  );
 
   useEffect(() => {
-    if (activeResult?.isError && !pinnedUrlsRef.current.has(activeCode ?? '')) {
-      handleSourceError();
+    if (mainResult?.isError && !pinnedUrlsRef.current.has(mainCode ?? '')) {
+      handleSourceError(mainCode, true);
     }
-    // Only a failed URL request of the active source matters here.
+    // Only a failed URL request of the shown source matters here.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeResult?.isError, activeCode]);
+  }, [mainResult?.isError, mainCode]);
+
+  useEffect(() => {
+    if (warmResult?.isError && !pinnedUrlsRef.current.has(ORIGINAL_SOURCE_CODE)) {
+      handleSourceError(ORIGINAL_SOURCE_CODE, false);
+    }
+    // Only a failed URL request of the warming original matters here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [warmResult?.isError]);
 
   // --- Player state.
   const [isPlaying, setIsPlaying] = useState(false);
@@ -461,6 +604,183 @@ export function VideoPlayer({
     }),
   ];
 
+  // --- Handing over from the stand-in preview to the warmed-up original.
+  const promoteOriginal = (main: HTMLVideoElement, standby: HTMLVideoElement) => {
+    const nextSlot = 1 - activeSlotRef.current;
+    const playing = !main.paused;
+    standby.playbackRate = playbackRate;
+    standby.volume = volume;
+    standby.muted = muted;
+    // From here on, events of the element that stops playing are ignored.
+    activeSlotRef.current = nextSlot;
+    videoRef.current = standby;
+    main.pause();
+    main.muted = true;
+    if (playing) {
+      void standby.play().catch(() => {
+        playbackRef.current.playing = false;
+        setIsPlaying(false);
+      });
+    }
+    playbackRef.current.time = standby.currentTime;
+    displayedCodeRef.current = ORIGINAL_SOURCE_CODE;
+    setCurrentTime(standby.currentTime);
+    const { buffered } = standby;
+    setBufferedEnd(buffered.length > 0 ? buffered.end(buffered.length - 1) : 0);
+    setActiveSlot(nextSlot);
+    setDisplayedUrl(warmUrl);
+    setPromoted(true);
+  };
+
+  /**
+   * Keeps the warming original at the playhead (ahead of it while playing and not yet
+   * buffered there, since the playhead moves on meanwhile) and hands over once it has data
+   * there. Chrome buffers only ~25 MB ahead of an element's position, under 2 s of a
+   * 100+ Mbps original, so "buffer full" (HAVE_ENOUGH_DATA) counts as ready too.
+   */
+  const advanceWarmUp = () => {
+    const main = videoRef.current;
+    const standby = slotElementsRef.current[1 - activeSlotRef.current];
+    if (
+      !warmUrl ||
+      !main ||
+      !standby ||
+      standby.seeking ||
+      standby.readyState < HTMLMediaElement.HAVE_METADATA
+    ) {
+      return;
+    }
+    const playing = !main.paused;
+    const target = main.currentTime;
+    const end = Number.isFinite(standby.duration) ? standby.duration : Number.POSITIVE_INFINITY;
+    const ahead = bufferedAhead(standby, target);
+    const enough =
+      ahead >= 0 &&
+      (ahead >= WARM_MIN_AHEAD_SECONDS ||
+        target + ahead >= end - 0.1 ||
+        standby.readyState >= HTMLMediaElement.HAVE_ENOUGH_DATA);
+    if (ahead >= 0) {
+      const drift = Math.abs(standby.currentTime - target);
+      if (
+        enough &&
+        drift <= WARM_SYNC_TOLERANCE_SECONDS &&
+        standby.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA
+      ) {
+        promoteOriginal(main, standby);
+      } else if (enough || drift > WARM_FOLLOW_SECONDS) {
+        // Browsers buffer ahead of the element's own position, so it follows the playhead.
+        // Within the buffered range, so it lands quickly; `seeked` comes back here.
+        standby.currentTime = Math.min(target + (playing ? 0.15 : 0), end);
+      }
+      return;
+    }
+    const waitingAhead =
+      standby.currentTime > target && standby.currentTime - target <= warmLeadRef.current + 1;
+    if (playing && waitingAhead) {
+      // The playhead is coming up to where the original is buffering.
+      return;
+    }
+    standby.currentTime = Math.min(target + (playing ? warmLeadRef.current : 0), end);
+    if (playing) {
+      // Missed: the connection is slower than the playhead, so wait further ahead next time.
+      warmLeadRef.current = Math.min(warmLeadRef.current * 2, WARM_MAX_LEAD_SECONDS);
+    }
+  };
+
+  useEffect(() => {
+    advanceWarmUpRef.current = advanceWarmUp;
+  });
+
+  const mainHandlers: VideoEventHandlers = {
+    onClick: () => {
+      // A tap on a touch screen first brings the hidden controls back.
+      if (controlsHidden) {
+        showControls();
+      } else {
+        togglePlay();
+      }
+    },
+    onDoubleClick: toggleFullscreen,
+    onError: () => handleSourceError(mainCode, true),
+    onLoadedMetadata: (event) => {
+      const video = event.currentTarget;
+      setDuration(video.duration || 0);
+      const { time, playing } = playbackRef.current;
+      if (time > 0) {
+        // The frozen frame stays up until the seek lands (onSeeked).
+        video.currentTime = time;
+      }
+      video.playbackRate = playbackRate;
+      video.volume = volume;
+      video.muted = muted;
+      if (playing) {
+        void video.play().catch(() => undefined);
+      }
+    },
+    onLoadedData: (event) => {
+      if (!event.currentTarget.seeking) {
+        unfreeze();
+      }
+    },
+    onSeeked: (event) => {
+      if (event.currentTarget.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+        unfreeze();
+      }
+      advanceWarmUp();
+    },
+    onTimeUpdate: (event) => {
+      const video = event.currentTarget;
+      // Loading a new source (a quality switch) resets the position to 0 before its
+      // metadata is in; that must not overwrite the position to resume from.
+      if (video.readyState < HTMLMediaElement.HAVE_METADATA) {
+        return;
+      }
+      playbackRef.current.time = video.currentTime;
+      setCurrentTime(video.currentTime);
+      videoEventHandlers.onTimeUpdate();
+      advanceWarmUp();
+    },
+    onProgress: (event) => {
+      const { buffered } = event.currentTarget;
+      setBufferedEnd(buffered.length > 0 ? buffered.end(buffered.length - 1) : 0);
+    },
+    onPlay: () => {
+      playbackRef.current.playing = true;
+      setIsPlaying(true);
+    },
+    onPause: () => {
+      playbackRef.current.playing = false;
+      setIsPlaying(false);
+      setControlsHidden(false);
+      advanceWarmUp();
+    },
+    onLoadStart: videoEventHandlers.onLoadStart,
+    onSeeking: videoEventHandlers.onSeeking,
+    onWaiting: videoEventHandlers.onWaiting,
+    onPlaying: videoEventHandlers.onPlaying,
+  };
+  const standbyHandlers: VideoEventHandlers = {
+    onError: () => handleSourceError(ORIGINAL_SOURCE_CODE, false),
+    onLoadedMetadata: (event) => {
+      event.currentTarget.muted = true;
+      advanceWarmUp();
+    },
+    onLoadedData: advanceWarmUp,
+    onProgress: advanceWarmUp,
+    onCanPlay: advanceWarmUp,
+    onCanPlayThrough: advanceWarmUp,
+    onSeeked: advanceWarmUp,
+  };
+  // Roles swap between the two elements, so each event goes by the role at the time it fires.
+  const slotHandlers = (slot: number): VideoEventHandlers =>
+    Object.fromEntries(
+      VIDEO_EVENT_NAMES.map((name) => [
+        name,
+        (event: SyntheticEvent<HTMLVideoElement>) =>
+          (activeSlotRef.current === slot ? mainHandlers : standbyHandlers)[name]?.(event),
+      ]),
+    );
+
   // The frame keeps the video's shape from the start, so nothing jumps while a source loads.
   // Previews first: their sizes follow the displayed (rotated) frame, the original's may not.
   const shape = [...variants, ...manualOnly].find((source) => source.width && source.height);
@@ -492,76 +812,22 @@ export function VideoPlayer({
       }}
     >
       <div className={styles.frame} style={isFullscreen ? undefined : { aspectRatio }}>
-        <video
-          ref={videoRef}
-          className={styles.video}
-          preload="metadata"
-          playsInline
-          src={displayedUrl}
-          onClick={() => {
-            // A tap on a touch screen first brings the hidden controls back.
-            if (controlsHidden) {
-              showControls();
-            } else {
-              togglePlay();
-            }
-          }}
-          onDoubleClick={toggleFullscreen}
-          onError={handleSourceError}
-          onLoadedMetadata={(event) => {
-            const video = event.currentTarget;
-            setDuration(video.duration || 0);
-            const { time, playing } = playbackRef.current;
-            if (time > 0) {
-              // The frozen frame stays up until the seek lands (onSeeked).
-              video.currentTime = time;
-            }
-            video.playbackRate = playbackRate;
-            video.volume = volume;
-            video.muted = muted;
-            if (playing) {
-              void video.play().catch(() => undefined);
-            }
-          }}
-          onLoadedData={(event) => {
-            if (!event.currentTarget.seeking) {
-              unfreeze();
-            }
-          }}
-          onSeeked={(event) => {
-            if (event.currentTarget.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-              unfreeze();
-            }
-          }}
-          onTimeUpdate={(event) => {
-            const video = event.currentTarget;
-            // Loading a new source (a quality switch) resets the position to 0 before its
-            // metadata is in; that must not overwrite the position to resume from.
-            if (video.readyState < HTMLMediaElement.HAVE_METADATA) {
-              return;
-            }
-            playbackRef.current.time = video.currentTime;
-            setCurrentTime(video.currentTime);
-            videoEventHandlers.onTimeUpdate();
-          }}
-          onProgress={(event) => {
-            const { buffered } = event.currentTarget;
-            setBufferedEnd(buffered.length > 0 ? buffered.end(buffered.length - 1) : 0);
-          }}
-          onPlay={() => {
-            playbackRef.current.playing = true;
-            setIsPlaying(true);
-          }}
-          onPause={() => {
-            playbackRef.current.playing = false;
-            setIsPlaying(false);
-            setControlsHidden(false);
-          }}
-          onLoadStart={videoEventHandlers.onLoadStart}
-          onSeeking={videoEventHandlers.onSeeking}
-          onWaiting={videoEventHandlers.onWaiting}
-          onPlaying={videoEventHandlers.onPlaying}
-        />
+        {[0, 1].map((slot) => {
+          const isMain = slot === activeSlot;
+          return (
+            <video
+              key={slot}
+              ref={slotRefCallbacks[slot]}
+              className={`${styles.video} ${isMain ? '' : styles.videoStandby}`}
+              // Buffering starts as soon as the player opens, not only on play.
+              preload="auto"
+              playsInline
+              aria-hidden={isMain ? undefined : true}
+              src={isMain ? displayedUrl : warmUrl}
+              {...slotHandlers(slot)}
+            />
+          );
+        })}
         <canvas
           ref={canvasRef}
           className={`${styles.freezeFrame} ${frozen ? styles.freezeFrameVisible : ''}`}
@@ -578,6 +844,7 @@ export function VideoPlayer({
             <div className={styles.seekTrack} />
             <div className={styles.seekBuffered} style={{ width: `${bufferedPercent}%` }} />
             <div className={styles.seekPlayed} style={{ width: `${playedPercent}%` }} />
+            <div className={styles.seekThumb} style={{ left: `${playedPercent}%` }} />
             <input
               className={styles.seekInput}
               type="range"
@@ -653,6 +920,12 @@ export function VideoPlayer({
                         ? t('media.qualityOriginal')
                         : variantResolutionLabel(activeVariant)}
                     </span>
+                  ) : null}
+                  {standInCode ? (
+                    <LoadingOutlined
+                      className={styles.qualityWarming}
+                      title={t('media.originalWarming')}
+                    />
                   ) : null}
                 </button>
               </Dropdown>
