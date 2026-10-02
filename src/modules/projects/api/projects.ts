@@ -39,6 +39,9 @@ export function getProjects(params: ProjectListParams = {}): Promise<ProjectPage
   if (params.evaluationStatuses?.length) {
     query.set('evaluationStatuses', params.evaluationStatuses.join(','));
   }
+  if (params.ownerUserIds?.length) {
+    query.set('ownerUserIds', params.ownerUserIds.join(','));
+  }
   if (params.mine) {
     query.set('mine', 'true');
   }
@@ -50,6 +53,17 @@ export function getProjects(params: ProjectListParams = {}): Promise<ProjectPage
   }
   const queryString = query.toString();
   return apiClient<ProjectPage>(`/projects${queryString ? `?${queryString}` : ''}`);
+}
+
+/** An owner (author) of projects the user can list. */
+export type ProjectOwner = {
+  id: string;
+  projectCount: number;
+  user: { id: string; name?: string | null; email?: string | null; avatar?: string | null } | null;
+};
+
+export function getProjectOwners(): Promise<ProjectOwner[]> {
+  return apiClient<ProjectOwner[]>('/projects/owners');
 }
 
 export function createProject(input: CreateProjectInput): Promise<Project> {

@@ -85,6 +85,7 @@ const projectUrlParams = {
   folderId: parseAsString,
   folderIds: parseAsArrayOf(parseAsString).withDefault([]),
   tagIds: parseAsArrayOf(parseAsString).withDefault([]),
+  ownerUserIds: parseAsArrayOf(parseAsString).withDefault([]),
   countryId: parseAsString,
   provinceId: parseAsString,
   categoryIds: parseAsArrayOf(parseAsString).withDefault([]),
@@ -266,6 +267,7 @@ export function ProjectsPage({ scope = 'evaluated' }: { scope?: ProjectListScope
     provinceId: urlState.provinceId ?? undefined,
     categoryIds: urlState.categoryIds.length ? urlState.categoryIds : undefined,
     tagIds: urlState.tagIds?.length ? urlState.tagIds : undefined,
+    ownerUserIds: urlState.ownerUserIds.length ? urlState.ownerUserIds : undefined,
     evaluationStatuses: urlState.evaluationStatuses.length
       ? urlState.evaluationStatuses
       : undefined,
@@ -284,6 +286,7 @@ export function ProjectsPage({ scope = 'evaluated' }: { scope?: ProjectListScope
         filterValues.countryId || filterValues.provinceId,
         filterValues.categoryIds?.length,
         filterValues.tagIds?.length,
+        filterValues.ownerUserIds?.length,
       ].filter(Boolean).length,
     [filterValues],
   );
@@ -294,6 +297,7 @@ export function ProjectsPage({ scope = 'evaluated' }: { scope?: ProjectListScope
       folderId: null,
       folderIds: values.folderIds?.length ? values.folderIds : null,
       tagIds: values.tagIds?.length ? values.tagIds : null,
+      ownerUserIds: values.ownerUserIds?.length ? values.ownerUserIds : null,
       countryId: values.countryId ?? null,
       provinceId: values.provinceId ?? null,
       categoryIds: values.categoryIds?.length ? values.categoryIds : null,
@@ -319,6 +323,7 @@ export function ProjectsPage({ scope = 'evaluated' }: { scope?: ProjectListScope
       folderId: null,
       folderIds: null,
       tagIds: null,
+      ownerUserIds: null,
       countryId: null,
       provinceId: null,
       categoryIds: null,
@@ -561,6 +566,7 @@ export function ProjectsPage({ scope = 'evaluated' }: { scope?: ProjectListScope
                 onClear={handleClearFilter}
                 activeCount={activeFilterCount}
                 statusOptions={statusOptions}
+                showAuthorFilter={!scopeConfig.filters.mine}
               />
               <Input.Search
                 allowClear
@@ -601,6 +607,7 @@ export function ProjectsPage({ scope = 'evaluated' }: { scope?: ProjectListScope
                   ? { folderId: urlState.folderId }
                   : {}),
               ...(urlState.tagIds.length ? { tagIds: urlState.tagIds } : {}),
+              ...(urlState.ownerUserIds.length ? { ownerUserIds: urlState.ownerUserIds } : {}),
               ...(urlState.countryId ? { countryId: urlState.countryId } : {}),
               ...(urlState.provinceId ? { provinceId: urlState.provinceId } : {}),
               ...(urlState.categoryIds.length ? { categoryIds: urlState.categoryIds } : {}),

@@ -9,6 +9,7 @@ import {
   MapPin,
   Search,
   Tag as TagIcon,
+  UserRound,
 } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -19,6 +20,7 @@ import { useFolders } from '../../folders/hooks/use-folders';
 import type { Folder as FolderType } from '../../folders/types/folder.type';
 import { useProvinces } from '../../provinces/hooks/use-provinces';
 import { useTags } from '../../tags/hooks/use-tags';
+import { useProjectOwners } from '../hooks/use-projects';
 import type { ProjectEvaluationStatus } from '../types/project-list-params.type';
 import { getProjectStatus } from '../utils/project-status.util';
 
@@ -29,10 +31,11 @@ export type ProjectFilterValues = {
   provinceId?: string;
   categoryIds?: string[];
   tagIds?: string[];
+  ownerUserIds?: string[];
   evaluationStatuses?: ProjectEvaluationStatus[];
 };
 
-type FilterCategory = 'keyword' | 'status' | 'folder' | 'category' | 'tags' | 'location';
+type FilterCategory = 'keyword' | 'status' | 'folder' | 'category' | 'tags' | 'author' | 'location';
 
 interface ProjectFilterPopoverProps {
   value: ProjectFilterValues;
@@ -41,6 +44,8 @@ interface ProjectFilterPopoverProps {
   activeCount?: number;
   /** Statuses the current page may show; the status filter is hidden when fewer than 2. */
   statusOptions?: readonly ProjectEvaluationStatus[];
+  /** Hidden where only the user's own projects are listed. */
+  showAuthorFilter?: boolean;
 }
 
 // ─── Helper to highlight search matches in node titles ──────────────────────
@@ -249,6 +254,8 @@ function getCategoryFilterCount(key: FilterCategory, value: ProjectFilterValues)
       return value.categoryIds?.length ?? 0;
     case 'tags':
       return value.tagIds?.length ?? 0;
+    case 'author':
+      return value.ownerUserIds?.length ?? 0;
     case 'location': {
       let count = 0;
       if (value.countryId) count += 1;
@@ -266,11 +273,13 @@ function FilterContent({
   onChange,
   onClear,
   statusOptions = [],
+  showAuthorFilter = true,
 }: {
   value: ProjectFilterValues;
   onChange: (values: ProjectFilterValues) => void;
   onClear: () => void;
   statusOptions?: readonly ProjectEvaluationStatus[];
+  showAuthorFilter?: boolean;
 }) {
   const { t } = useTranslation();
   const [activeCategory, setActiveCategory] = useState<FilterCategory>('keyword');
@@ -282,6 +291,7 @@ function FilterContent({
   const folders = useFolders();
   const categories = useCategories();
   const tags = useTags();
+  const owners = useProjectOwners(showAuthorFilter);
   const countryId = value.countryId;
   const provinces = useProvinces({ page: 1, pageSize: 100, countryId }, Boolean(countryId));
 
@@ -321,6 +331,7 @@ function FilterContent({
         value.countryId || value.provinceId,
         value.categoryIds?.length,
         value.tagIds?.length,
+        value.ownerUserIds?.length,
       ].filter(Boolean).length,
     [value],
   );
@@ -338,9 +349,18 @@ function FilterContent({
       { key: 'folder', icon: <FolderIcon size={16} />, label: t('projects.folder') },
       { key: 'category', icon: <Layers size={16} />, label: t('projects.category') },
       { key: 'tags', icon: <TagIcon size={16} />, label: t('projects.tags') },
+      ...(showAuthorFilter
+        ? [
+            {
+              key: 'author' as const,
+              icon: <UserRound size={16} />,
+              label: t('projects.authorFilter'),
+            },
+          ]
+        : []),
       { key: 'location', icon: <MapPin size={16} />, label: t('projects.location') },
     ],
-    [t, showStatusFilter],
+    [t, showStatusFilter, showAuthorFilter],
   );
 
   const visibleCategories = filterCategories.filter((c) =>
@@ -592,6 +612,47 @@ function FilterContent({
           </div>
         );
 
+      case 'author':
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <UserRound size={18} style={{ color: '#1677ff' }} />
+                <Typography.Text strong style={{ fontSize: 16 }}>
+                  {t('projects.authorFilter')}
+                </Typography.Text>
+              </div>
+              {Boolean(value.ownerUserIds?.length) && (
+                <Button
+                  type="link"
+                  size="small"
+                  onClick={() => onChange({ ...value, ownerUserIds: undefined })}
+                  style={{ padding: 0, fontSize: 12 }}
+                >
+                  {t('projects.clearSelection')}
+                </Button>
+              )}
+            </div>
+            <CheckboxListFilter
+              options={(owners.data ?? [])
+                .map((owner) => ({
+                  value: owner.id,
+                  label: `${owner.user?.name || owner.user?.email || owner.id} (${owner.projectCount})`,
+                }))
+                .sort((a, b) => a.label.localeCompare(b.label, 'vi'))}
+              loading={owners.isPending}
+              value={value.ownerUserIds}
+              onChange={(ids) => onChange({ ...value, ownerUserIds: ids })}
+              searchPlaceholder={t('projects.searchAuthorPlaceholder')}
+              emptyText={t('projects.emptyAuthor')}
+              notFoundText={t('projects.noAuthorFound')}
+            />
+            <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+              {t('projects.authorDescription')}
+            </Typography.Text>
+          </div>
+        );
+
       case 'location':
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -782,6 +843,7 @@ export function ProjectFilterPopover({
   onClear,
   activeCount = 0,
   statusOptions,
+  showAuthorFilter,
 }: ProjectFilterPopoverProps) {
   return (
     <Popover
@@ -802,6 +864,7 @@ export function ProjectFilterPopover({
           onChange={onChange}
           onClear={onClear}
           statusOptions={statusOptions}
+          showAuthorFilter={showAuthorFilter}
         />
       }
     >

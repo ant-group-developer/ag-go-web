@@ -10,6 +10,12 @@ export type VideoPlayerSource = VideoQualityVariant & {
   height: number | null;
 };
 
+/** Query for the presigned URL of one player source. */
+export type SourceUrlQuery = (
+  assetId: string,
+  code: string,
+) => { queryKey: readonly unknown[]; queryFn: () => Promise<string> };
+
 /** Query for the presigned URL of one player source: a rendered preview or the original. */
 export function sourceUrlQuery(
   assetId: string,
