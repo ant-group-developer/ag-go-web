@@ -92,6 +92,7 @@ export function CreateFolderModal({
         >
           <Cascader
             allowClear={canCreateRoot}
+            changeOnSelect
             options={options}
             showSearch={{ filter: cascaderSearchFilter }}
             placeholder={
