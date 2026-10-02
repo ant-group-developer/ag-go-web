@@ -17,7 +17,7 @@ interface FootageCardProps {
   onClick: () => void;
 }
 
-export function OrientationIcon({ orientation }: { orientation: FootageVideo['orientation'] }) {
+function OrientationIcon({ orientation }: { orientation: FootageVideo['orientation'] }) {
   if (orientation === 'portrait') return <Smartphone size={13} style={{ color: '#6b7280' }} />;
   if (orientation === 'square') return <Square size={13} style={{ color: '#6b7280' }} />;
   return <Monitor size={13} style={{ color: '#6b7280' }} />;

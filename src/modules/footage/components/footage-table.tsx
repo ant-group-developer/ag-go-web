@@ -5,13 +5,11 @@ import { formatDate } from '../../../shared/lib/format-date';
 import { PAGE_TABLE_STICKY } from '../../../shared/lib/sticky-table-header';
 import {
   formatMs,
-  ORIENTATION_LABELS_VI,
   qualityStars,
   RESOLUTION_LABELS,
   resolutionOf,
   type FootageVideo,
 } from '../api/footage';
-import { OrientationIcon } from './footage-card';
 
 interface FootageTableProps {
   items: FootageVideo[];
@@ -146,7 +144,7 @@ export function FootageTable({ items, folderPaths, onOpen }: FootageTableProps) 
     {
       title: t('footage.duration'),
       key: 'duration',
-      width: 100,
+      width: 120,
       render: (_, item) => (
         <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatMs(item.durationMs)}</span>
       ),
@@ -159,11 +157,6 @@ export function FootageTable({ items, folderPaths, onOpen }: FootageTableProps) 
         const resolution = resolutionOf(item.width, item.height);
         return (
           <Flex align="center" gap={6}>
-            <Tooltip title={ORIENTATION_LABELS_VI[item.orientation]}>
-              <span style={{ display: 'flex' }}>
-                <OrientationIcon orientation={item.orientation} />
-              </span>
-            </Tooltip>
             {resolution ? (
               <Tooltip title={RESOLUTION_LABELS[resolution]}>
                 <Typography.Text strong style={{ textTransform: 'uppercase' }}>
@@ -225,7 +218,7 @@ export function FootageTable({ items, folderPaths, onOpen }: FootageTableProps) 
       columns={columns}
       dataSource={items}
       pagination={false}
-      scroll={{ x: 1530 }}
+      scroll={{ x: 1550 }}
       sticky={PAGE_TABLE_STICKY}
       onRow={(item) => ({ onClick: () => onOpen(item), style: { cursor: 'pointer' } })}
     />
