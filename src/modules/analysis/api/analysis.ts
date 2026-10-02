@@ -103,6 +103,8 @@ export type AnalysisBatch = {
     cancelled: number;
   };
   createdBy: string | null;
+  /** Account user behind `createdBy`; null when unknown or the account service is down. */
+  createdByUser?: { id: string; name?: string | null; email?: string | null } | null;
   createdAt: string;
   updatedAt: string;
 };

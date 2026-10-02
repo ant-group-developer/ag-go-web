@@ -163,6 +163,12 @@ function AnalysisStatsCard({ folderIds }: { folderIds?: string[] }) {
 
 // ─── Batch management table ────────────────────────────────────────────────────
 
+const BACKFILL_MODE_LABELS: Record<BackfillMode, string> = {
+  missing: 'analysis.backfillModeMissing',
+  outdated: 'analysis.backfillModeOutdated',
+  all: 'analysis.backfillModeAll',
+};
+
 const BATCH_SORT_FIELDS: { value: BatchSortBy; labelKey: string }[] = [
   { value: 'createdAt', labelKey: 'analysis.batchCreatedAt' },
   { value: 'name', labelKey: 'analysis.batchName' },
@@ -207,14 +213,14 @@ function AnalysisBatchesCard() {
       title: t('analysis.batchKind'),
       dataIndex: 'kind',
       width: 100,
-      render: (v: AnalysisBatch['kind']) => <Tag>{v}</Tag>,
+      render: (v: AnalysisBatch['kind']) => <Tag>{t(`analysis.batchKinds.${v}`)}</Tag>,
     },
     {
       key: 'mode',
       title: t('analysis.batchMode'),
       dataIndex: 'mode',
-      width: 120,
-      render: (v: AnalysisBatch['mode']) => (v ? <Tag>{v}</Tag> : '-'),
+      width: 150,
+      render: (v: AnalysisBatch['mode']) => (v ? <Tag>{t(BACKFILL_MODE_LABELS[v])}</Tag> : '-'),
     },
     {
       key: 'progress',
@@ -239,15 +245,27 @@ function AnalysisBatchesCard() {
       title: t('analysis.batchStatus'),
       dataIndex: 'status',
       width: 120,
-      render: (v: AnalysisBatch['status']) => <Tag color={batchStatusColor(v)}>{v}</Tag>,
+      render: (v: AnalysisBatch['status']) => (
+        <Tag color={batchStatusColor(v)}>{t(`analysis.batchStatuses.${v}`)}</Tag>
+      ),
     },
     {
       key: 'createdBy',
       title: t('analysis.batchCreatedBy'),
       dataIndex: 'createdBy',
-      width: 140,
+      width: 180,
       ellipsis: true,
-      render: (v: string | null) => v ?? '-',
+      render: (_: unknown, row: AnalysisBatch) => {
+        if (!row.createdBy) {
+          return t('analysis.batchCreatedBySystem');
+        }
+        const user = row.createdByUser;
+        return (
+          <Tooltip title={user?.email ?? row.createdBy}>
+            <span>{user?.name || user?.email || row.createdBy}</span>
+          </Tooltip>
+        );
+      },
     },
     {
       key: 'createdAt',
