@@ -843,8 +843,8 @@ function VideoAnalysisCard({ assetId, isVideo, previewRef, canManage }: VideoAna
         </Typography.Text>
       ) : null}
 
-      {/* Keyframe strip */}
-      {data?.keyframes && data.keyframes.length > 0 ? (
+      {/* Keyframe strip — hidden when there is only one frame */}
+      {data?.keyframes && data.keyframes.length > 1 ? (
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 8 }}>
           {data.keyframes.map((kf) => (
             <Tooltip key={kf.tMs} title={formatMs(kf.tMs)}>
