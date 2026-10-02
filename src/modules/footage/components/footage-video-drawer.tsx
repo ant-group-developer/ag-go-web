@@ -53,7 +53,8 @@ interface FootageVideoDrawerProps {
   onClose: () => void;
 }
 
-const DRAWER_WIDTH = 1120;
+// Wide enough for a large player beside the metadata tabs, but never edge-to-edge.
+const DRAWER_WIDTH = 'min(1440px, 94vw)';
 const QUALITY_STORAGE_KEY = 'ag-go.footage.videoQuality';
 
 function actorName(actor: FootageActor | null, fallbackId: string): string {
@@ -154,6 +155,66 @@ function FootagePlayer({
       onError={() => setFailed(true)}
       style={{ borderRadius: 8, overflow: 'hidden' }}
     />
+  );
+}
+
+/** File name on its own line (long camera names never squeeze a table cell), then a stat strip. */
+function FileSummary({ item }: { item: FootageVideo }) {
+  const { t } = useTranslation();
+  const resolution = item.width && item.height ? resolutionOf(item.width, item.height) : null;
+  const stats: { label: string; value: ReactNode }[] = [
+    { label: t('footage.duration'), value: formatMs(item.durationMs) },
+    {
+      label: t('footage.resolution'),
+      value:
+        item.width && item.height ? (
+          <Space size={6} wrap>
+            <span>
+              {item.width} × {item.height}
+            </span>
+            {resolution && (
+              <Tag style={{ marginInlineEnd: 0 }}>{RESOLUTION_LABELS[resolution]}</Tag>
+            )}
+          </Space>
+        ) : (
+          '-'
+        ),
+    },
+    { label: t('footage.analyzedAt'), value: formatDate(item.analyzedAt) },
+  ];
+  return (
+    <div style={{ border: '1px solid #f0f0f0', borderRadius: 8 }}>
+      <div style={{ padding: '10px 16px', borderBottom: '1px solid #f0f0f0' }}>
+        <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
+          {t('footage.assetName')}
+        </Typography.Text>
+        <Typography.Text
+          strong
+          copyable={{ text: item.name }}
+          ellipsis={{ tooltip: item.name }}
+          style={{ maxWidth: '100%' }}
+        >
+          {item.name}
+        </Typography.Text>
+      </div>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+          gap: 12,
+          padding: '10px 16px',
+        }}
+      >
+        {stats.map((stat) => (
+          <div key={stat.label} style={{ minWidth: 0 }}>
+            <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
+              {stat.label}
+            </Typography.Text>
+            <div style={{ fontWeight: 500 }}>{stat.value}</div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -455,18 +516,7 @@ export function FootageVideoDrawer({ open, item, onClose }: FootageVideoDrawerPr
                 </div>
               ) : null}
 
-              <InfoDescriptions
-                column={{ xs: 1, sm: 2 }}
-                rows={[
-                  { label: t('footage.assetName'), value: item.name },
-                  { label: t('footage.duration'), value: formatMs(item.durationMs) },
-                  {
-                    label: t('footage.resolution'),
-                    value: item.width && item.height ? `${item.width} × ${item.height}` : '-',
-                  },
-                  { label: t('footage.analyzedAt'), value: formatDate(item.analyzedAt) },
-                ]}
-              />
+              <FileSummary item={item} />
             </div>
           </Col>
 
