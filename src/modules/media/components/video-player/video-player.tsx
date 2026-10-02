@@ -29,7 +29,12 @@ import {
   variantResolutionLabel,
 } from '../../utils/variant-labels';
 import styles from './video-player.module.css';
-import { ORIGINAL_SOURCE_CODE, sourceUrlQuery, type VideoPlayerSource } from './video-source';
+import {
+  ORIGINAL_SOURCE_CODE,
+  sourceUrlQuery as assetSourceUrlQuery,
+  type SourceUrlQuery,
+  type VideoPlayerSource,
+} from './video-source';
 
 /** Lets a parent move playback, e.g. to the timestamp of an analysed keyframe. */
 export type VideoPlayerHandle = {
@@ -45,6 +50,8 @@ type VideoPlayerProps = {
   original?: VideoPlayerSource | null;
   /** Where the viewer's quality choice is remembered; one key per viewing context. */
   qualityStorageKey: string;
+  /** Query for a source's presigned URL; defaults to the asset preview/original endpoints. */
+  sourceUrlQuery?: SourceUrlQuery;
   defaultQuality?: string;
   className?: string;
   style?: CSSProperties;
@@ -103,6 +110,7 @@ export function VideoPlayer({
   variants,
   original,
   qualityStorageKey,
+  sourceUrlQuery = assetSourceUrlQuery,
   defaultQuality,
   className,
   style,
@@ -220,6 +228,7 @@ export function VideoPlayer({
     onError,
     queryClient,
     setQuality,
+    sourceUrlQuery,
     t,
     unfreeze,
     variants.length,

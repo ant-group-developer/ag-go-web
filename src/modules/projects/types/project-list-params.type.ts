@@ -20,6 +20,8 @@ export type ProjectListParams = {
   categoryId?: string;
   categoryIds?: string[];
   tagIds?: string[];
+  /** User IDs of project owners (authors); matches any. */
+  ownerUserIds?: string[];
   sortBy?: ProjectSortField;
   sortOrder?: ProjectSortOrder;
   evaluationStatuses?: ProjectEvaluationStatus[];

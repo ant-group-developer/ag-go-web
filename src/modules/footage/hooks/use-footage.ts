@@ -1,36 +1,43 @@
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import {
   getFootageFacets,
   getFootageFolders,
+  getFootagePreviewUrl,
   getFootageVideoMedia,
   searchFootage,
+  type FootageFilterParams,
   type FootageSearchParams,
 } from '../api/footage';
 
 const keys = {
   all: ['footage'] as const,
   search: (params: Omit<FootageSearchParams, 'cursor'>) => [...keys.all, 'search', params] as const,
-  facets: (params: Omit<FootageSearchParams, 'limit' | 'cursor'>) =>
-    [...keys.all, 'facets', params] as const,
+  facets: (params: FootageFilterParams) => [...keys.all, 'facets', params] as const,
   folders: () => [...keys.all, 'folders'] as const,
   videoMedia: (assetId: string) => [...keys.all, 'video-media', assetId] as const,
+  previewUrl: (assetId: string, variantCode: string) =>
+    [...keys.all, 'preview-url', assetId, variantCode] as const,
 };
 
+/** One page of footage; the previous page stays on screen while the next one loads. */
 export function useFootageSearch(params: Omit<FootageSearchParams, 'cursor'>, enabled = true) {
-  return useInfiniteQuery({
+  return useQuery({
     queryKey: keys.search(params),
-    queryFn: ({ pageParam }) =>
-      searchFootage({ ...params, cursor: pageParam as string | undefined }),
-    initialPageParam: undefined as string | undefined,
-    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    queryFn: () => searchFootage(params),
+    placeholderData: keepPreviousData,
     enabled,
   });
 }
 
-export function useFootageFacets(
-  params: Omit<FootageSearchParams, 'limit' | 'cursor'>,
-  enabled = true,
-) {
+/** Video player source URLs of footage previews (see `VideoPlayer`'s `sourceUrlQuery`). */
+export function footageSourceUrlQuery(assetId: string, code: string) {
+  return {
+    queryKey: keys.previewUrl(assetId, code),
+    queryFn: () => getFootagePreviewUrl(assetId, code),
+  };
+}
+
+export function useFootageFacets(params: FootageFilterParams, enabled = true) {
   return useQuery({
     queryKey: keys.facets(params),
     queryFn: () => getFootageFacets(params),

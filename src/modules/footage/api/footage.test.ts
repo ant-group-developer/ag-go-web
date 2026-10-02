@@ -7,8 +7,10 @@ import {
   formatMs,
   getFootageFacets,
   getFootageFolders,
+  getFootagePreviewUrl,
   getFootageVideoMedia,
   qualityStars,
+  resolutionOf,
   searchFootage,
   type FootageFolder,
   type FootageSearchParams,
@@ -67,6 +69,45 @@ describe('buildSearchQueryString', () => {
   it('omits empty arrays', () => {
     const qs = buildSearchQueryString({ folderIds: [], tags: [], genres: [] });
     expect(qs).toBe('');
+  });
+
+  it('joins project, author and resolution filters with commas', () => {
+    const p = new URLSearchParams(
+      buildSearchQueryString({
+        projectIds: ['p1', 'p2'],
+        ownerUserIds: ['u1'],
+        resolutions: ['4k', '1080p'],
+      }),
+    );
+    expect(p.get('projectIds')).toBe('p1,p2');
+    expect(p.get('ownerUserIds')).toBe('u1');
+    expect(p.get('resolutions')).toBe('4k,1080p');
+  });
+
+  it('sets sorting and the page', () => {
+    const p = new URLSearchParams(
+      buildSearchQueryString({ sortBy: 'duration', sortOrder: 'asc', page: 3, limit: 24 }),
+    );
+    expect(p.get('sortBy')).toBe('duration');
+    expect(p.get('sortOrder')).toBe('asc');
+    expect(p.get('page')).toBe('3');
+    expect(p.get('limit')).toBe('24');
+  });
+});
+
+// ─── resolutionOf ─────────────────────────────────────────────────────────────
+
+describe('resolutionOf', () => {
+  it('classes a frame by its short edge', () => {
+    expect(resolutionOf(3840, 2160)).toBe('4k');
+    expect(resolutionOf(2560, 1440)).toBe('2k');
+    expect(resolutionOf(1080, 1920)).toBe('1080p');
+    expect(resolutionOf(1280, 720)).toBe('720p');
+    expect(resolutionOf(640, 360)).toBe('sd');
+  });
+
+  it('is unknown without a frame size', () => {
+    expect(resolutionOf(0, 0)).toBeNull();
   });
 });
 
@@ -157,6 +198,20 @@ describe('getFootageVideoMedia', () => {
     });
     await getFootageVideoMedia('asset-1');
     expect(apiClient).toHaveBeenCalledWith('/footage/assets/asset-1/media');
+  });
+});
+
+// ─── getFootagePreviewUrl ─────────────────────────────────────────────────────
+
+describe('getFootagePreviewUrl', () => {
+  it('returns the URL of the preview variant', async () => {
+    vi.mocked(apiClient).mockResolvedValue({ url: 'https://cdn.test/360.mp4' });
+    await expect(getFootagePreviewUrl('asset-1', 'preview_360p_wm')).resolves.toBe(
+      'https://cdn.test/360.mp4',
+    );
+    expect(apiClient).toHaveBeenCalledWith(
+      '/footage/assets/asset-1/preview-url?variantCode=preview_360p_wm',
+    );
   });
 });
 

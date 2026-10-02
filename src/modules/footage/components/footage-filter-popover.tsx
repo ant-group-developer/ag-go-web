@@ -13,26 +13,33 @@ import {
 import type { DataNode } from 'antd/es/tree';
 import { t } from 'i18next';
 import {
+  Briefcase,
   Clapperboard,
   Filter as FilterIcon,
   Folder as FolderIcon,
+  Layers,
   Layout,
   Maximize2,
+  MonitorPlay,
   Search,
   Sun,
+  UserRound,
 } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ORIENTATIONS,
   ORIENTATION_LABELS_VI,
+  RESOLUTIONS,
+  RESOLUTION_LABELS,
   TIMES_OF_DAY,
   TIME_OF_DAY_LABELS_VI,
   type FacetItem,
-  type FacetItemNamed,
+  type FootageFacetsResult,
   type FootageFolder,
   type FootageSearchParams,
   type Orientation,
+  type Resolution,
   type TimeOfDay,
 } from '../api/footage';
 
@@ -41,34 +48,43 @@ import {
 export type FootageFilterValues = Pick<
   FootageSearchParams,
   | 'folderIds'
+  | 'projectIds'
+  | 'ownerUserIds'
   | 'categoryIds'
   | 'tags'
   | 'provinceIds'
   | 'genres'
   | 'timesOfDay'
   | 'orientations'
+  | 'resolutions'
   | 'minDurationMs'
   | 'maxDurationMs'
   | 'usableOnly'
 >;
 
-type FilterCategory = 'folder' | 'genre' | 'timeOfDay' | 'orientation' | 'duration';
+type FilterCategory =
+  | 'keyword'
+  | 'folder'
+  | 'project'
+  | 'category'
+  | 'author'
+  | 'genre'
+  | 'timeOfDay'
+  | 'orientation'
+  | 'resolution'
+  | 'duration';
 
 interface FootageFilterPopoverProps {
   value: FootageFilterValues;
   onChange: (values: FootageFilterValues) => void;
   onClear: () => void;
+  /** Free-text search, shared with the search box of the page. */
+  keyword: string;
+  onKeywordChange: (keyword: string) => void;
   activeCount?: number;
   folders: FootageFolder[];
   foldersLoading: boolean;
-  facets?: {
-    genres: FacetItem[];
-    timesOfDay: FacetItem[];
-    orientations: FacetItem[];
-    categories: FacetItemNamed[];
-    provinces: FacetItemNamed[];
-    tags: FacetItem[];
-  };
+  facets?: FootageFacetsResult;
   facetsLoading?: boolean;
 }
 
@@ -102,6 +118,7 @@ function highlightText(text: string, search: string): React.ReactNode {
 
 // ─── Build antd Tree from flat folder list ────────────────────────────────────
 
+/** The API lists parents first, siblings in folder-tree order; children keep that order. */
 function buildAntdFolderTree(
   folders: FootageFolder[],
   searchText: string,
@@ -169,17 +186,35 @@ function buildAntdFolderTree(
 
 // ─── Checkbox list (facet-aware) ──────────────────────────────────────────────
 
+type CheckboxOption = { value: string; label: string; count?: number };
+
+/** Options of a facet; picked values the facet no longer counts stay listed so they can be unpicked. */
+function facetOptions(
+  facet: FacetItem[] | undefined,
+  selected: string[] | undefined,
+  labelOf: (item: FacetItem) => string = (item) => item.label ?? item.value,
+): CheckboxOption[] {
+  const options = (facet ?? []).map((item) => ({
+    value: item.value,
+    label: labelOf(item),
+    count: item.count,
+  }));
+  const listed = new Set(options.map((o) => o.value));
+  const missing = (selected ?? [])
+    .filter((value) => !listed.has(value))
+    .map((value) => ({ value, label: labelOf({ value, count: 0 }), count: 0 }));
+  return [...missing, ...options];
+}
+
 function CheckboxFacetFilter({
   options,
-  facetCounts,
   loading,
   value,
   onChange,
   searchPlaceholder,
   emptyText,
 }: {
-  options: Array<{ value: string; label: string }>;
-  facetCounts?: Map<string, number>;
+  options: CheckboxOption[];
   loading?: boolean;
   value?: string[];
   onChange: (ids: string[] | undefined) => void;
@@ -205,7 +240,7 @@ function CheckboxFacetFilter({
         style={{
           flex: 1,
           minHeight: 0,
-          maxHeight: 240,
+          maxHeight: 280,
           overflowY: 'auto',
           border: '1px solid #e5e7eb',
           borderRadius: 8,
@@ -233,19 +268,16 @@ function CheckboxFacetFilter({
             }}
             style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
           >
-            {visible.map((o) => {
-              const count = facetCounts?.get(o.value);
-              return (
-                <Checkbox key={o.value} value={o.value}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {highlightText(o.label, search)}
-                    {count !== undefined && (
-                      <span style={{ color: '#9ca3af', fontSize: 12 }}>({count})</span>
-                    )}
-                  </span>
-                </Checkbox>
-              );
-            })}
+            {visible.map((o) => (
+              <Checkbox key={o.value} value={o.value}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {highlightText(o.label, search)}
+                  {o.count !== undefined && (
+                    <span style={{ color: '#9ca3af', fontSize: 12 }}>({o.count})</span>
+                  )}
+                </span>
+              </Checkbox>
+            ))}
           </Checkbox.Group>
         )}
       </div>
@@ -253,19 +285,56 @@ function CheckboxFacetFilter({
   );
 }
 
+function PanelHeader({
+  icon,
+  title,
+  onClear,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  /** Shown as a "clear" link when the filter has a value. */
+  onClear?: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#1677ff' }}>
+        {icon}
+        <Typography.Text strong style={{ fontSize: 16 }}>
+          {title}
+        </Typography.Text>
+      </div>
+      {onClear && (
+        <Button type="link" size="small" onClick={onClear} style={{ padding: 0, fontSize: 12 }}>
+          {t('footage.clearFolder')}
+        </Button>
+      )}
+    </div>
+  );
+}
+
+const panelStyle: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 12,
+  minHeight: 0,
+};
+
 // ─── Filter content ───────────────────────────────────────────────────────────
 
 function FilterContent({
   value,
   onChange,
   onClear,
+  keyword,
+  onKeywordChange,
   folders,
   foldersLoading,
   facets,
   facetsLoading,
 }: Omit<FootageFilterPopoverProps, 'activeCount'>) {
   const { t } = useTranslation();
-  const [activeCategory, setActiveCategory] = useState<FilterCategory>('folder');
+  const [activeCategory, setActiveCategory] = useState<FilterCategory>('keyword');
   const [folderSearch, setFolderSearch] = useState('');
   const [expandedKeys, setExpandedKeys] = useState<React.Key[]>([]);
   const [autoExpandParent, setAutoExpandParent] = useState(true);
@@ -295,21 +364,16 @@ function FilterContent({
     }
   }, [folders, folderSearch, matchingKeySet]);
 
-  const genreFacets = useMemo(
-    () => new Map(facets?.genres.map((f) => [f.value, f.count]) ?? []),
-    [facets],
-  );
-  const timeOfDayFacets = useMemo(
-    () => new Map(facets?.timesOfDay.map((f) => [f.value, f.count]) ?? []),
-    [facets],
-  );
-  const orientationFacets = useMemo(
-    () => new Map(facets?.orientations.map((f) => [f.value, f.count]) ?? []),
-    [facets],
-  );
+  const counts = (facet: FacetItem[] | undefined) =>
+    new Map((facet ?? []).map((f) => [f.value, f.count]));
 
   const filterCategories: Array<{ key: FilterCategory; icon: React.ReactNode; label: string }> = [
+    { key: 'keyword', icon: <Search size={16} />, label: t('footage.filterKeyword') },
     { key: 'folder', icon: <FolderIcon size={16} />, label: t('footage.filterFolder') },
+    { key: 'project', icon: <Briefcase size={16} />, label: t('footage.filterProject') },
+    { key: 'category', icon: <Layers size={16} />, label: t('footage.filterCategory') },
+    { key: 'author', icon: <UserRound size={16} />, label: t('footage.filterAuthor') },
+    { key: 'resolution', icon: <MonitorPlay size={16} />, label: t('footage.filterResolution') },
     { key: 'genre', icon: <Clapperboard size={16} />, label: t('footage.filterGenre') },
     { key: 'timeOfDay', icon: <Sun size={16} />, label: t('footage.filterTimeOfDay') },
     { key: 'orientation', icon: <Layout size={16} />, label: t('footage.filterOrientation') },
@@ -318,8 +382,18 @@ function FilterContent({
 
   const getCount = (key: FilterCategory): number => {
     switch (key) {
+      case 'keyword':
+        return (keyword.trim() ? 1 : 0) + (value.tags?.length ?? 0);
       case 'folder':
         return value.folderIds?.length ?? 0;
+      case 'project':
+        return value.projectIds?.length ?? 0;
+      case 'category':
+        return value.categoryIds?.length ?? 0;
+      case 'author':
+        return value.ownerUserIds?.length ?? 0;
+      case 'resolution':
+        return value.resolutions?.length ?? 0;
       case 'genre':
         return value.genres?.length ?? 0;
       case 'timeOfDay':
@@ -338,37 +412,75 @@ function FilterContent({
     0,
   );
 
+  /** Checkbox panel of one facet-backed filter. */
+  const facetPanel = (
+    icon: React.ReactNode,
+    title: string,
+    field: 'projectIds' | 'categoryIds' | 'ownerUserIds' | 'genres',
+    options: CheckboxOption[],
+    searchPlaceholder: string,
+  ) => (
+    <div style={panelStyle}>
+      <PanelHeader
+        icon={icon}
+        title={title}
+        onClear={
+          value[field]?.length ? () => onChange({ ...value, [field]: undefined }) : undefined
+        }
+      />
+      <CheckboxFacetFilter
+        options={options}
+        loading={facetsLoading}
+        value={value[field]}
+        onChange={(ids) => onChange({ ...value, [field]: ids })}
+        searchPlaceholder={searchPlaceholder}
+        emptyText={t('footage.emptyOptions')}
+      />
+    </div>
+  );
+
   const renderPanel = () => {
     switch (activeCategory) {
+      case 'keyword':
+        return (
+          <div style={panelStyle}>
+            <PanelHeader icon={<Search size={18} />} title={t('footage.filterKeyword')} />
+            <Input
+              allowClear
+              placeholder={t('footage.searchPlaceholder')}
+              prefix={<Search size={16} style={{ color: '#9ca3af' }} />}
+              value={keyword}
+              onChange={(e) => onKeywordChange(e.target.value)}
+            />
+            <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+              {t('footage.keywordHint')}
+            </Typography.Text>
+            <Typography.Text strong style={{ fontSize: 13 }}>
+              {t('footage.aiTags')}
+            </Typography.Text>
+            <CheckboxFacetFilter
+              options={facetOptions(facets?.tags, value.tags)}
+              loading={facetsLoading}
+              value={value.tags}
+              onChange={(ids) => onChange({ ...value, tags: ids })}
+              searchPlaceholder={t('footage.searchTagPlaceholder')}
+              emptyText={t('footage.emptyOptions')}
+            />
+          </div>
+        );
+
       case 'folder':
         return (
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 12,
-              height: '100%',
-              minHeight: 0,
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <FolderIcon size={18} style={{ color: '#1677ff' }} />
-                <Typography.Text strong style={{ fontSize: 16 }}>
-                  {t('footage.filterFolder')}
-                </Typography.Text>
-              </div>
-              {Boolean(value.folderIds?.length) && (
-                <Button
-                  type="link"
-                  size="small"
-                  onClick={() => onChange({ ...value, folderIds: undefined })}
-                  style={{ padding: 0, fontSize: 12 }}
-                >
-                  {t('footage.clearFolder')}
-                </Button>
-              )}
-            </div>
+          <div style={{ ...panelStyle, height: '100%' }}>
+            <PanelHeader
+              icon={<FolderIcon size={18} />}
+              title={t('footage.filterFolder')}
+              onClear={
+                value.folderIds?.length
+                  ? () => onChange({ ...value, folderIds: undefined })
+                  : undefined
+              }
+            />
             <Input
               allowClear
               placeholder={t('footage.searchFolderPlaceholder')}
@@ -380,7 +492,7 @@ function FilterContent({
               style={{
                 flex: 1,
                 minHeight: 260,
-                maxHeight: 300,
+                maxHeight: 320,
                 overflowY: 'auto',
                 border: '1px solid #e5e7eb',
                 borderRadius: 8,
@@ -446,39 +558,85 @@ function FilterContent({
           </div>
         );
 
+      case 'project':
+        return facetPanel(
+          <Briefcase size={18} />,
+          t('footage.filterProject'),
+          'projectIds',
+          facetOptions(facets?.projects, value.projectIds),
+          t('footage.searchProjectPlaceholder'),
+        );
+
+      case 'category':
+        return facetPanel(
+          <Layers size={18} />,
+          t('footage.filterCategory'),
+          'categoryIds',
+          facetOptions(facets?.categories, value.categoryIds),
+          t('footage.searchCategoryPlaceholder'),
+        );
+
+      case 'author':
+        return facetPanel(
+          <UserRound size={18} />,
+          t('footage.filterAuthor'),
+          'ownerUserIds',
+          facetOptions(facets?.authors, value.ownerUserIds),
+          t('footage.searchAuthorPlaceholder'),
+        );
+
       case 'genre':
+        return facetPanel(
+          <Clapperboard size={18} />,
+          t('footage.filterGenre'),
+          'genres',
+          facetOptions(facets?.genres, value.genres),
+          t('footage.searchPlaceholder'),
+        );
+
+      case 'resolution': {
+        const resolutionCounts = counts(facets?.resolutions);
         return (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Clapperboard size={18} style={{ color: '#1677ff' }} />
-              <Typography.Text strong style={{ fontSize: 16 }}>
-                {t('footage.filterGenre')}
-              </Typography.Text>
-            </div>
+          <div style={panelStyle}>
+            <PanelHeader
+              icon={<MonitorPlay size={18} />}
+              title={t('footage.filterResolution')}
+              onClear={
+                value.resolutions?.length
+                  ? () => onChange({ ...value, resolutions: undefined })
+                  : undefined
+              }
+            />
             <CheckboxFacetFilter
-              options={(facets?.genres ?? []).map((g) => ({ value: g.value, label: g.value }))}
-              facetCounts={genreFacets}
+              options={RESOLUTIONS.map((v) => ({
+                value: v,
+                label: RESOLUTION_LABELS[v],
+                count: resolutionCounts.get(v) ?? 0,
+              }))}
               loading={facetsLoading}
-              value={value.genres}
-              onChange={(ids) => onChange({ ...value, genres: ids ?? undefined })}
+              value={value.resolutions}
+              onChange={(ids) => onChange({ ...value, resolutions: ids as Resolution[] })}
               searchPlaceholder={t('footage.searchPlaceholder')}
               emptyText={t('footage.emptyOptions')}
             />
+            <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+              {t('footage.resolutionHint')}
+            </Typography.Text>
           </div>
         );
+      }
 
-      case 'timeOfDay':
+      case 'timeOfDay': {
+        const timeOfDayCounts = counts(facets?.timesOfDay);
         return (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Sun size={18} style={{ color: '#1677ff' }} />
-              <Typography.Text strong style={{ fontSize: 16 }}>
-                {t('footage.filterTimeOfDay')}
-              </Typography.Text>
-            </div>
+          <div style={panelStyle}>
+            <PanelHeader icon={<Sun size={18} />} title={t('footage.filterTimeOfDay')} />
             <CheckboxFacetFilter
-              options={TIMES_OF_DAY.map((v) => ({ value: v, label: TIME_OF_DAY_LABELS_VI[v] }))}
-              facetCounts={timeOfDayFacets}
+              options={TIMES_OF_DAY.map((v) => ({
+                value: v,
+                label: TIME_OF_DAY_LABELS_VI[v],
+                count: timeOfDayCounts.get(v),
+              }))}
               loading={facetsLoading}
               value={value.timesOfDay}
               onChange={(ids) => onChange({ ...value, timesOfDay: ids as TimeOfDay[] | undefined })}
@@ -487,19 +645,19 @@ function FilterContent({
             />
           </div>
         );
+      }
 
-      case 'orientation':
+      case 'orientation': {
+        const orientationCounts = counts(facets?.orientations);
         return (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Layout size={18} style={{ color: '#1677ff' }} />
-              <Typography.Text strong style={{ fontSize: 16 }}>
-                {t('footage.filterOrientation')}
-              </Typography.Text>
-            </div>
+          <div style={panelStyle}>
+            <PanelHeader icon={<Layout size={18} />} title={t('footage.filterOrientation')} />
             <CheckboxFacetFilter
-              options={ORIENTATIONS.map((v) => ({ value: v, label: ORIENTATION_LABELS_VI[v] }))}
-              facetCounts={orientationFacets}
+              options={ORIENTATIONS.map((v) => ({
+                value: v,
+                label: ORIENTATION_LABELS_VI[v],
+                count: orientationCounts.get(v),
+              }))}
               loading={facetsLoading}
               value={value.orientations}
               onChange={(ids) =>
@@ -510,6 +668,7 @@ function FilterContent({
             />
           </div>
         );
+      }
 
       case 'duration': {
         // Duration slider: 0–30 min (0–1800 s), steps of 30 s
@@ -523,12 +682,15 @@ function FilterContent({
         };
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Maximize2 size={18} style={{ color: '#1677ff' }} />
-              <Typography.Text strong style={{ fontSize: 16 }}>
-                {t('footage.filterDuration')}
-              </Typography.Text>
-            </div>
+            <PanelHeader
+              icon={<Maximize2 size={18} />}
+              title={t('footage.filterDuration')}
+              onClear={
+                value.minDurationMs !== undefined || value.maxDurationMs !== undefined
+                  ? () => onChange({ ...value, minDurationMs: undefined, maxDurationMs: undefined })
+                  : undefined
+              }
+            />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <Typography.Text style={{ fontSize: 13 }}>
                 {t('footage.durationRangeLabel')}
@@ -550,18 +712,6 @@ function FilterContent({
                 }}
               />
             </div>
-            {(value.minDurationMs !== undefined || value.maxDurationMs !== undefined) && (
-              <Button
-                type="link"
-                size="small"
-                onClick={() =>
-                  onChange({ ...value, minDurationMs: undefined, maxDurationMs: undefined })
-                }
-                style={{ padding: 0, fontSize: 12, alignSelf: 'flex-start' }}
-              >
-                {t('footage.clearDuration')}
-              </Button>
-            )}
           </div>
         );
       }
@@ -572,18 +722,19 @@ function FilterContent({
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', width: 680, height: 460 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', width: 720, height: 520 }}>
       <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
         {/* Sidebar */}
         <div
           style={{
-            width: 180,
+            width: 190,
             borderRight: '1px solid #f0f0f0',
             display: 'flex',
             flexDirection: 'column',
-            padding: '12px 0',
+            padding: '8px 0',
             flexShrink: 0,
             background: '#fafafa',
+            overflowY: 'auto',
           }}
         >
           {filterCategories.map((cat) => {
@@ -598,7 +749,7 @@ function FilterContent({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  padding: '11px 16px',
+                  padding: '10px 16px',
                   fontSize: 13.5,
                   fontWeight: isActive ? 600 : 500,
                   color: isActive ? '#1677ff' : '#374151',
@@ -712,14 +863,8 @@ export function UsableOnlySwitch({
 // ─── Public component ─────────────────────────────────────────────────────────
 
 export function FootageFilterPopover({
-  value,
-  onChange,
-  onClear,
   activeCount = 0,
-  folders,
-  foldersLoading,
-  facets,
-  facetsLoading,
+  ...contentProps
 }: FootageFilterPopoverProps) {
   return (
     <Popover
@@ -734,17 +879,7 @@ export function FootageFilterPopover({
           boxShadow: '0 10px 36px rgba(0, 0, 0, 0.14)',
         },
       }}
-      content={
-        <FilterContent
-          value={value}
-          onChange={onChange}
-          onClear={onClear}
-          folders={folders}
-          foldersLoading={foldersLoading}
-          facets={facets}
-          facetsLoading={facetsLoading}
-        />
-      }
+      content={<FilterContent {...contentProps} />}
     >
       <Button
         icon={<FilterIcon size={15} />}
