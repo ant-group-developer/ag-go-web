@@ -336,6 +336,11 @@ export type FootageActor = {
   avatar?: string | null;
 };
 
+/** Display name of an account, falling back to its id when the account is unknown. */
+export function actorName(actor: FootageActor | null | undefined, fallbackId: string): string {
+  return actor?.name || actor?.email || fallbackId;
+}
+
 /** A project the video belongs to (only the ones the user can see). */
 export type FootageProject = {
   id: string;

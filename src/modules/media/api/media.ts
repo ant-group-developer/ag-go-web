@@ -9,6 +9,13 @@ export type Asset = {
   fileSizeBytes: string;
   processingStatus: string;
   processingError?: string | null;
+  extension?: string | null;
+  /** 'local' | 'google_drive' */
+  sourceType?: string;
+  /** Probed when processed: width, height, durationSeconds, format, codec, frameRate, … */
+  sourceMetadata?: Record<string, unknown> | null;
+  createdBy?: string;
+  createdAt?: string;
 };
 
 /** A preview variant the requester may view; heights follow the file's aspect ratio. */
