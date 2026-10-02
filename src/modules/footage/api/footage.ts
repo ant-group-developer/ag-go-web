@@ -60,6 +60,10 @@ export function resolutionOf(width: number, height: number): Resolution | null {
   return 'sd';
 }
 
+/** Which videos to list by the AI verdict "usable"; `all` lists both. */
+export const FOOTAGE_USABILITIES = ['usable', 'unusable', 'all'] as const;
+export type FootageUsability = (typeof FOOTAGE_USABILITIES)[number];
+
 export const FOOTAGE_SORT_FIELDS = [
   'relevance',
   'analyzedAt',
@@ -256,6 +260,8 @@ export type FootageSearchParams = {
   minDurationMs?: number;
   maxDurationMs?: number;
   usableOnly?: boolean;
+  /** Wins over `usableOnly`. */
+  usability?: FootageUsability;
   sortBy?: FootageSortField;
   sortOrder?: FootageSortOrder;
   page?: number;
@@ -286,6 +292,7 @@ export function buildSearchQueryString(params: FootageSearchParams): string {
   if (params.minDurationMs !== undefined) query.set('minDurationMs', String(params.minDurationMs));
   if (params.maxDurationMs !== undefined) query.set('maxDurationMs', String(params.maxDurationMs));
   if (params.usableOnly !== undefined) query.set('usableOnly', String(params.usableOnly));
+  if (params.usability) query.set('usability', params.usability);
   if (params.sortBy) query.set('sortBy', params.sortBy);
   if (params.sortOrder) query.set('sortOrder', params.sortOrder);
   if (params.page !== undefined) query.set('page', String(params.page));
@@ -335,6 +342,11 @@ export type FootageActor = {
   email?: string | null;
   avatar?: string | null;
 };
+
+/** Display name of an account, falling back to its id when the account is unknown. */
+export function actorName(actor: FootageActor | null | undefined, fallbackId: string): string {
+  return actor?.name || actor?.email || fallbackId;
+}
 
 /** A project the video belongs to (only the ones the user can see). */
 export type FootageProject = {

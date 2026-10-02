@@ -1,8 +1,6 @@
-import type { DescriptionsProps } from 'antd';
 import {
   Button,
   Col,
-  Descriptions,
   Drawer,
   Empty,
   Grid,
@@ -20,7 +18,6 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { GO_PERMISSIONS } from '../../../shared/auth/permissions';
 import { formatDate } from '../../../shared/lib/format-date';
-import { formatFileSize } from '../../../shared/lib/format-file-size';
 import { usePermissions } from '../../account/hooks/use-current-account';
 import {
   VideoPlayer,
@@ -29,23 +26,22 @@ import {
 import { AUTO_QUALITY } from '../../media/hooks/use-video-quality';
 import { getProjectStatus } from '../../projects/utils/project-status.util';
 import {
-  CAMERA_MOTION_LABELS_VI,
+  actorName,
   formatMs,
-  ORIENTATION_LABELS_VI,
-  PEOPLE_COUNT_LABELS_VI,
-  qualityStars,
   RESOLUTION_LABELS,
   resolutionOf,
-  SETTING_LABELS_VI,
-  SHOT_SIZE_LABELS_VI,
-  TIME_OF_DAY_LABELS_VI,
-  type FootageActor,
   type FootageFileInfo,
   type FootageProject,
   type FootageVideo,
   type FootageVideoMedia,
 } from '../api/footage';
 import { footageSourceUrlQuery, useFootageVideoMedia } from '../hooks/use-footage';
+import {
+  FileInfoDescriptions,
+  FootageDescription,
+  InfoDescriptions,
+  TagList,
+} from './footage-description';
 
 interface FootageVideoDrawerProps {
   open: boolean;
@@ -56,60 +52,6 @@ interface FootageVideoDrawerProps {
 // Wide enough for a large player beside the metadata tabs, but never edge-to-edge.
 const DRAWER_WIDTH = 'min(1440px, 94vw)';
 const QUALITY_STORAGE_KEY = 'ag-go.footage.videoQuality';
-
-function actorName(actor: FootageActor | null, fallbackId: string): string {
-  return actor?.name || actor?.email || fallbackId;
-}
-
-function formatBitrate(bps: number | null): string {
-  if (!bps) return '-';
-  return bps >= 1_000_000
-    ? `${(bps / 1_000_000).toFixed(1)} Mbps`
-    : `${Math.round(bps / 1000)} kbps`;
-}
-
-/** One row of an info table; falsy entries are skipped so optional rows read inline. */
-type InfoRow = { label: string; value: ReactNode } | false | null | undefined | '' | 0;
-
-/** The one look every block of the drawer uses: bordered, one column, same label width. */
-function InfoDescriptions({
-  rows,
-  title,
-  extra,
-  column = 1,
-}: {
-  rows: InfoRow[];
-  title?: ReactNode;
-  extra?: ReactNode;
-  column?: DescriptionsProps['column'];
-}) {
-  const items: DescriptionsProps['items'] = rows
-    .filter((row): row is { label: string; value: ReactNode } => Boolean(row))
-    .map((row) => ({ key: row.label, label: row.label, children: row.value }));
-  return (
-    <Descriptions
-      bordered
-      size="small"
-      column={column}
-      title={title}
-      extra={extra}
-      items={items}
-      styles={{ label: { fontWeight: 600, color: '#374151', width: 160 } }}
-    />
-  );
-}
-
-function TagList({ values, color }: { values: string[]; color?: string }) {
-  return (
-    <Space size={[4, 4]} wrap>
-      {values.map((value) => (
-        <Tag key={value} color={color} style={{ marginInlineEnd: 0 }}>
-          {value}
-        </Tag>
-      ))}
-    </Space>
-  );
-}
 
 /** Previews in the custom player (auto quality + manual choice), like the project detail view. */
 function FootagePlayer({
@@ -218,161 +160,13 @@ function FileSummary({ item }: { item: FootageVideo }) {
   );
 }
 
-function DescriptionTab({ item }: { item: FootageVideo }) {
-  const { t } = useTranslation();
-  const tagRow = (label: string, values: string[], color?: string): InfoRow =>
-    values.length > 0 && { label, value: <TagList values={values} color={color} /> };
-  return (
-    <InfoDescriptions
-      rows={[
-        item.titleVi && { label: t('footage.titleVi'), value: item.titleVi },
-        item.summaryVi && { label: t('footage.summaryVi'), value: item.summaryVi },
-        item.summaryEn && { label: t('footage.summaryEn'), value: item.summaryEn },
-        item.genre && { label: t('footage.genre'), value: <Tag color="blue">{item.genre}</Tag> },
-        item.mood && { label: t('footage.mood'), value: item.mood },
-        item.timeOfDay && {
-          label: t('footage.timeOfDay'),
-          value: TIME_OF_DAY_LABELS_VI[item.timeOfDay],
-        },
-        item.setting && { label: t('footage.setting'), value: SETTING_LABELS_VI[item.setting] },
-        item.peopleCount && {
-          label: t('footage.peopleCount'),
-          value: PEOPLE_COUNT_LABELS_VI[item.peopleCount],
-        },
-        item.orientation && {
-          label: t('footage.orientation'),
-          value: ORIENTATION_LABELS_VI[item.orientation],
-        },
-        tagRow(
-          t('footage.shotVariety'),
-          item.shotVariety.map((s) => SHOT_SIZE_LABELS_VI[s]),
-        ),
-        tagRow(
-          t('footage.cameraMotion'),
-          item.cameraMotions.map((cm) => CAMERA_MOTION_LABELS_VI[cm]),
-        ),
-        {
-          label: t('footage.hasAudio'),
-          value: (
-            <Space size={4} wrap>
-              <Tag color={item.hasAudio ? 'success' : 'default'}>
-                {item.hasAudio ? t('footage.yes') : t('footage.no')}
-              </Tag>
-              {item.hasSpeech !== null && (
-                <Tag color={item.hasSpeech ? 'processing' : 'default'}>
-                  {item.hasSpeech ? t('footage.hasSpeech') : t('footage.noSpeech')}
-                </Tag>
-              )}
-            </Space>
-          ),
-        },
-        item.visibleText && { label: t('footage.visibleText'), value: item.visibleText },
-        item.hasWatermark && {
-          label: t('footage.hasWatermark'),
-          value: <Tag color="warning">{t('footage.yes')}</Tag>,
-        },
-        {
-          label: t('footage.quality'),
-          value: (
-            <>
-              <span style={{ color: '#f59e0b' }}>{qualityStars(item.quality)}</span>
-              <span style={{ color: '#6b7280', marginLeft: 6 }}>({item.quality}/5)</span>
-            </>
-          ),
-        },
-        {
-          label: t('footage.usable'),
-          value: (
-            <>
-              <Tag color={item.usable ? 'success' : 'default'}>
-                {item.usable ? t('footage.usableYes') : t('footage.usableNo')}
-              </Tag>
-              {!item.usable && item.usableReason && (
-                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                  {item.usableReason}
-                </Typography.Text>
-              )}
-            </>
-          ),
-        },
-        item.approved && {
-          label: t('footage.approved'),
-          value: <Tag color="success">{t('footage.approvedYes')}</Tag>,
-        },
-        tagRow(t('footage.topics'), item.topics, 'geekblue'),
-        tagRow(t('footage.subjects'), item.subjects, 'purple'),
-        tagRow(t('footage.places'), item.places, 'orange'),
-        tagRow(t('footage.actions'), item.actions, 'cyan'),
-        tagRow(t('footage.tags'), item.tags),
-        tagRow(t('footage.keywordsVi'), item.keywordsVi, 'blue'),
-      ]}
-    />
-  );
-}
-
 function FileTab({ file, item }: { file: FootageFileInfo | null; item: FootageVideo }) {
-  const { t } = useTranslation();
   if (!file) {
     return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />;
   }
-  const width = file.width ?? item.width;
-  const height = file.height ?? item.height;
-  const resolution = width && height ? resolutionOf(width, height) : null;
-  const sourceLabels: Record<string, string> = {
-    local: t('footage.sourceLocal'),
-    google_drive: 'Google Drive',
-  };
   return (
-    <InfoDescriptions
-      rows={[
-        {
-          label: t('footage.assetName'),
-          value: <Typography.Text copyable>{file.filename}</Typography.Text>,
-        },
-        {
-          label: t('footage.fileFormat'),
-          value: [file.mimeType, file.format, file.extension && `.${file.extension}`]
-            .filter(Boolean)
-            .join(' · '),
-        },
-        { label: t('footage.fileSize'), value: formatFileSize(file.fileSizeBytes) },
-        {
-          label: t('footage.resolution'),
-          value:
-            width && height ? (
-              <Space size={6} wrap>
-                <span>
-                  {width} × {height}
-                </span>
-                {resolution && <Tag>{RESOLUTION_LABELS[resolution]}</Tag>}
-              </Space>
-            ) : (
-              '-'
-            ),
-        },
-        {
-          label: t('footage.duration'),
-          value: file.durationMs !== null ? formatMs(file.durationMs) : '-',
-        },
-        {
-          label: t('footage.frameRate'),
-          value: file.frameRate ? `${Math.round(file.frameRate * 100) / 100} fps` : '-',
-        },
-        { label: t('footage.codec'), value: file.codec ?? '-' },
-        { label: t('footage.bitrate'), value: formatBitrate(file.bitrateBps) },
-        {
-          label: t('footage.hasAudio'),
-          value: file.hasAudio === null ? '-' : file.hasAudio ? t('footage.yes') : t('footage.no'),
-        },
-        { label: t('footage.source'), value: sourceLabels[file.sourceType] ?? file.sourceType },
-        { label: t('footage.uploadedAt'), value: formatDate(file.uploadedAt) },
-        {
-          label: t('footage.uploadedBy'),
-          value: actorName(file.uploadedByUser, file.uploadedBy),
-        },
-        { label: t('footage.analyzedAt'), value: formatDate(file.analyzedAt) },
-        file.analysisModel && { label: t('footage.analysisModel'), value: file.analysisModel },
-      ]}
+    <FileInfoDescriptions
+      file={{ ...file, width: file.width ?? item.width, height: file.height ?? item.height }}
     />
   );
 }
@@ -528,7 +322,7 @@ export function FootageVideoDrawer({ open, item, onClose }: FootageVideoDrawerPr
                 {
                   key: 'description',
                   label: t('footage.tabDescription'),
-                  children: <DescriptionTab item={item} />,
+                  children: <FootageDescription description={item} />,
                 },
                 {
                   key: 'file',
