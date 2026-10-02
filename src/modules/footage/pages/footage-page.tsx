@@ -1,6 +1,6 @@
 import { PageContainer } from '@ant-design/pro-components';
-import { Alert, Col, Empty, Pagination, Row, Select, Spin, theme, Typography } from 'antd';
-import { ArrowDownUp, Search, VideoIcon } from 'lucide-react';
+import { Alert, Col, Empty, Pagination, Row, Spin, theme, Typography } from 'antd';
+import { Search, VideoIcon } from 'lucide-react';
 import {
   parseAsArrayOf,
   parseAsBoolean,
@@ -11,12 +11,12 @@ import {
 } from 'nuqs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { SortDropdown } from '../../../shared/components/sort-dropdown';
 import {
   FOOTAGE_SORT_FIELDS,
   RESOLUTIONS,
   type FootageSearchParams,
   type FootageSortField,
-  type FootageSortOrder,
   type FootageVideo,
   type Orientation,
   type TimeOfDay,
@@ -30,19 +30,17 @@ import { useFootageFacets, useFootageFolders, useFootageSearch } from '../hooks/
 const PAGE_SIZES = [12, 24, 48, 96];
 const DEFAULT_PAGE_SIZE = 24;
 
-/** Sort choices offered, as `field:order`. */
-const SORT_OPTIONS: Array<{ field: FootageSortField; order: FootageSortOrder; label: string }> = [
-  { field: 'relevance', order: 'desc', label: 'footage.sortRelevance' },
-  { field: 'analyzedAt', order: 'desc', label: 'footage.sortNewest' },
-  { field: 'analyzedAt', order: 'asc', label: 'footage.sortOldest' },
-  { field: 'quality', order: 'desc', label: 'footage.sortQuality' },
-  { field: 'resolution', order: 'desc', label: 'footage.sortResolutionDesc' },
-  { field: 'resolution', order: 'asc', label: 'footage.sortResolutionAsc' },
-  { field: 'duration', order: 'desc', label: 'footage.sortDurationDesc' },
-  { field: 'duration', order: 'asc', label: 'footage.sortDurationAsc' },
-  { field: 'name', order: 'asc', label: 'footage.sortNameAsc' },
-  { field: 'name', order: 'desc', label: 'footage.sortNameDesc' },
-];
+/** Label keys of the sort fields, in menu order (as on the project list). */
+const SORT_FIELD_LABELS: Record<FootageSortField, string> = {
+  relevance: 'footage.sortRelevance',
+  analyzedAt: 'footage.analyzedAt',
+  quality: 'footage.quality',
+  resolution: 'footage.resolution',
+  duration: 'footage.duration',
+  name: 'footage.assetName',
+  folder: 'footage.filterFolder',
+  project: 'footage.filterProject',
+};
 
 // ─── URL params ───────────────────────────────────────────────────────────────
 
@@ -279,19 +277,14 @@ export function FootagePage() {
           />
 
           {/* Sort */}
-          <Select
-            value={`${urlState.sortBy}:${urlState.sortOrder}`}
-            onChange={(value: string) => {
-              const [sortBy, sortOrder] = value.split(':') as [FootageSortField, FootageSortOrder];
-              void setUrlState({ sortBy, sortOrder, page: null });
-            }}
-            options={SORT_OPTIONS.map((option) => ({
-              value: `${option.field}:${option.order}`,
-              label: t(option.label),
+          <SortDropdown<FootageSortField>
+            fields={FOOTAGE_SORT_FIELDS.map((field) => ({
+              value: field,
+              label: t(SORT_FIELD_LABELS[field]),
             }))}
-            prefix={<ArrowDownUp size={14} style={{ color: '#6b7280' }} />}
-            style={{ minWidth: 210 }}
-            aria-label={t('footage.sortLabel')}
+            sortBy={urlState.sortBy}
+            sortOrder={urlState.sortOrder}
+            onChange={(sort) => void setUrlState({ ...sort, page: null })}
           />
 
           {/* Usable-only switch */}
