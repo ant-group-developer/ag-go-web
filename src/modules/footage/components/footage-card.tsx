@@ -2,7 +2,14 @@ import { Tag, Tooltip } from 'antd';
 import { Monitor, Smartphone, Square } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { formatMs, ORIENTATION_LABELS_VI, qualityStars, type FootageVideo } from '../api/footage';
+import {
+  formatMs,
+  ORIENTATION_LABELS_VI,
+  qualityStars,
+  RESOLUTION_LABELS,
+  resolutionOf,
+  type FootageVideo,
+} from '../api/footage';
 import { useFootageVideoMedia } from '../hooks/use-footage';
 
 interface FootageCardProps {
@@ -35,6 +42,7 @@ export function FootageCard({ item, onClick }: FootageCardProps) {
   }, []);
 
   const topTags = item.tags.slice(0, 3);
+  const resolution = resolutionOf(item.width, item.height);
   const stars = qualityStars(item.quality);
 
   return (
@@ -119,6 +127,28 @@ export function FootageCard({ item, onClick }: FootageCardProps) {
         >
           {formatMs(item.durationMs)}
         </div>
+
+        {/* Resolution badge */}
+        {resolution && (
+          <Tooltip title={`${RESOLUTION_LABELS[resolution]} · ${item.width}×${item.height}`}>
+            <div
+              style={{
+                position: 'absolute',
+                top: 6,
+                right: 8,
+                background: 'rgba(0,0,0,0.65)',
+                color: '#fff',
+                fontSize: 10.5,
+                fontWeight: 600,
+                padding: '1px 6px',
+                borderRadius: 4,
+                textTransform: 'uppercase',
+              }}
+            >
+              {resolution}
+            </div>
+          </Tooltip>
+        )}
 
         {/* Approved badge */}
         {item.approved && (

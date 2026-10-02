@@ -1,34 +1,89 @@
 import { PageContainer } from '@ant-design/pro-components';
-import { Alert, Button, Col, Empty, Row, Spin, theme, Typography } from 'antd';
-import { Search, VideoIcon } from 'lucide-react';
+import { Alert, Col, Empty, Pagination, Row, Select, Spin, theme, Typography } from 'antd';
+import { ArrowDownUp, Search, VideoIcon } from 'lucide-react';
 import {
   parseAsArrayOf,
   parseAsBoolean,
   parseAsInteger,
   parseAsString,
+  parseAsStringLiteral,
   useQueryStates,
 } from 'nuqs';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { FootageSearchParams, FootageVideo, Orientation, TimeOfDay } from '../api/footage';
+import {
+  FOOTAGE_SORT_FIELDS,
+  RESOLUTIONS,
+  type FootageSearchParams,
+  type FootageSortField,
+  type FootageSortOrder,
+  type FootageVideo,
+  type Orientation,
+  type TimeOfDay,
+} from '../api/footage';
 import { FootageCard } from '../components/footage-card';
 import type { FootageFilterValues } from '../components/footage-filter-popover';
 import { FootageFilterPopover, UsableOnlySwitch } from '../components/footage-filter-popover';
 import { FootageVideoDrawer } from '../components/footage-video-drawer';
 import { useFootageFacets, useFootageFolders, useFootageSearch } from '../hooks/use-footage';
 
+const PAGE_SIZES = [12, 24, 48, 96];
+const DEFAULT_PAGE_SIZE = 24;
+
+/** Sort choices offered, as `field:order`. */
+const SORT_OPTIONS: Array<{ field: FootageSortField; order: FootageSortOrder; label: string }> = [
+  { field: 'relevance', order: 'desc', label: 'footage.sortRelevance' },
+  { field: 'analyzedAt', order: 'desc', label: 'footage.sortNewest' },
+  { field: 'analyzedAt', order: 'asc', label: 'footage.sortOldest' },
+  { field: 'quality', order: 'desc', label: 'footage.sortQuality' },
+  { field: 'resolution', order: 'desc', label: 'footage.sortResolutionDesc' },
+  { field: 'resolution', order: 'asc', label: 'footage.sortResolutionAsc' },
+  { field: 'duration', order: 'desc', label: 'footage.sortDurationDesc' },
+  { field: 'duration', order: 'asc', label: 'footage.sortDurationAsc' },
+  { field: 'name', order: 'asc', label: 'footage.sortNameAsc' },
+  { field: 'name', order: 'desc', label: 'footage.sortNameDesc' },
+];
+
 // ─── URL params ───────────────────────────────────────────────────────────────
 
 const footageUrlParams = {
   q: parseAsString,
   folderIds: parseAsArrayOf(parseAsString).withDefault([]),
+  projectIds: parseAsArrayOf(parseAsString).withDefault([]),
+  ownerUserIds: parseAsArrayOf(parseAsString).withDefault([]),
+  categoryIds: parseAsArrayOf(parseAsString).withDefault([]),
+  tags: parseAsArrayOf(parseAsString).withDefault([]),
   genres: parseAsArrayOf(parseAsString).withDefault([]),
   timesOfDay: parseAsArrayOf(parseAsString).withDefault([]),
   orientations: parseAsArrayOf(parseAsString).withDefault([]),
+  resolutions: parseAsArrayOf(parseAsStringLiteral(RESOLUTIONS)).withDefault([]),
   minDurationMs: parseAsInteger,
   maxDurationMs: parseAsInteger,
   usableOnly: parseAsBoolean.withDefault(true),
+  sortBy: parseAsStringLiteral(FOOTAGE_SORT_FIELDS).withDefault('relevance'),
+  sortOrder: parseAsStringLiteral(['asc', 'desc'] as const).withDefault('desc'),
+  page: parseAsInteger.withDefault(1),
+  pageSize: parseAsInteger.withDefault(DEFAULT_PAGE_SIZE),
 };
+
+/** Filter values as URL state (`null` clears a param). */
+function filterUrlState(values: FootageFilterValues) {
+  const list = <T,>(items: T[] | undefined) => (items?.length ? items : null);
+  return {
+    folderIds: list(values.folderIds),
+    projectIds: list(values.projectIds),
+    ownerUserIds: list(values.ownerUserIds),
+    categoryIds: list(values.categoryIds),
+    tags: list(values.tags),
+    genres: list(values.genres),
+    timesOfDay: list(values.timesOfDay),
+    orientations: list(values.orientations),
+    resolutions: list(values.resolutions),
+    minDurationMs: values.minDurationMs ?? null,
+    maxDurationMs: values.maxDurationMs ?? null,
+    usableOnly: values.usableOnly ?? true,
+  };
+}
 
 // ─── Debounce hook ────────────────────────────────────────────────────────────
 
@@ -53,104 +108,92 @@ export function FootagePage() {
   const [keywordInput, setKeywordInput] = useState(urlState.q ?? '');
   const debouncedKeyword = useDebounce(keywordInput, 400);
 
-  // Sync debounced keyword to URL
+  // Sync debounced keyword to URL; a new search starts from the first page.
   useEffect(() => {
-    void setUrlState({ q: debouncedKeyword.trim() || null });
+    const q = debouncedKeyword.trim() || null;
+    void setUrlState((current) => (current.q === q ? {} : { q, page: null }));
   }, [debouncedKeyword, setUrlState]);
 
   // Build filter values from URL state
-  const filterValues: FootageFilterValues = useMemo(
-    () => ({
-      folderIds: urlState.folderIds.length ? urlState.folderIds : undefined,
-      genres: urlState.genres.length ? urlState.genres : undefined,
-      timesOfDay: urlState.timesOfDay.length ? (urlState.timesOfDay as TimeOfDay[]) : undefined,
-      orientations: urlState.orientations.length
-        ? (urlState.orientations as Orientation[])
-        : undefined,
+  const filterValues: FootageFilterValues = useMemo(() => {
+    const list = <T,>(items: T[]) => (items.length ? items : undefined);
+    return {
+      folderIds: list(urlState.folderIds),
+      projectIds: list(urlState.projectIds),
+      ownerUserIds: list(urlState.ownerUserIds),
+      categoryIds: list(urlState.categoryIds),
+      tags: list(urlState.tags),
+      genres: list(urlState.genres),
+      timesOfDay: list(urlState.timesOfDay as TimeOfDay[]),
+      orientations: list(urlState.orientations as Orientation[]),
+      resolutions: list(urlState.resolutions),
       minDurationMs: urlState.minDurationMs ?? undefined,
       maxDurationMs: urlState.maxDurationMs ?? undefined,
       usableOnly: urlState.usableOnly,
-    }),
-    [urlState],
-  );
+    };
+  }, [urlState]);
 
+  const pageSize = PAGE_SIZES.includes(urlState.pageSize) ? urlState.pageSize : DEFAULT_PAGE_SIZE;
   const searchParams: FootageSearchParams = {
     q: urlState.q ?? undefined,
     ...filterValues,
-    limit: 40,
+    sortBy: urlState.sortBy,
+    sortOrder: urlState.sortOrder,
+    page: urlState.page,
+    limit: pageSize,
   };
 
-  const { data, isPending, isFetchingNextPage, hasNextPage, fetchNextPage, error } =
-    useFootageSearch(searchParams, true);
+  const { data, isPending, isFetching, error } = useFootageSearch(searchParams, true);
 
   const foldersQuery = useFootageFolders();
   const facetsQuery = useFootageFacets({ q: urlState.q ?? undefined, ...filterValues });
 
-  // Flatten all pages
-  const items = useMemo<FootageVideo[]>(() => data?.pages.flatMap((p) => p.items) ?? [], [data]);
+  const items = useMemo<FootageVideo[]>(() => data?.items ?? [], [data]);
+  const total = data?.total ?? 0;
+
+  // A page past the end (e.g. after narrowing the filters) goes back to the last page.
+  useEffect(() => {
+    const lastPage = Math.max(1, Math.ceil(total / pageSize));
+    if (data && urlState.page > lastPage) {
+      void setUrlState({ page: lastPage === 1 ? null : lastPage });
+    }
+  }, [data, pageSize, setUrlState, total, urlState.page]);
 
   // Active filter count (excludes usableOnly which has its own switch)
   const activeFilterCount = useMemo(
     () =>
       [
+        urlState.q,
         filterValues.folderIds?.length,
+        filterValues.projectIds?.length,
+        filterValues.ownerUserIds?.length,
+        filterValues.categoryIds?.length,
+        filterValues.tags?.length,
         filterValues.genres?.length,
         filterValues.timesOfDay?.length,
         filterValues.orientations?.length,
+        filterValues.resolutions?.length,
         filterValues.minDurationMs !== undefined || filterValues.maxDurationMs !== undefined
           ? 1
           : undefined,
       ].filter(Boolean).length,
-    [filterValues],
+    [filterValues, urlState.q],
   );
 
   const handleFilterChange = useCallback(
     (values: FootageFilterValues) => {
-      void setUrlState({
-        folderIds: values.folderIds?.length ? values.folderIds : null,
-        genres: values.genres?.length ? values.genres : null,
-        timesOfDay: values.timesOfDay?.length ? values.timesOfDay : null,
-        orientations: values.orientations?.length ? values.orientations : null,
-        minDurationMs: values.minDurationMs ?? null,
-        maxDurationMs: values.maxDurationMs ?? null,
-        usableOnly: values.usableOnly ?? true,
-      });
+      void setUrlState({ ...filterUrlState(values), page: null });
     },
     [setUrlState],
   );
 
   const handleClearFilters = useCallback(() => {
     setKeywordInput('');
-    void setUrlState({
-      q: null,
-      folderIds: null,
-      genres: null,
-      timesOfDay: null,
-      orientations: null,
-      minDurationMs: null,
-      maxDurationMs: null,
-      usableOnly: true,
-    });
+    void setUrlState({ q: null, ...filterUrlState({}), page: null });
   }, [setUrlState]);
 
   // Drawer state
   const [drawerItem, setDrawerItem] = useState<FootageVideo | null>(null);
-
-  // Infinite scroll sentinel
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    if (!sentinelRef.current || !hasNextPage) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting && hasNextPage && !isFetchingNextPage) {
-          void fetchNextPage();
-        }
-      },
-      { threshold: 0.1 },
-    );
-    observer.observe(sentinelRef.current);
-    return () => observer.disconnect();
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   return (
     <>
@@ -226,6 +269,8 @@ export function FootagePage() {
             value={filterValues}
             onChange={handleFilterChange}
             onClear={handleClearFilters}
+            keyword={keywordInput}
+            onKeywordChange={setKeywordInput}
             activeCount={activeFilterCount}
             folders={foldersQuery.data?.folders ?? []}
             foldersLoading={foldersQuery.isPending}
@@ -233,10 +278,26 @@ export function FootagePage() {
             facetsLoading={facetsQuery.isPending}
           />
 
+          {/* Sort */}
+          <Select
+            value={`${urlState.sortBy}:${urlState.sortOrder}`}
+            onChange={(value: string) => {
+              const [sortBy, sortOrder] = value.split(':') as [FootageSortField, FootageSortOrder];
+              void setUrlState({ sortBy, sortOrder, page: null });
+            }}
+            options={SORT_OPTIONS.map((option) => ({
+              value: `${option.field}:${option.order}`,
+              label: t(option.label),
+            }))}
+            prefix={<ArrowDownUp size={14} style={{ color: '#6b7280' }} />}
+            style={{ minWidth: 210 }}
+            aria-label={t('footage.sortLabel')}
+          />
+
           {/* Usable-only switch */}
           <UsableOnlySwitch
             value={urlState.usableOnly}
-            onChange={(v) => void setUrlState({ usableOnly: v })}
+            onChange={(v) => void setUrlState({ usableOnly: v, page: null })}
           />
         </div>
 
@@ -263,14 +324,17 @@ export function FootagePage() {
             />
           </div>
         ) : (
-          <>
+          <Spin spinning={isFetching} delay={200}>
             {/* Result count */}
             <Typography.Text
               type="secondary"
               style={{ fontSize: 12, display: 'block', marginBottom: 12 }}
             >
-              {t('footage.resultCount', { count: items.length })}
-              {hasNextPage ? ` ${t('footage.moreAvailable')}` : ''}
+              {t('footage.resultRange', {
+                from: (urlState.page - 1) * pageSize + 1,
+                to: (urlState.page - 1) * pageSize + items.length,
+                total,
+              })}
             </Typography.Text>
 
             {/* Responsive grid */}
@@ -282,25 +346,24 @@ export function FootagePage() {
               ))}
             </Row>
 
-            {/* Sentinel for infinite scroll */}
-            <div ref={sentinelRef} style={{ height: 1 }} />
-
-            {/* "Load more" button / spinner */}
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'center',
-                marginTop: 24,
-                paddingBottom: 16,
-              }}
-            >
-              {isFetchingNextPage ? (
-                <Spin />
-              ) : hasNextPage ? (
-                <Button onClick={() => void fetchNextPage()}>{t('footage.loadMore')}</Button>
-              ) : null}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 24 }}>
+              <Pagination
+                current={urlState.page}
+                pageSize={pageSize}
+                total={total}
+                pageSizeOptions={PAGE_SIZES}
+                showSizeChanger
+                showTotal={(count) => t('footage.resultCount', { count })}
+                onChange={(page, size) => {
+                  void setUrlState({
+                    page: size !== pageSize || page === 1 ? null : page,
+                    pageSize: size === DEFAULT_PAGE_SIZE ? null : size,
+                  });
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+              />
             </div>
-          </>
+          </Spin>
         )}
       </PageContainer>
 

@@ -4,6 +4,7 @@ import {
   createProject,
   deleteProject,
   getProject,
+  getProjectOwners,
   getProjects,
   updateProject,
 } from '../api/projects';
@@ -15,6 +16,16 @@ export function useProjects(params: ProjectListParams = {}) {
   return useQuery({
     queryKey: projectQueryKeys.list(params),
     queryFn: () => getProjects(params),
+  });
+}
+
+/** Owners (authors) of the projects the user can list, for the author filter. */
+export function useProjectOwners(enabled = true) {
+  return useQuery({
+    queryKey: projectQueryKeys.owners(),
+    queryFn: getProjectOwners,
+    enabled,
+    staleTime: 60_000,
   });
 }
 
