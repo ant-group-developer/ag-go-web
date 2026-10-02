@@ -54,6 +54,11 @@ describe('buildSearchQueryString', () => {
     expect(p.get('maxDurationMs')).toBe('5000');
   });
 
+  it('sets usability', () => {
+    const qs = buildSearchQueryString({ usability: 'unusable' });
+    expect(new URLSearchParams(qs).get('usability')).toBe('unusable');
+  });
+
   it('sets usableOnly=false explicitly', () => {
     const qs = buildSearchQueryString({ usableOnly: false });
     expect(new URLSearchParams(qs).get('usableOnly')).toBe('false');

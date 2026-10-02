@@ -3,7 +3,6 @@ import { Alert, Col, Empty, Pagination, Radio, Row, Spin, theme, Tooltip, Typogr
 import { LayoutGrid, List, Search, VideoIcon } from 'lucide-react';
 import {
   parseAsArrayOf,
-  parseAsBoolean,
   parseAsInteger,
   parseAsString,
   parseAsStringLiteral,
@@ -14,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { SortDropdown } from '../../../shared/components/sort-dropdown';
 import {
   FOOTAGE_SORT_FIELDS,
+  FOOTAGE_USABILITIES,
   RESOLUTIONS,
   type FootageSearchParams,
   type FootageSortField,
@@ -23,7 +23,7 @@ import {
 } from '../api/footage';
 import { FootageCard } from '../components/footage-card';
 import type { FootageFilterValues } from '../components/footage-filter-popover';
-import { FootageFilterPopover, UsableOnlySwitch } from '../components/footage-filter-popover';
+import { FootageFilterPopover } from '../components/footage-filter-popover';
 import { FootageTable } from '../components/footage-table';
 import { FootageVideoDrawer } from '../components/footage-video-drawer';
 import { useFootageFacets, useFootageFolders, useFootageSearch } from '../hooks/use-footage';
@@ -62,7 +62,7 @@ const footageUrlParams = {
   resolutions: parseAsArrayOf(parseAsStringLiteral(RESOLUTIONS)).withDefault([]),
   minDurationMs: parseAsInteger,
   maxDurationMs: parseAsInteger,
-  usableOnly: parseAsBoolean.withDefault(true),
+  usability: parseAsStringLiteral(FOOTAGE_USABILITIES).withDefault('usable'),
   sortBy: parseAsStringLiteral(FOOTAGE_SORT_FIELDS).withDefault('relevance'),
   sortOrder: parseAsStringLiteral(['asc', 'desc'] as const).withDefault('desc'),
   page: parseAsInteger.withDefault(1),
@@ -84,7 +84,7 @@ function filterUrlState(values: FootageFilterValues) {
     resolutions: list(values.resolutions),
     minDurationMs: values.minDurationMs ?? null,
     maxDurationMs: values.maxDurationMs ?? null,
-    usableOnly: values.usableOnly ?? true,
+    usability: values.usability && values.usability !== 'usable' ? values.usability : null,
   };
 }
 
@@ -154,7 +154,7 @@ export function FootagePage() {
       resolutions: list(urlState.resolutions),
       minDurationMs: urlState.minDurationMs ?? undefined,
       maxDurationMs: urlState.maxDurationMs ?? undefined,
-      usableOnly: urlState.usableOnly,
+      usability: urlState.usability,
     };
   }, [urlState]);
 
@@ -188,7 +188,7 @@ export function FootagePage() {
     }
   }, [data, pageSize, setUrlState, total, urlState.page]);
 
-  // Active filter count (excludes usableOnly which has its own switch)
+  // Active filter count (usable-only is the default, so it does not count)
   const activeFilterCount = useMemo(
     () =>
       [
@@ -205,6 +205,7 @@ export function FootagePage() {
         filterValues.minDurationMs !== undefined || filterValues.maxDurationMs !== undefined
           ? 1
           : undefined,
+        filterValues.usability !== 'usable',
       ].filter(Boolean).length,
     [filterValues, urlState.q],
   );
@@ -246,6 +247,20 @@ export function FootagePage() {
             flexWrap: 'wrap',
           }}
         >
+          {/* Filter popover */}
+          <FootageFilterPopover
+            value={filterValues}
+            onChange={handleFilterChange}
+            onClear={handleClearFilters}
+            keyword={keywordInput}
+            onKeywordChange={setKeywordInput}
+            activeCount={activeFilterCount}
+            folders={foldersQuery.data?.folders ?? []}
+            foldersLoading={foldersQuery.isPending}
+            facets={facetsQuery.data}
+            facetsLoading={facetsQuery.isPending}
+          />
+
           {/* Search box */}
           <div
             style={{
@@ -293,63 +308,42 @@ export function FootagePage() {
             )}
           </div>
 
-          {/* Filter popover */}
-          <FootageFilterPopover
-            value={filterValues}
-            onChange={handleFilterChange}
-            onClear={handleClearFilters}
-            keyword={keywordInput}
-            onKeywordChange={setKeywordInput}
-            activeCount={activeFilterCount}
-            folders={foldersQuery.data?.folders ?? []}
-            foldersLoading={foldersQuery.isPending}
-            facets={facetsQuery.data}
-            facetsLoading={facetsQuery.isPending}
-          />
-
-          {/* Sort */}
-          <SortDropdown<FootageSortField>
-            fields={FOOTAGE_SORT_FIELDS.map((field) => ({
-              value: field,
-              label: t(SORT_FIELD_LABELS[field]),
-            }))}
-            sortBy={urlState.sortBy}
-            sortOrder={urlState.sortOrder}
-            onChange={(sort) => void setUrlState({ ...sort, page: null })}
-          />
-
-          {/* Usable-only switch */}
-          <UsableOnlySwitch
-            value={urlState.usableOnly}
-            onChange={(v) => void setUrlState({ usableOnly: v, page: null })}
-          />
-
-          {/* View mode */}
-          <Radio.Group
-            value={viewMode}
-            onChange={(e) => setViewMode(e.target.value as ViewMode)}
-            buttonStyle="solid"
-            style={{ marginLeft: 'auto' }}
-          >
-            <Tooltip title={t('footage.viewTable')}>
-              <Radio.Button
-                value="table"
-                className="icon-radio-button"
-                aria-label={t('footage.viewTable')}
-              >
-                <List size={16} />
-              </Radio.Button>
-            </Tooltip>
-            <Tooltip title={t('footage.viewGrid')}>
-              <Radio.Button
-                value="grid"
-                className="icon-radio-button"
-                aria-label={t('footage.viewGrid')}
-              >
-                <LayoutGrid size={16} />
-              </Radio.Button>
-            </Tooltip>
-          </Radio.Group>
+          {/* Sort + view mode */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
+            <SortDropdown<FootageSortField>
+              fields={FOOTAGE_SORT_FIELDS.map((field) => ({
+                value: field,
+                label: t(SORT_FIELD_LABELS[field]),
+              }))}
+              sortBy={urlState.sortBy}
+              sortOrder={urlState.sortOrder}
+              onChange={(sort) => void setUrlState({ ...sort, page: null })}
+            />
+            <Radio.Group
+              value={viewMode}
+              onChange={(e) => setViewMode(e.target.value as ViewMode)}
+              buttonStyle="solid"
+            >
+              <Tooltip title={t('footage.viewTable')}>
+                <Radio.Button
+                  value="table"
+                  className="icon-radio-button"
+                  aria-label={t('footage.viewTable')}
+                >
+                  <List size={16} />
+                </Radio.Button>
+              </Tooltip>
+              <Tooltip title={t('footage.viewGrid')}>
+                <Radio.Button
+                  value="grid"
+                  className="icon-radio-button"
+                  aria-label={t('footage.viewGrid')}
+                >
+                  <LayoutGrid size={16} />
+                </Radio.Button>
+              </Tooltip>
+            </Radio.Group>
+          </div>
         </div>
 
         {/* Error state */}

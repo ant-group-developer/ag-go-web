@@ -13,7 +13,6 @@ import {
   Card,
   Checkbox,
   Col,
-  Descriptions,
   Divider,
   Drawer,
   Empty,
@@ -26,6 +25,7 @@ import {
   Row,
   Space,
   Spin,
+  Tabs,
   Tag,
   Tooltip,
   Typography,
@@ -40,6 +40,7 @@ import { CONTAINER_TABLE_STICKY } from '../../../shared/lib/sticky-table-header'
 import { usePermissions } from '../../account/hooks/use-current-account';
 import {
   analysisStatusColor,
+  isTerminalStatus,
   type AnalysisStatus,
   type AssetAnalysis,
 } from '../../analysis/api/analysis';
@@ -51,6 +52,11 @@ import {
   useStartAssetAnalysis,
 } from '../../analysis/hooks/use-analysis';
 import { createDownload, getDownload, type DownloadResult } from '../../downloads/api/downloads';
+import { type FootageFileInfo } from '../../footage/api/footage';
+import {
+  FileInfoDescriptions,
+  FootageDescription,
+} from '../../footage/components/footage-description';
 import { useRefreshProjectMediaOnImportProgress } from '../../google-drive/hooks/use-refresh-project-media-on-import-progress';
 import {
   getAssetOriginalUrl,
@@ -498,14 +504,67 @@ function MediaThumbnail({ media }: { media: ProjectMedia }) {
   );
 }
 
+const DETAILS_LABEL_WIDTH = 120;
+/** Tab content scrolls at about the height of the file list, so long AI descriptions stay compact. */
+const DETAILS_TAB_STYLE = {
+  maxHeight: 'max(320px, calc(100vh - 470px))',
+  overflowY: 'auto',
+} as const;
+
+function metadataNumber(metadata: Record<string, unknown>, key: string): number | null {
+  const value = metadata[key];
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function metadataString(metadata: Record<string, unknown>, key: string): string | null {
+  const value = metadata[key];
+  return typeof value === 'string' && value ? value : null;
+}
+
+/** The file metadata the footage drawer shows, from what the project media list carries. */
+function fileInfoOf(
+  media: ProjectMedia,
+  analysis: AssetAnalysis | null | undefined,
+): FootageFileInfo {
+  const metadata = media.asset.sourceMetadata ?? {};
+  const durationMs =
+    media.durationSeconds !== null ? Math.round(media.durationSeconds * 1000) : null;
+  const bytes = Number(media.asset.fileSizeBytes ?? 0);
+  return {
+    filename: media.asset.originalFilename,
+    extension: media.asset.extension ?? null,
+    mimeType: media.asset.mimeType,
+    fileSizeBytes: media.asset.fileSizeBytes,
+    width: media.width,
+    height: media.height,
+    durationMs,
+    frameRate: metadataNumber(metadata, 'frameRate') ?? analysis?.media?.fps ?? null,
+    codec: metadataString(metadata, 'codec'),
+    format: metadataString(metadata, 'format'),
+    bitrateBps:
+      bytes > 0 && durationMs && durationMs > 0
+        ? Math.round((bytes * 8) / (durationMs / 1000))
+        : null,
+    hasAudio: analysis?.media?.hasAudio ?? null,
+    sourceType: media.asset.sourceType ?? 'local',
+    uploadedAt: media.asset.createdAt ?? media.createdAt,
+    uploadedBy: media.asset.createdBy ?? '',
+    uploadedByUser: media.createdByUser ?? null,
+    analyzedAt: analysis?.completedAt ?? null,
+    analysisModel: null,
+  };
+}
+
 function MediaDetails({
   media,
   canEvaluate,
+  canManageAnalysis,
   retryLoading,
   onRetry,
 }: {
   media: ProjectMedia;
   canEvaluate: boolean;
+  canManageAnalysis: boolean;
   retryLoading: boolean;
   onRetry: () => void;
 }) {
@@ -550,47 +609,70 @@ function MediaDetails({
     setCommentTouched(false);
   }, [media.id]);
 
+  const isVideo = media.asset.assetType === 'video';
+  // Same query as the AI tab: audio and the analysis date come from the analysis.
+  const analysis = useAssetAnalysis(media.assetId, isVideo);
+  const fileInformation = (
+    <FileInfoDescriptions
+      file={fileInfoOf(media, analysis.data)}
+      isVideo={isVideo}
+      labelWidth={DETAILS_LABEL_WIDTH}
+      extraRows={[
+        {
+          label: t('media.type'),
+          value: (
+            <Tag icon={isVideo ? <FileOutlined /> : <FileImageOutlined />}>
+              {isVideo ? t('media.video') : t('media.image')}
+            </Tag>
+          ),
+        },
+        {
+          label: t('media.status'),
+          value: (
+            <Flex vertical gap={4} align="flex-start">
+              <span>{media.asset.processingStatus}</span>
+              {media.asset.processingError ? (
+                <Typography.Text type="danger">{media.asset.processingError}</Typography.Text>
+              ) : null}
+              {media.asset.processingStatus === 'failed' ? (
+                <Button
+                  icon={<ReloadOutlined />}
+                  loading={retryLoading}
+                  size="small"
+                  onClick={onRetry}
+                >
+                  {t('media.retryProcessing')}
+                </Button>
+              ) : null}
+            </Flex>
+          ),
+        },
+        { label: t('media.caption'), value: media.caption || '-' },
+      ]}
+    />
+  );
+
   return (
-    <Card title={t('projects.fileInformation')} size="small">
-      <Descriptions bordered column={1} size="small">
-        <Descriptions.Item label={t('media.filename')}>
-          {media.asset.originalFilename}
-        </Descriptions.Item>
-        <Descriptions.Item label={t('media.type')}>
-          <Tag icon={media.asset.assetType === 'image' ? <FileImageOutlined /> : <FileOutlined />}>
-            {media.asset.assetType === 'image' ? t('media.image') : t('media.video')}
-          </Tag>
-        </Descriptions.Item>
-        <Descriptions.Item label={t('media.fileSize')}>
-          {formatFileSize(media.asset.fileSizeBytes)}
-        </Descriptions.Item>
-        <Descriptions.Item label={t('media.duration')}>
-          {formatDuration(media.durationSeconds)}
-        </Descriptions.Item>
-        <Descriptions.Item label={t('media.resolution')}>
-          {formatResolution(media)}
-        </Descriptions.Item>
-        <Descriptions.Item label={t('media.uploadedAt')}>
-          {formatDate(media.createdAt)}
-        </Descriptions.Item>
-        <Descriptions.Item label={t('media.mimeType')}>{media.asset.mimeType}</Descriptions.Item>
-        <Descriptions.Item label={t('media.status')}>
-          {media.asset.processingStatus}
-        </Descriptions.Item>
-        {media.asset.processingError ? (
-          <Descriptions.Item label={t('media.status')}>
-            <Typography.Text type="danger">{media.asset.processingError}</Typography.Text>
-          </Descriptions.Item>
-        ) : null}
-        {media.asset.processingStatus === 'failed' ? (
-          <Descriptions.Item label={t('media.actions')}>
-            <Button icon={<ReloadOutlined />} loading={retryLoading} size="small" onClick={onRetry}>
-              {t('media.retryProcessing')}
-            </Button>
-          </Descriptions.Item>
-        ) : null}
-        <Descriptions.Item label={t('media.caption')}>{media.caption || '-'}</Descriptions.Item>
-      </Descriptions>
+    <Card styles={{ body: { paddingTop: 0 } }}>
+      {/* Uncontrolled, so the chosen tab stays while the reviewer moves between files. */}
+      <Tabs
+        items={[
+          {
+            key: 'file',
+            label: t('projects.fileInformation'),
+            children: <div style={DETAILS_TAB_STYLE}>{fileInformation}</div>,
+          },
+          {
+            key: 'ai',
+            label: t('footage.tabDescription'),
+            children: (
+              <div style={DETAILS_TAB_STYLE}>
+                <MediaAiDescription media={media} canManage={canManageAnalysis} />
+              </div>
+            ),
+          },
+        ]}
+      />
       {canEvaluate ? (
         <>
           <Divider />
@@ -642,46 +724,17 @@ function MediaDetails({
   );
 }
 
-// ─── Video analysis card ──────────────────────────────────────────────────────
+// ─── AI description tab ───────────────────────────────────────────────────────
 
-function formatMs(ms: number): string {
-  const total = Math.floor(ms / 1000);
-  const h = Math.floor(total / 3600);
-  const m = Math.floor((total % 3600) / 60);
-  const s = total % 60;
-  if (h > 0) {
-    return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-  }
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-}
-
-function qualityStars(q: number | null | undefined): string {
-  if (q === null || q === undefined) return '';
-  return '★'.repeat(Math.max(0, Math.min(5, q))) + '☆'.repeat(5 - Math.max(0, Math.min(5, q)));
-}
-
-type VideoAnalysisCardProps = {
-  assetId: string;
-  isVideo: boolean;
-  previewRef: React.RefObject<RenderedMediaPreviewHandle | null>;
-  canManage: boolean;
-};
-
-function VideoAnalysisCard({ assetId, isVideo, previewRef, canManage }: VideoAnalysisCardProps) {
+/** Pause / resume / cancel / re-run of one video's analysis, for analysis managers. */
+function AnalysisActions({ assetId, status }: { assetId: string; status: AnalysisStatus | null }) {
   const { t } = useTranslation();
-  const { token } = theme.useToken();
-  const analysisQuery = useAssetAnalysis(assetId, isVideo);
   const { message } = AntApp.useApp();
   const pauseAsset = usePauseAssetAnalysis();
   const resumeAsset = useResumeAssetAnalysis();
   const cancelAsset = useCancelAssetAnalysis();
   const startAsset = useStartAssetAnalysis();
-
-  if (!isVideo) return null;
-
-  const data: AssetAnalysis | null | undefined = analysisQuery.data;
-  const status: AnalysisStatus | null = data?.status ?? null;
-  const inFlight = status && !['completed', 'failed', 'cancelled'].includes(status);
+  const inFlight = !isTerminalStatus(status);
 
   const handleAction = async (fn: () => Promise<unknown>, successMsg: string) => {
     try {
@@ -692,194 +745,171 @@ function VideoAnalysisCard({ assetId, isVideo, previewRef, canManage }: VideoAna
     }
   };
 
-  if (analysisQuery.isPending) {
+  if (!status) {
     return (
-      <div style={{ textAlign: 'center', padding: '12px 0' }}>
-        <Spin size="small" />
-      </div>
+      <Button
+        size="small"
+        icon={<RotateCcw size={14} />}
+        loading={startAsset.isPending}
+        onClick={() =>
+          void handleAction(
+            () => startAsset.mutateAsync({ assetId }),
+            t('analysis.reanalyseSuccess'),
+          )
+        }
+      >
+        {t('analysis.startScan')}
+      </Button>
     );
   }
 
-  if (!status && !analysisQuery.isError) {
-    return (
-      <div style={{ color: token.colorTextSecondary, fontSize: 12, padding: '8px 0' }}>
-        {t('analysis.videoNoAnalysis')}
-        {canManage ? (
+  return (
+    <Space size={4}>
+      {['queued', 'extracting', 'extracted', 'describing'].includes(status) ? (
+        <Tooltip title={t('analysis.batchPause')}>
           <Button
             size="small"
-            type="link"
+            type="text"
+            aria-label={t('analysis.batchPause')}
+            icon={<Pause size={16} />}
+            loading={pauseAsset.isPending}
+            onClick={() =>
+              void handleAction(
+                () => pauseAsset.mutateAsync(assetId),
+                t('analysis.batchPauseSuccess'),
+              )
+            }
+          />
+        </Tooltip>
+      ) : null}
+      {status === 'paused' ? (
+        <Tooltip title={t('analysis.batchResume')}>
+          <Button
+            size="small"
+            type="text"
+            aria-label={t('analysis.batchResume')}
+            icon={<Play size={16} />}
+            loading={resumeAsset.isPending}
+            onClick={() =>
+              void handleAction(
+                () => resumeAsset.mutateAsync(assetId),
+                t('analysis.batchResumeSuccess'),
+              )
+            }
+          />
+        </Tooltip>
+      ) : null}
+      {inFlight ? (
+        <Popconfirm
+          title={t('analysis.batchCancel')}
+          okText={t('analysis.batchCancel')}
+          cancelText={t('common.cancel')}
+          onConfirm={() =>
+            void handleAction(
+              () => cancelAsset.mutateAsync(assetId),
+              t('analysis.batchCancelSuccess'),
+            )
+          }
+        >
+          <Tooltip title={t('analysis.batchCancel')}>
+            <Button
+              size="small"
+              type="text"
+              danger
+              aria-label={t('analysis.batchCancel')}
+              icon={<X size={16} />}
+              loading={cancelAsset.isPending}
+            />
+          </Tooltip>
+        </Popconfirm>
+      ) : (
+        // A new run is refused (409) while one is in flight
+        <Tooltip title={t('analysis.reanalyse')}>
+          <Button
+            size="small"
+            type="text"
+            aria-label={t('analysis.reanalyse')}
+            icon={<RotateCcw size={16} />}
             loading={startAsset.isPending}
-            style={{ padding: '0 4px' }}
             onClick={() =>
               void handleAction(
                 () => startAsset.mutateAsync({ assetId }),
                 t('analysis.reanalyseSuccess'),
               )
             }
-          >
-            {t('analysis.reanalyse')}
-          </Button>
-        ) : null}
+          />
+        </Tooltip>
+      )}
+    </Space>
+  );
+}
+
+/** The AI description of a video, like the footage drawer, or what keeps it from showing. */
+function MediaAiDescription({ media, canManage }: { media: ProjectMedia; canManage: boolean }) {
+  const { t } = useTranslation();
+  const isVideo = media.asset.assetType === 'video';
+  const analysisQuery = useAssetAnalysis(media.assetId, isVideo);
+
+  if (!isVideo) {
+    return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('analysis.aiVideoOnly')} />;
+  }
+  if (analysisQuery.isPending) {
+    return (
+      <div style={{ textAlign: 'center', padding: '24px 0' }}>
+        <Spin size="small" />
       </div>
+    );
+  }
+  if (analysisQuery.isError) {
+    return <Alert type="error" showIcon message={analysisQuery.error.message} />;
+  }
+
+  const data: AssetAnalysis | null = analysisQuery.data;
+  const status = data?.status ?? null;
+  const inFlight = !isTerminalStatus(status);
+  const actions = canManage ? <AnalysisActions assetId={media.assetId} status={status} /> : null;
+
+  if (!data) {
+    return (
+      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('analysis.aiNotScanned')}>
+        {actions}
+      </Empty>
     );
   }
 
   return (
-    <div style={{ marginTop: 8 }}>
-      {/* Status row */}
-      <Space size={6} wrap style={{ marginBottom: 8 }}>
-        <Tag color={analysisStatusColor(status)}>
-          {status ? t(`analysis.status.${status}`) : t('analysis.statusNone')}
-        </Tag>
-        {data?.description?.quality !== null && data?.description?.quality !== undefined ? (
-          <Tooltip title={`${data.description.quality}/5`}>
-            <span style={{ color: '#f59e0b', fontSize: 13 }}>
-              {qualityStars(data.description.quality)}
-            </span>
-          </Tooltip>
-        ) : null}
-        {data?.description?.usable === false ? (
-          <Tooltip title={data.description.usableReason ?? undefined}>
-            <Tag color="error" style={{ cursor: 'help' }}>
-              {t('analysis.videoUnusable')}
-            </Tag>
-          </Tooltip>
-        ) : null}
-        {inFlight ? <Spin size="small" /> : null}
-        {canManage ? (
-          <Space size={4}>
-            {status && ['queued', 'extracting', 'extracted', 'describing'].includes(status) ? (
-              <Tooltip title={t('analysis.batchPause')}>
-                <Button
-                  size="small"
-                  type="text"
-                  aria-label={t('analysis.batchPause')}
-                  icon={<Pause size={16} />}
-                  loading={pauseAsset.isPending}
-                  onClick={() =>
-                    void handleAction(
-                      () => pauseAsset.mutateAsync(assetId),
-                      t('analysis.batchPauseSuccess'),
-                    )
-                  }
-                />
-              </Tooltip>
-            ) : null}
-            {status === 'paused' ? (
-              <Tooltip title={t('analysis.batchResume')}>
-                <Button
-                  size="small"
-                  type="text"
-                  aria-label={t('analysis.batchResume')}
-                  icon={<Play size={16} />}
-                  loading={resumeAsset.isPending}
-                  onClick={() =>
-                    void handleAction(
-                      () => resumeAsset.mutateAsync(assetId),
-                      t('analysis.batchResumeSuccess'),
-                    )
-                  }
-                />
-              </Tooltip>
-            ) : null}
-            {inFlight ? (
-              <Popconfirm
-                title={t('analysis.batchCancel')}
-                okText={t('analysis.batchCancel')}
-                cancelText={t('common.cancel')}
-                onConfirm={() =>
-                  void handleAction(
-                    () => cancelAsset.mutateAsync(assetId),
-                    t('analysis.batchCancelSuccess'),
-                  )
-                }
-              >
-                <Tooltip title={t('analysis.batchCancel')}>
-                  <Button
-                    size="small"
-                    type="text"
-                    danger
-                    aria-label={t('analysis.batchCancel')}
-                    icon={<X size={16} />}
-                    loading={cancelAsset.isPending}
-                  />
-                </Tooltip>
-              </Popconfirm>
-            ) : (
-              // A new run is refused (409) while one is in flight
-              <Tooltip title={t('analysis.reanalyse')}>
-                <Button
-                  size="small"
-                  type="text"
-                  aria-label={t('analysis.reanalyse')}
-                  icon={<RotateCcw size={16} />}
-                  loading={startAsset.isPending}
-                  onClick={() =>
-                    void handleAction(
-                      () => startAsset.mutateAsync({ assetId }),
-                      t('analysis.reanalyseSuccess'),
-                    )
-                  }
-                />
-              </Tooltip>
-            )}
-          </Space>
-        ) : null}
-      </Space>
-
-      {/* Title + summary */}
-      {data?.description?.titleVi ? (
-        <Typography.Text strong style={{ fontSize: 13, display: 'block', marginBottom: 4 }}>
-          {data.description.titleVi}
-        </Typography.Text>
-      ) : null}
-      {data?.description?.summaryVi ? (
-        <Typography.Text
-          type="secondary"
-          style={{ fontSize: 12, display: 'block', marginBottom: 8 }}
-          ellipsis={{ tooltip: data.description.summaryVi }}
-        >
-          {data.description.summaryVi}
-        </Typography.Text>
-      ) : null}
-
-      {/* Keyframe strip — hidden when there is only one frame */}
-      {data?.keyframes && data.keyframes.length > 1 ? (
-        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 8 }}>
-          {data.keyframes.map((kf) => (
-            <Tooltip key={kf.tMs} title={formatMs(kf.tMs)}>
-              <img
-                src={kf.url}
-                alt={formatMs(kf.tMs)}
-                role="button"
-                tabIndex={0}
-                onClick={() => previewRef.current?.seekTo(kf.tMs / 1000)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    previewRef.current?.seekTo(kf.tMs / 1000);
-                  }
-                }}
-                style={{
-                  width: 72,
-                  aspectRatio: '16/9',
-                  objectFit: 'cover',
-                  borderRadius: 4,
-                  cursor: 'pointer',
-                  border: '2px solid transparent',
-                }}
-              />
-            </Tooltip>
-          ))}
-        </div>
-      ) : null}
-
-      {/* Error reason */}
-      {data?.error ? (
-        <Typography.Text type="danger" style={{ fontSize: 12, display: 'block', marginTop: 4 }}>
+    <Flex vertical gap={8}>
+      <Flex align="center" justify="space-between" gap={8} wrap>
+        <Space size={6}>
+          <Tag color={analysisStatusColor(status)} style={{ marginInlineEnd: 0 }}>
+            {t(`analysis.status.${data.status}`)}
+          </Tag>
+          {inFlight ? <Spin size="small" /> : null}
+        </Space>
+        {actions}
+      </Flex>
+      {data.error ? (
+        <Typography.Text type="danger" style={{ fontSize: 12 }}>
           {data.error}
         </Typography.Text>
       ) : null}
-    </div>
+      {data.description ? (
+        <FootageDescription
+          labelWidth={DETAILS_LABEL_WIDTH}
+          description={{
+            ...data.description,
+            orientation: data.media?.orientation,
+            hasAudio: data.media?.hasAudio,
+            hasSpeech: data.technical?.hasSpeechHint,
+          }}
+        />
+      ) : (
+        <Empty
+          image={Empty.PRESENTED_IMAGE_SIMPLE}
+          description={t(inFlight ? 'analysis.aiScanning' : 'analysis.aiNoDescription')}
+        />
+      )}
+    </Flex>
   );
 }
 
@@ -901,7 +931,6 @@ export function ProjectDetailDrawer({
   const [approveTarget, setApproveTarget] = useState<BulkApproveTarget>();
   const [downloadJobId, setDownloadJobId] = useState<string>();
   const [mediaSort, setMediaSort] = useState<ProjectMediaSort>(DEFAULT_PROJECT_MEDIA_SORT);
-  const renderedPreviewRef = useRef<RenderedMediaPreviewHandle>(null);
   const project = useQuery({
     queryKey: projectQueryKeys.detail(projectId ?? ''),
     queryFn: () => getProject(projectId ?? ''),
@@ -1225,26 +1254,7 @@ export function ProjectDetailDrawer({
                 styles={{ body: { background: '#fafafa', padding: 12 } }}
               >
                 {selectedMedia ? (
-                  <>
-                    <MediaPreview
-                      ref={renderedPreviewRef}
-                      media={selectedMedia}
-                      source={mediaSource}
-                    />
-                    {selectedMedia.asset.assetType === 'video' ? (
-                      <div style={{ marginTop: 12 }}>
-                        <Typography.Text strong style={{ fontSize: 13 }}>
-                          {t('analysis.videoAnalysisTitle')}
-                        </Typography.Text>
-                        <VideoAnalysisCard
-                          assetId={selectedMedia.assetId}
-                          isVideo
-                          previewRef={renderedPreviewRef}
-                          canManage={can(GO_PERMISSIONS.ANALYSIS_MANAGE)}
-                        />
-                      </div>
-                    ) : null}
-                  </>
+                  <MediaPreview media={selectedMedia} source={mediaSource} />
                 ) : (
                   <Empty description={t('projects.selectFileToPreview')} />
                 )}
@@ -1255,6 +1265,7 @@ export function ProjectDetailDrawer({
                 <MediaDetails
                   media={selectedMedia}
                   canEvaluate={canEvaluate}
+                  canManageAnalysis={can(GO_PERMISSIONS.ANALYSIS_MANAGE)}
                   retryLoading={retry.isPending}
                   onRetry={() => retry.mutate()}
                 />

@@ -4,9 +4,9 @@ import {
   Empty,
   Input,
   Popover,
+  Radio,
   Slider,
   Spin,
-  Switch,
   Tree,
   Typography,
 } from 'antd';
@@ -14,6 +14,7 @@ import type { DataNode } from 'antd/es/tree';
 import { t } from 'i18next';
 import {
   Briefcase,
+  CircleCheck,
   Clapperboard,
   Filter as FilterIcon,
   Folder as FolderIcon,
@@ -28,6 +29,7 @@ import {
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  FOOTAGE_USABILITIES,
   ORIENTATIONS,
   ORIENTATION_LABELS_VI,
   RESOLUTIONS,
@@ -38,6 +40,7 @@ import {
   type FootageFacetsResult,
   type FootageFolder,
   type FootageSearchParams,
+  type FootageUsability,
   type Orientation,
   type Resolution,
   type TimeOfDay,
@@ -59,11 +62,19 @@ export type FootageFilterValues = Pick<
   | 'resolutions'
   | 'minDurationMs'
   | 'maxDurationMs'
-  | 'usableOnly'
+  | 'usability'
 >;
+
+/** Label keys of the usability options. */
+const USABILITY_LABELS: Record<FootageUsability, string> = {
+  usable: 'footage.usabilityUsable',
+  unusable: 'footage.usabilityUnusable',
+  all: 'footage.usabilityAll',
+};
 
 type FilterCategory =
   | 'keyword'
+  | 'usability'
   | 'folder'
   | 'project'
   | 'category'
@@ -369,6 +380,7 @@ function FilterContent({
 
   const filterCategories: Array<{ key: FilterCategory; icon: React.ReactNode; label: string }> = [
     { key: 'keyword', icon: <Search size={16} />, label: t('footage.filterKeyword') },
+    { key: 'usability', icon: <CircleCheck size={16} />, label: t('footage.filterUsability') },
     { key: 'folder', icon: <FolderIcon size={16} />, label: t('footage.filterFolder') },
     { key: 'project', icon: <Briefcase size={16} />, label: t('footage.filterProject') },
     { key: 'category', icon: <Layers size={16} />, label: t('footage.filterCategory') },
@@ -384,6 +396,8 @@ function FilterContent({
     switch (key) {
       case 'keyword':
         return (keyword.trim() ? 1 : 0) + (value.tags?.length ?? 0);
+      case 'usability':
+        return value.usability && value.usability !== 'usable' ? 1 : 0;
       case 'folder':
         return value.folderIds?.length ?? 0;
       case 'project':
@@ -466,6 +480,37 @@ function FilterContent({
               searchPlaceholder={t('footage.searchTagPlaceholder')}
               emptyText={t('footage.emptyOptions')}
             />
+          </div>
+        );
+
+      case 'usability':
+        return (
+          <div style={panelStyle}>
+            <PanelHeader
+              icon={<CircleCheck size={18} />}
+              title={t('footage.filterUsability')}
+              onClear={
+                value.usability && value.usability !== 'usable'
+                  ? () => onChange({ ...value, usability: undefined })
+                  : undefined
+              }
+            />
+            <Radio.Group
+              value={value.usability ?? 'usable'}
+              onChange={(e) =>
+                onChange({ ...value, usability: e.target.value as FootageUsability })
+              }
+              style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
+            >
+              {FOOTAGE_USABILITIES.map((v) => (
+                <Radio key={v} value={v}>
+                  {t(USABILITY_LABELS[v])}
+                </Radio>
+              ))}
+            </Radio.Group>
+            <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+              {t('footage.usabilityHint')}
+            </Typography.Text>
           </div>
         );
 
@@ -839,24 +884,6 @@ function FilterContent({
         </Typography.Text>
       </div>
     </div>
-  );
-}
-
-// ─── Usable-only switch ───────────────────────────────────────────────────────
-
-export function UsableOnlySwitch({
-  value,
-  onChange,
-}: {
-  value: boolean;
-  onChange: (v: boolean) => void;
-}) {
-  const { t } = useTranslation();
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-      <Switch size="small" checked={value} onChange={onChange} />
-      <span style={{ fontSize: 13, fontWeight: 500 }}>{t('footage.usableOnly')}</span>
-    </span>
   );
 }
 
